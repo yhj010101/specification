@@ -1,0 +1,50 @@
+    shtOrder_print1.Range("A8") = shtOrderData.Range("E2") '항목추가 시작
+    shtOrder_print1.Range("F8") = shtOrderData.Range("F2")
+    shtOrder_print1.Range("J8") = shtOrderData.Range("G2")
+    shtOrder_print1.Range("O8") = shtOrderData.Range("H2")
+    shtOrder_print1.Range("Q8") = shtOrderData.Range("I2")
+    shtOrder_print1.Range("T8") = shtOrderData.Range("J2")
+    
+    shtOrder_print1.Range("A9") = shtOrderData.Range("E3") '항목추가 시작
+    shtOrder_print1.Range("F9") = shtOrderData.Range("F3")
+    shtOrder_print1.Range("J9") = shtOrderData.Range("G3")
+    shtOrder_print1.Range("O9") = shtOrderData.Range("H3")
+    shtOrder_print1.Range("Q9") = shtOrderData.Range("I3")
+    shtOrder_print1.Range("T9") = shtOrderData.Range("J3")
+    
+    shtOrder_print1.Range("A10") = shtOrderData.Range("E4") '항목추가 시작
+    shtOrder_print1.Range("F10") = shtOrderData.Range("F4")
+    shtOrder_print1.Range("J10") = shtOrderData.Range("G4")
+    shtOrder_print1.Range("O10") = shtOrderData.Range("H4")
+    shtOrder_print1.Range("Q10") = shtOrderData.Range("I4")
+    shtOrder_print1.Range("T10") = shtOrderData.Range("J4")
+    
+    shtOrder_print1.Range("A11") = shtOrderData.Range("E5") '항목추가 시작
+    shtOrder_print1.Range("F11") = shtOrderData.Range("F5")
+    shtOrder_print1.Range("J11") = shtOrderData.Range("G5")
+    shtOrder_print1.Range("O11") = shtOrderData.Range("H5")
+    shtOrder_print1.Range("Q11") = shtOrderData.Range("I5")
+    shtOrder_print1.Range("T11") = shtOrderData.Range("J5")
+    
+    shtOrder_print1.Range("A12") = shtOrderData.Range("E6") '항목추가 시작
+    shtOrder_print1.Range("F12") = shtOrderData.Range("F6")
+    shtOrder_print1.Range("J12") = shtOrderData.Range("G6")
+    shtOrder_print1.Range("O12") = shtOrderData.Range("H6")
+    shtOrder_print1.Range("Q12") = shtOrderData.Range("I6")
+    shtOrder_print1.Range("T12") = shtOrderData.Range("J6")
+    
+    shtOrder_print1.Range("A13") = shtOrderData.Range("E7") '항목추가 시작
+    shtOrder_print1.Range("F13") = shtOrderData.Range("F7")
+    shtOrder_print1.Range("J13") = shtOrderData.Range("G7")
+    shtOrder_print1.Range("O13") = shtOrderData.Range("H7")
+    shtOrder_print1.Range("Q13") = shtOrderData.Range("I7")
+    shtOrder_print1.Range("T13") = shtOrderData.Range("J7")
+    
+    shtOrder_print1.Range("A14") = shtOrderData.Range("E8") '항목추가 시작
+    shtOrder_print1.Range("F14") = shtOrderData.Range("F8")
+    shtOrder_print1.Range("J14") = shtOrderData.Range("G8")
+    shtOrder_print1.Range("O14") = shtOrderData.Range("H8")
+    shtOrder_print1.Range("Q14") = shtOrderData.Range("I8")
+    shtOrder_print1.Range("T14") = shtOrderData.Range("J8")
+    
+    shtOrder_print1.Range("F16") = Me.txtRemark.Value

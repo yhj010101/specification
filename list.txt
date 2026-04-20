@@ -8,3 +8,27 @@ Dog 2
 구미
 6F35 TCU 1
 AUDI EGS 1
+
+1. 
+02E 3
+6dct 450 tcu 1
+0ck 2
+dog1
+park pawl 1
+es11 egs 1
+01j 1
+구미모터
+
+2.
+01j 1
+0ck 1
+9단 4
+02e 4
+
+3. 0ck 15
+
+4. 9단 2
+02e 5
+egs 1(211)
+egs 1(181)
+6dct450 tcu 1

@@ -1,0 +1,14 @@
+Interface: Scanmatik - SM2 USB
+DLL: 1.0.0.15 (built 12.02.19)
+Firmware: FW:0808 HW:02 SN:A55259
+Protocol: VAG: DQ200 (0AM)
+Identification
+Part Number:	0AM300065G
+SW Version:	6562
+Hardware:	GSG DSG AG7 431
+Coding:	0000020
+Calibration file:	v069LS620AM___getriebe_DSG_ImLS
+Base:	C65S
+Reprog count:	3
+Completed
+

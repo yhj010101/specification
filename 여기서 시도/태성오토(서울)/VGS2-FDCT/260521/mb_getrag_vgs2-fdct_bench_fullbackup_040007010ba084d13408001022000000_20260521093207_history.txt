@@ -1,0 +1,89 @@
+
+ ---------- Connect Started ------------------------------ 
+
+
+Waiting for reply from server...
+Authorization from server received
+Connected
+Detected TC1784 processor.
+
+REG SCU_CHIPID: 15009F10
+REG PFlash0 FSR: 00002000
+REG PFlash0 FCON: 00000706
+REG PFlash0 PROCON0: 00000000
+REG PFlash0 PROCON1: 00000000
+REG PFlash0 PROCON2: 00000000
+Unique Chip ID: 040007010BA084D13408001022000000
+
+
+Internal Flash
+Memory configuration
+Sector	 Address	 Size		 Type
+01	 0xA0000000	 0x00004000	 RW
+02	 0xA0004000	 0x00004000	 RW
+03	 0xA0008000	 0x00004000	 RW
+04	 0xA000C000	 0x00004000	 RW
+05	 0xA0010000	 0x00004000	 RW
+06	 0xA0014000	 0x00004000	 RW
+07	 0xA0018000	 0x00004000	 RW
+08	 0xA001C000	 0x00004000	 RW
+09	 0xA0020000	 0x00020000	 RW
+10	 0xA0040000	 0x00040000	 RW
+11	 0xA0080000	 0x00040000	 RW
+12	 0xA00C0000	 0x00040000	 RW
+13	 0xA0100000	 0x00040000	 RW
+14	 0xA0140000	 0x00040000	 RW
+15	 0xA0180000	 0x00040000	 RW
+16	 0xA01C0000	 0x00040000	 RW
+17	 0xA0200000	 0x00040000	 RW
+18	 0xA0240000	 0x00040000	 RW
+
+
+Internal EEPROM
+Memory configuration
+Sector	 Address	 Size		 Type
+01	 0xAFE00000	 0x00010000	 RW
+02	 0xAFE10000	 0x00010000	 RW
+
+
+
+ ---------- Connect Finished ( Time: 00:00:10 ) ---------- 
+
+
+
+ ---------- Read Full Backup Started ------------------------------ 
+
+
+Reading...
+
+Reading Internal Flash...
+Reading sector 1 / 18, address: 0xA0000000, size: 16 KB
+Reading sector 2 / 18, address: 0xA0004000, size: 16 KB
+Reading sector 3 / 18, address: 0xA0008000, size: 16 KB
+Reading sector 4 / 18, address: 0xA000C000, size: 16 KB
+Reading sector 5 / 18, address: 0xA0010000, size: 16 KB
+Reading sector 6 / 18, address: 0xA0014000, size: 16 KB
+Reading sector 7 / 18, address: 0xA0018000, size: 16 KB
+Reading sector 8 / 18, address: 0xA001C000, size: 16 KB
+Reading sector 9 / 18, address: 0xA0020000, size: 128 KB
+Reading sector 10 / 18, address: 0xA0040000, size: 256 KB
+Reading sector 11 / 18, address: 0xA0080000, size: 256 KB
+Reading sector 12 / 18, address: 0xA00C0000, size: 256 KB
+Reading sector 13 / 18, address: 0xA0100000, size: 256 KB
+Reading sector 14 / 18, address: 0xA0140000, size: 256 KB
+Reading sector 15 / 18, address: 0xA0180000, size: 256 KB
+Reading sector 16 / 18, address: 0xA01C0000, size: 256 KB
+Reading sector 17 / 18, address: 0xA0200000, size: 256 KB
+Reading sector 18 / 18, address: 0xA0240000, size: 256 KB
+Size read: 2.5 MB
+CRC32 of readout: ADE4742B
+
+Verifying checksum, please wait...
+Checksum OK
+
+Reading Internal EEPROM...
+Reading sector 1 / 2, address: 0xAFE00000, size: 64 KB
+Reading sector 2 / 2, address: 0xAFE10000, size: 64 KB
+Size read: 128 KB
+CRC32 of readout: F9669544
+Reading successful

@@ -1,0 +1,555 @@
+/**
+ 	* @file : scrp-util.js 
+  * @author : hg14699
+	* @Date : 230927
+  * @brief : 스크래핑 관련 페이지에서 사용하는 기능 모음
+*/
+
+/**
+ * 금액 숫자형식 변경 및 원 추가 함수
+ * @param {String or Number} event
+ * @return {String} money
+*/
+function setAmount (money) {
+  let count = 0;
+  let arr = [];
+  const strMoney = money.toString();
+  const balLength = strMoney.length;
+
+  for (let i = balLength; i > 0; i--) {
+    if (count !== 0 && count % 3 === 0) {
+      arr.unshift(",");
+    };
+    arr.unshift(strMoney[i - 1]);
+    count++;
+  };
+  return arr.join('').toString() + '원';
+};
+
+/**
+ * 입력값 검증 함수
+ * @param {EventTarget} event 
+ * @param {String} regCon 
+*/
+function chkRegStr (event, regCon) {
+	event.stopImmediatePropagation();
+  let alertMsg = '';
+ 	const regStr = regCon.toString();
+ 	console.log('regStr', regStr);
+  switch (regStr) {
+    case `/[^a-zA-Z0-9]/g`:
+      alertMsg = '영문자와 숫자만 입력해주십시오.';
+      break;
+    case `/[^a-zA-Z0-9@#$%&*?!]/g`:
+      alertMsg = '영문자, 숫자, !@#$%&*? 외에는 입력할 수 없습니다.';
+      break;
+    case `/[^0-9]/g`:
+      alertMsg = '숫자만 입력해주십시오.';
+      break;
+    default:
+      alertMsg = '잘못된 입력입니다.';
+  };
+  const chkValue = event.target.value.replace(regCon, '');
+  console.log('current chkValue: ', chkValue);
+  if(event.target.value !== chkValue) {
+    event.target.value = null;
+    alert(alertMsg);
+  };
+};
+
+/**
+ * 한글 입력 체크
+ * @param {EventTarget} event 
+ * @param {String} regCon 
+*/
+function chkRegStr2 (event, regCon) {
+  const chkValue = event.target.value.replace(regCon, '');
+  if(event.target.value !== chkValue) {
+    alert(`한글은 입력할 수 없습니다.`);
+    event.target.value = '';
+  };
+};
+
+/** input 요소 및 이체 버튼 비활성화 */
+function disableClickFunc () {
+	const inputs = document.querySelectorAll('.main_pop input');
+	const btns = document.querySelectorAll('.main_pop .btn_style1');
+	const closeBtn = document.querySelector('.main_pop .btn_popclose');
+	(inputs && btns && closeBtn) && (() => {
+		[...inputs].forEach(input => {
+			input.classList.add('readonly-input');
+			input.style.pointerEvents = 'none';
+			input.setAttribute('readonly', 'true');
+			input.style.background = '#f0f0f0';
+			input.style.color = '#a0a0a0';
+			input.style.marginTop = '0px !important';
+		});
+		[...btns].forEach(btn => {
+			if(btn.classList.contains('bg-b')){
+				btn.classList.remove('bg-b');
+				btn.classList.add('bg-g');
+			};
+			btn.style.pointerEvents = 'none';
+		});
+		closeBtn.style.pointerEvents = 'none';	
+	})();
+};
+
+/** input 요소 및 이체 버튼 활성화 */
+function enableClickFunc () {
+	const inputs = document.querySelectorAll('.main_pop input');
+	const btns = document.querySelectorAll('.main_pop .btn_style1');
+	const closeBtn = document.querySelector('.main_pop .btn_popclose');
+	(inputs && btns && closeBtn) && (() => {
+		[...inputs].forEach(input => {
+			input.classList.remove('readonly-input');
+			input.style.pointerEvents = '';
+			input.removeAttribute('readonly');
+			input.style.background = '#fff';
+			input.style.color = '#555';
+		});
+		[...btns].forEach(btn => {
+			if(btn.classList.contains('bg-g')){
+				btn.classList.remove('bg-g');
+				btn.classList.add('bg-b');
+			};
+			btn.style.pointerEvents = '';
+		});
+		closeBtn.style.pointerEvents = '';	
+	})();
+};
+
+/** 이체 버튼 비활성화 */
+function disableTransClick() {
+	const inputs = document.querySelectorAll('input');
+	const btns = document.querySelectorAll(' a.b-bt, a#addItem');
+	(inputs && btns && closeBtn) && (() => {
+		[...inputs].forEach(input => {
+			input.classList.remove('readonly-input');
+			input.style.pointerEvents = '';
+			input.removeAttribute('readonly');
+			input.style.background = '#fff';
+			input.style.color = '#555';
+		});
+		[...btns].forEach(btn => {
+			btn.classList.add('bg-g');
+			if(btn.classList.contains('bg-g')){
+				btn.style.background = '#ccc';	
+			};
+			
+		});
+	})();
+};
+
+/**
+ * 프로세스 팝업 종료
+ * @param {Object} logoutProps 
+*/
+function open_closePop (logoutProps) {
+	disableClickFunc();
+	const popUpDiv = document.createElement('div');
+	popUpDiv.classList.add('pop_wrap');
+	popUpDiv.style.display = '';
+	popUpDiv.style.width = '420px';
+	popUpDiv.style.position = 'absolute';
+	popUpDiv.style.top = '50%';
+	popUpDiv.style.left = '50%';
+	popUpDiv.style.transform = 'translate(-50%, -50%)';
+	popUpDiv.style.zIndex = '9999';
+	popUpDiv.innerHTML = `
+    <div class="pop_header">
+      <h1>알림</h1>
+      <a href="#none" onClick="self.close()" class="btn_popclose"><img src="../img/btn/btn_popclose.gif" alt="팝업닫기"></a>
+    </div>
+    <div class="pop_container">
+      <div class="caution_box" style="padding:0 0 10px;">
+        <span class="caution_box_thumb icon3"></span>
+        <span class="caution_box_txt txt2" style="line-height: 34px;">
+          건별이체를 취소 하시겠습니까?
+        </span>
+      </div>
+      <div class="tac">
+        <a href="#none" class="btn_style1_b logout_btn"><span>예</span></a>
+        <a href="#none" class="btn_style1"><span>아니요</span></a>
+      </div>
+    </div>
+	`;
+	popUpDiv.querySelector('.btn_popclose').addEventListener('click', () => {
+		popUpDiv.remove();
+		enableClickFunc();
+	});
+	popUpDiv.querySelector('.btn_style1').addEventListener('click', () => {
+		popUpDiv.remove();
+		enableClickFunc();
+	});
+	popUpDiv.querySelector('.btn_style1_b.logout_btn').addEventListener('click', () => {
+		console.log('logout btn 클릭');
+		
+	 const logoutFunc = () => {
+			return new Promise((resolve, reject) => {
+				parent.startScrapping(logoutProps).then(res => {
+					resolve(res);
+				});
+			});
+		};
+		if(logoutProps) {
+			logoutFunc().then(res => {
+				console.log('로그아웃 실행', res);
+				popUpDiv.remove();
+				close_smartPop();
+			});
+		} else {
+			popUpDiv.remove();
+			close_smartPop();
+		};
+	});
+	document.querySelector('body').appendChild(popUpDiv);
+};
+
+/**
+ * 프로세스 팝업 호출
+ * @param {String} title 
+*/
+function open_processPop(title) {
+	disableClickFunc();
+	const transDiv = document.createElement('div');
+	transDiv.classList.add('bar-wrap');
+	transDiv.style.display = '';
+	transDiv.style.position = 'absolute';
+	transDiv.style.top = '50%';
+	transDiv.style.left = '50%';
+	transDiv.style.transform = 'translate(-50%, -50%)';
+	transDiv.innerHTML = `
+		<div class="bar-area">
+			<div class="inner">
+				<p class="txt">${title}</p>
+				<img src="../img/loading/cash_srch_bar3.gif" alt="" class="bar2" style="">
+			</div>
+		</div>
+	`;
+	document.querySelector('body').appendChild(transDiv);
+};
+
+/** 프로세스 팝업 */
+function close_processPop() {
+	document.querySelector('.bar-wrap').remove();
+	enableClickFunc();
+};
+
+/**
+ * 경고창 팝업 호출
+ * @param {String} title 
+*/
+function open_alertPop(title) {
+	disableClickFunc();
+	const popUpDiv = document.createElement('div');
+	popUpDiv.classList.add('pop_wrap');
+	popUpDiv.style.display = '';
+	popUpDiv.style.width = '420px';
+	popUpDiv.style.position = 'absolute';
+	popUpDiv.style.top = '50%';
+	popUpDiv.style.left = '50%';
+	popUpDiv.style.transform = 'translate(-50%, -50%)';
+	popUpDiv.innerHTML = `
+    <div class="pop_header">
+      <h1>알림</h1>
+      <a href="#none" onClick="self.close()" class="btn_popclose">
+      	<img src="../img/btn/btn_popclose.gif" alt="팝업닫기" />
+    	</a>
+    </div>
+    <div class="pop_container">
+      <div class="caution_box" style="padding:0 0 10px;">
+        <span class="caution_box_thumb icon3"></span>
+        <span class="caution_box_txt txt1">
+          ${title}
+        </span>
+      </div>
+      <div class="tac">
+        <a href="#none" class="btn_style1_b">
+        	<span>확인</span>
+      	</a>
+      </div>
+    </div>
+	`;
+	popUpDiv.querySelector('.btn_popclose').addEventListener('click', function() {
+		popUpDiv.remove();
+		enableClickFunc();
+	});
+	popUpDiv.querySelector('.btn_style1_b').addEventListener('click', function(){
+		popUpDiv.remove();
+		enableClickFunc();
+	});
+	document.querySelector('body').appendChild(popUpDiv);
+};
+
+/** 부모 윈도우 input, 버튼 비활성화 */
+function disableBackgroundFunc () {
+	let[transBtn, regBtn] = [null, null];
+	const inputs = parent.document.querySelectorAll('input[type=text]');
+	[...inputs].forEach(input => {
+		input.classList.add('readonly-input');
+		input.style.pointerEvents = 'none';
+		input.setAttribute('readonly', 'true');
+		input.style.background = '#f0f0f0';
+		input.style.color = '#a0a0a0';
+		input.style.marginTop = '0px !important';
+	});
+	try{
+		regBtn = parent.document.querySelector('#addItem');
+		transBtn = parent.document.querySelector('#trans_btn');
+		transBtn.style.background = '#ccc';
+		transBtn.style.border = '1px solid #aaa';
+		transBtn.style.color = '#fff';
+		regBtn.style.pointerEvents = 'none';
+	} catch {
+		transBtn = parent.document.querySelector('.btn_style1_b');
+	};
+	transBtn.style.pointerEvents = 'none';
+};
+
+/** 부모 윈도우 input, 버튼 활성화 */
+function enableBackgroundFunc() {
+	let[transBtn, regBtn] = [null, null];
+	const inputs = parent.document.querySelectorAll('input[type=text]');
+	[...inputs].forEach(input => {
+		input.classList.remove('readonly-input');
+		input.style.pointerEvents = '';
+		input.removeAttribute('readonly');
+		input.style.background = '#fff';
+		input.style.color = '#555';
+	});
+	try{
+		regBtn = parent.document.querySelector('#addItem');
+		transBtn = parent.document.querySelector('#trans_btn');
+		transBtn.style.background = '#ccc';
+		transBtn.style.border = '1px solid #aaa';
+		transBtn.style.color = '#fff';
+		regBtn.style.pointerEvents = '';
+	} catch {
+		transBtn = parent.document.querySelector('.btn_style1_b');
+	};
+	transBtn.style.pointerEvents = '';
+};
+
+/**
+ * 이체 완료 팝업
+ * @param {Object} logoutProps 
+*/
+function open_transDonePop(logoutProps) {
+	const cboxOverLay = parent.document.querySelector('#cboxOverlay');
+	const colorbox = parent.document.querySelector('#colorbox');
+	cboxOverLay.style.display = 'none';
+	colorbox.style.display = 'none';
+	const popUpDiv2 = parent.document.createElement('div');
+	popUpDiv2.classList.add('pop_wrap');
+	popUpDiv2.style.display = '';
+	popUpDiv2.style.width = '420px';
+	popUpDiv2.style.position = 'absolute';
+	popUpDiv2.style.top = '50%';
+	popUpDiv2.style.left = '50%';
+	popUpDiv2.style.transform = 'translate(-50%, -50%)';
+	popUpDiv2.style.zIndex = '99999999';
+	popUpDiv2.innerHTML = `
+  	<div class="pop_header">
+			<h1>알림</h1>
+			<a href="#none" onClick="self.close()" class="btn_popclose">
+				<img src="../img/btn/btn_popclose.gif" alt="팝업닫기" />
+			</a>
+		</div>
+		<div class="pop_container">
+			<div class="caution_box" style="padding:0 0 10px;">
+				<span class="caution_box_thumb icon3"></span>
+				<span class="caution_box_txt txt2">
+					[이체요청]이 완료되었습니다. <br>반드시 이체결과조회 메뉴에서 이체결과를 확인하세요. <br>
+					<span style="padding-top: 8px; display:inline-block;">지금 바로 이체결과를 확인하시겠습니까?</span>
+				</span>
+				<span class="caution_box_txt txt1">
+				</span>
+			</div>
+			<div class="tac">
+				<a href="#none" class="btn_style1_b"><span>예</span></a>
+				<a href="#none" class="btn_style1"><span>아니요</span></a>
+			</div>
+		</div>
+	`;
+	
+	const logoutFunc = () => {
+		return new Promise((resolve, reject) => {
+			parent.startScrapping(logoutProps).then(res => {
+				resolve(res);
+			});
+		});
+	};
+		
+	popUpDiv2.querySelector('.btn_popclose').addEventListener('click', function() {
+		logoutFunc().then(res => {
+			console.log('로그아웃 실행', res);
+			enableBackgroundFunc();
+			popUpDiv2.remove();
+			close_smartPop();
+		});
+	});
+	popUpDiv2.querySelector('.btn_style1_b').addEventListener('click', function() {
+		logoutFunc().then(res => {
+			try{
+				parent.parent.wserp.comm.goMenu('s6330');
+			} catch {
+				parent.window.location.reload();
+			};
+			enableBackgroundFunc();
+			popUpDiv2.remove();
+			close_smartPop();
+		});
+	});
+	popUpDiv2.querySelector('.btn_style1').addEventListener('click', function(){
+		logoutFunc().then(res => {
+			if(window.parent.location.href.includes('trns_0020_05')) {
+					var $form = $("<form id='form' method='post' action='trns_0020_01.act'></form>");
+					// 이체실행 페이지에서 매입대금결제 페이지로 이동시 검색조건 유지하기위한 값
+					$form.append("<input name='isCallTrnsPage' value='Y'>");
+					$("body", parent.document).append($form);
+					$form.submit();
+					popUpDiv2.remove();
+					close_smartPop();
+			} else {
+				let [menuNodes, depth2Menu, menuCd] = [null, null, null];
+				parent.parent.document.querySelectorAll('.depth1_list').forEach(ele => {
+					ele.getAttribute('data-menu-up-cd') === 's6000' && (menuNodes = ele);
+				});
+				try {
+					menuNodes.querySelectorAll('ul').forEach(ele => {
+						ele.getAttribute('data-menu-up-cd') === 's6300' && (depth2Menu = ele);
+					});
+					menuCd = depth2Menu.querySelector('li a.active').getAttribute('href').split('=')[1];
+				} catch {
+					menuNodes.querySelectorAll('li').forEach(ele => {
+						ele.getAttribute('data-menu-cd') === 's6200' && (depth2Menu = ele);
+					});
+					menuCd = depth2Menu.querySelector('li a.active').getAttribute('href').split('=')[1];
+				} finally {
+					parent.parent.wserp.comm.goMenu(menuCd);			
+	        // ul.data-menu-up-cd = s3200 li > a classList에 active 있는 ele의 href = split해서 가져와서 goMenu
+					// parent.window.location.reload();
+					enableBackgroundFunc();
+					popUpDiv2.remove();
+					close_smartPop();
+				}
+			}
+		});
+	});
+	disableBackgroundFunc();
+	parent.document.querySelector('body').appendChild(popUpDiv2);
+};
+
+/**
+ * 복호화 함수 (테스트 필요)
+ * -- script 추가 방식 (scrp_0001_01 view 참조) --
+ * head script 추가 시, 무조건 crypto -> scrp-util -> 사용할 페이지의 js 파일 순으로 추가
+ * /js/jex/serp_cms/scrp/cryptojs-4.1.1.min.js"
+ * /js/jex/serp_cms/scrp/jsencrypt_2.3.1.min.js
+ * /js/jex/serp_cms/scrp/scrp-util.js
+ * /js/jex/serp_cms/scrp/scrp_0001_01.js (예시파일, 실제 적용 시에는 사용할 페이지.js)
+ * @param {*} originData 
+ * @param {String} USE_INTT_ID 
+ * @return {String} DEC_DATA
+*/
+
+function getDecData (encData, USE_INTT_ID, PBK_KEY) {
+	if(encData === '' || encData === null) {
+		const errMsg = 'encData 에러 발생';
+		alert(errMsg);
+		throw new Error(errMsg);
+	} else if(PBK_KEY === '' || PBK_KEY === null) {
+		const errMsg = 'PBK_KEY 에러 발생';
+		alert(errMsg);
+		throw new Error(errMsg);
+	}
+	// 16바이트의 iv 생성
+	const iv = getSha256WithHex(USE_INTT_ID).substring(0, 32);
+	// base64 인코딩 된 값 바이트 배열로 전환
+  const BASE64_PBK_KEY = CryptoJS.enc.Base64.parse(PBK_KEY);
+  
+  // 암호화된 data를 AES 복호화
+  const decrypted = CryptoJS.AES.decrypt(
+	    encData,
+	    BASE64_PBK_KEY,
+	    {
+	      iv: CryptoJS.enc.Hex.parse(iv),
+	      mode: CryptoJS.mode.CBC,
+	      padding: CryptoJS.pad.Pkcs7,
+	    }
+	  );
+
+		// 복호화된 값을 UTF-8 문자열 디코딩
+    const DEC_DATA = decrypted.toString(CryptoJS.enc.Utf8);
+    return DEC_DATA;
+};
+
+/**
+ * 암호화 함수
+ * -- script 추가 방식 (scrp_0001_01 view 참조) --
+ * head script 추가 시, 무조건 crypto -> scrp-util -> 사용할 페이지의 js 파일 순으로 추가
+ * /js/jex/serp_cms/scrp/cryptojs-4.1.1.min.js"
+ * /js/jex/serp_cms/scrp/jsencrypt_2.3.1.min.js
+ * /js/jex/serp_cms/scrp/scrp-util.js
+ * /js/jex/serp_cms/scrp/scrp_0001_01.js (예시파일, 실제 적용 시에는 사용할 페이지.js)
+ * @param {*} originData 
+ * @param {String} USE_INTT_ID 
+ * @return {String} ENC_DATA
+*/
+function getEncData (originData, USE_INTT_ID, PBK_KEY) {
+	try{
+		// 16바이트의 iv 생성
+		const iv = getSha256WithHex(USE_INTT_ID).substring(0, 32);
+		let data = null;
+		// 데이터 문자열화
+		typeof originData === 'object' ? data = JSON.stringify(originData) : data = originData;
+		
+		// data를 AES 암호화
+	  const encrypted = CryptoJS.AES.encrypt(
+	    data,
+	    CryptoJS.enc.Utf8.parse(PBK_KEY),
+	    {
+	      iv: CryptoJS.enc.Hex.parse(iv),
+	      mode: CryptoJS.mode.CBC,
+	      padding: CryptoJS.pad.Pkcs7,
+	    }
+	  );
+	  
+	  // BASE64 인코딩 문자열
+	  const ENC_DATA = encrypted.toString();
+		return ENC_DATA;	
+	} catch (e) {
+		throw new Error(e);
+	};
+};
+
+/**
+ * SHA256 해싱 함수
+ * @param {String} str 
+ * @return {String} hexString
+*/
+function getSha256WithHex(str) {
+  const hashedStr = CryptoJS.SHA256(str);
+  const hash2hex = hashedStr.toString(CryptoJS.enc.Hex);
+  return hash2hex;
+};
+
+/** 키 클릭 방지 이벤트 추가 */
+function disableClickKeys () {
+  try {
+    document.addEventListener('keydown', (e) => {
+      if(e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Tab') {
+        e.preventDefault();
+        return false;
+      };
+    });
+  } catch {
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        return false;
+      };
+    });
+  };
+};

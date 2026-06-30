@@ -1,0 +1,267 @@
+/**
+ * Formatter를 정의합니다.
+ */
+var formatter = new (Class.extend({
+	init : function(){
+	}
+	//숫자
+	//1234567.908의 숫자를 "12,345,67.908"형식으로 포매팅한다.
+	, number : function(dat) {
+		if(typeof dat == "number")	dat = String(dat);
+		
+		var reg = /(^[+-]?\d+)(\d{3})/;    				// 정규식(3자리마다 ,를 붙임)
+		dat += ''; 										// ,를 찍기 위해 숫자를 문자열로 변환
+		while (reg.test(dat)) 							// dat값의 첫째자리부터 마지막자리까지
+			dat = dat.replace(reg, '$1' + ',' + '$2');	// 인자로 받은 dat 값을 ,가 찍힌 값으로 변환시킴
+		
+		return dat; 									// 바뀐 dat 값을 반환.
+	},
+	// 자동콤마
+	autoComma : function (n) {
+        if(typeof n == "undefined" || n == "undefined" || n == "null") return "";
+        if(typeof n == "number") n=n.toString();
+        n = n.replace(/,/gi,'');
+        if(isNaN(n)) return n;
+        var reg = /(^[+-]?\d+)(\d{3})/;
+        n += '';
+        while (reg.test(n)) n = n.replace(reg, '$1' + ',' + '$2');
+        return n;
+    }
+	//날짜형식
+	//"yyyymmdd" 형식의 문자열을 "yyyy-mm-dd"로 포매팅한다.
+	, date : function(dat) {
+		if(!dat)	return dat;
+		
+		dat = dat.substring(0,4)+"-"+dat.substring(4,6)+"-"+dat.substring(6,8);
+		return dat;
+	}
+	//시간
+	//"hhmmdd" 형식의 문자열을 "hh:mm:dd"로 포매팅한다.
+	, time : function(dat) {
+		if(!dat)	return dat;
+		
+		dat = dat.substring(0,2)+":"+dat.substring(2,4)+":"+dat.substring(4,6);
+		return dat;
+		
+	}
+	//날짜+시간
+	, datetime : function(date, format) {
+		if(!format){
+			alert("날짜 포맷을 입력해주세요");
+			return false;
+		}
+		
+		if(!date)	return "";
+
+		//이미 포맷팅 되어있는값을 삭제한다.
+		date = date.replace(/[^0-9]/g,"");
+		
+		//입력된 날짜의 길이가 포맷팅되어야 하는 길이보다 작으면 뒤에 0을 붙인다.
+		var formatLength = format.replace(/[^a-z]/g, "").length;
+		var dateLength = date.length;
+		for(var i=0 ; i<formatLength-dateLength ; i++){
+			date += '0';
+		}
+		
+		if(format.replace(/[^a-z]/g, "")=="hhmiss" && date.length==6)
+		{
+			date = "00000000"+date;
+		}
+		
+		var idx = format.indexOf("yyyy");
+		if( idx > -1 ){
+			format = format.replace("yyyy", date.substring(0,4));
+		}
+		idx = format.indexOf("yy");
+		if( idx > -1 ){
+			format = format.replace("yy", date.substring(2,4));
+		}
+		idx = format.indexOf("mm");
+		if( idx > -1 ){
+			format = format.replace("mm", date.substring(4,6));
+		}
+		idx = format.indexOf("dd");
+		if( idx > -1 ){
+			format = format.replace("dd", date.substring(6,8));
+		}
+		idx = format.indexOf("hh24");
+		if( idx > -1 ){
+			format = format.replace("hh24", date.substring(8,10));
+		}
+		idx = format.indexOf("hh");
+		if( idx > -1 ){
+			var hours = date.substring(8,10);
+			hours = parseInt(hours,10)<=12?hours:"0"+String(parseInt(hours,10)-12);
+			format = format.replace("hh", hours);
+		}
+		idx = format.indexOf("mi");
+		if( idx > -1 ){
+			format = format.replace("mi", date.substring(10, 12));
+		}
+		idx = format.indexOf("ss");
+		if( idx > -1 ){
+			format = format.replace("ss", date.substring(12));
+		}
+		idx = format.indexOf("EEE");
+		if( idx > -1 ){
+			var weekstr='일월화수목금토'; // 요일 스트링
+			
+			var day = weekstr.substr(new Date(date.substring(0,4), new Number(date.substring(4,6))-1, date.substring(6,8)).getDay(), 1);
+			format = format.replace("EEE", day);
+		}
+		
+		return format;
+	}
+	//-----------------------------
+	//계좌번호 포맷팅
+	//이미 포매팅 되어있을경우 제거후 다시 포맷팅함
+	//@param dat : 계좌번호
+	//@param arg : Array형식의 계좌번호 자리수를 입력한다. 해당 자리수별로 파싱해서 포맷팅함 
+	//사용예) formatter.account( "0123456789" , [3,3,4]) ==>결과 : "012-345-6789"
+	//		 formatter.account( "01234567890" , [3,3,4]) ==>결과 : "012-345-6789-0"
+	//		 formatter.account( "0123456" , [3,3,4]) ==>결과 : "012-345-6"
+	//-----------------------------
+	, account : function(dat, arg) {
+		if(!dat) return dat;
+		
+		
+		//arg가 없을때 기본포맷을 설정하고자 할 경우, 여기에서 arg에 기본포맷을 할당하면됨
+		//예)if(!arg||!arg.length) arg=[3,3,4];
+		
+		if(dat.length == 8) {
+			arg = [3,2,3];
+		}
+		else if(dat.length == 11) {
+			arg = [4,3,4];
+		}
+		else if(dat.length == 12) {
+			arg = [4,3,5];
+		}
+		else if(dat.length == 13) {
+			arg = [4,3,6];
+		}
+		else if(dat.length == 14) {
+			arg = [4,3,7];
+		}
+		
+		if(!arg||!arg.length) return dat;
+		
+		
+		
+		if(typeof dat == "number")	dat = String(dat);
+		
+		//이미 포매팅되어있을경우 제거한다.
+		else if(/[^0-9]/g.test(dat))
+		{	
+			dat = dat.replace(/[^0-9]/g, "");
+		}
+		
+		var rArr = [];
+		var startIdx = 0;
+		for(var i=0 ; i<arg.length ; i++)
+		{
+			if( !!dat.substr(startIdx, arg[i]) )
+				rArr.push(dat.substr(startIdx, arg[i]));
+			
+			startIdx += arg[i];
+		}
+		if( !!dat.substr(startIdx) )
+		{
+			rArr.push( dat.substr(startIdx) );
+		}
+		
+		var result = "";
+		for(var i=0 ; i<rArr.length ; i++)
+		{
+			if(i==0)
+				result = rArr[i];
+			else
+				result += "-"+rArr[i];
+		}
+		return result;
+	}
+	//금액
+	//1234567.908의 숫자를 "12,345,67.908"형식으로 포매팅한다.
+	, currency : function(dat) {
+		if(typeof dat == "number")	dat = String(dat);
+		
+		if(jex.isNull(dat)) dat = "0";
+		
+		var reg = /(^[+-]?\d+)(\d{3})/;    				// 정규식(3자리마다 ,를 붙임)
+		dat += ''; 										// ,를 찍기 위해 숫자를 문자열로 변환
+		while (reg.test(dat)) 							// dat값의 첫째자리부터 마지막자리까지
+			dat = dat.replace(reg, '$1' + ',' + '$2');	// 인자로 받은 dat 값을 ,가 찍힌 값으로 변환시킴
+		
+		return dat + "원"; 									// 바뀐 dat 값을 반환.
+	}
+	//퍼센트
+	//1234567.908의 숫자를 "12,345,67.908%"형식으로 포매팅한다.
+	, percent : function(dat) {
+		if(typeof dat == "number")	dat = String(dat);
+		
+		var reg = /(^[+-]?\d+)(\d{3})/;    				// 정규식(3자리마다 ,를 붙임)
+		dat += ''; 										// ,를 찍기 위해 숫자를 문자열로 변환
+		while (reg.test(dat)) 							// dat값의 첫째자리부터 마지막자리까지
+			dat = dat.replace(reg, '$1' + ',' + '$2');	// 인자로 받은 dat 값을 ,가 찍힌 값으로 변환시킴
+		
+		return dat + "%"; 									// 바뀐 dat 값을 반환.
+	}
+	//사업자번호
+	, corpNum : function(dat){
+		if(!dat) return dat;
+		
+		if(typeof dat == "number")	
+			dat = String(dat);
+		else if(/[^0-9]/g.test(dat))
+			dat = dat.replace(/[^0-9]/g, "");
+		
+		if(dat.length == 10){
+			dat = dat.substring(0,3)+"-"+dat.substring(3,5)+"-"+dat.substring(5,10);
+		}
+		return dat;
+	}
+	//주민번호
+	, ssn : function(dat){
+		if(!dat) return dat;
+		
+		if(typeof dat == "number")	
+			dat = String(dat);
+		else if(/[^0-9]/g.test(dat))
+			dat = dat.replace(/[^0-9]/g, "");
+		
+		if(dat.length == 13){
+			dat = dat.substring(0,6)+"-"+dat.substring(6,13);
+		}
+		
+		return dat;
+	}
+	// 소수점 2자리 출력
+	, realNum : function (num) {
+		if(num==null || num==""){
+			return num;
+		}
+		if(Number(num) % 1 != 0){
+			// 소수이면 소수점 2자리까지 출력
+			return Number(num).toFixed(2);
+		}else{
+			// 소수가 아니면 그대로 return
+			return num;
+		}
+    }
+	// 주민번호 뒷자리 비공개
+	, hide_ssn : function(dat){
+		if(!dat) return dat;
+		
+		if(typeof dat == "number")	
+			dat = String(dat);
+		else if(/[^0-9]/g.test(dat))
+			dat = dat.replace(/[^0-9]/g, "");
+		
+		if(dat.length == 13){
+			dat = dat.substring(0,6)+"-"+dat.substring(6,7) + "******";
+		}
+		
+		return dat;
+	}
+}))();
+

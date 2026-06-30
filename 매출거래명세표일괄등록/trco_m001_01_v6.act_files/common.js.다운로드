@@ -1,0 +1,2067 @@
+var common;
+var base64Data = ''
+if (!common) common = {};
+
+if (!common.app) {
+    common.app = {};
+    // open pop
+    common.app.open_popup = function (formId, options) {
+        var sizeW = parseInt(options.sizeW, 10);
+        var sizeH = parseInt(options.sizeH, 10);
+        var nLeft = screen.width / 2 - sizeW / 2;
+        var nTop = screen.height / 2 - sizeH / 2;
+        var option = ",toolbar=no,menubar=no,location=no,scrollbars=yes,status=no,resizable=no";
+        var option = '';
+        var winObj = window.open('', options.target, "left=" + nLeft + ",top=" + nTop + ",width=" + sizeW + ",height=" + sizeH + option);
+        winObj.blur();// 크롭에서 focus()만 호출할경우 작동하지 않아서 blur()를 먼저 호출한후
+        // focus()호출하도록 수정함.
+        winObj.focus();// 팝업이 이미 열려있는경우 앞으로 나오도록 한다.
+
+        var frm = document.getElementById(formId);
+        if (!!frm) {
+            frm.method = "post";
+            frm.target = options.target;
+
+            if (!!options.action) frm.action = options.action;
+
+            if (!!options.title) frm.find("#title_pop").text(options.title);
+
+            if (!!options.message) frm.find("#message_pop").text(options.message);
+
+            frm.show();
+
+            frm.submit();
+        }
+
+        frm.target = "";
+
+        return winObj;
+    };
+    // 새창 여는 함수
+    common.app.jexNewWin = function (url, winName, sizeW, sizeH, jsonValue) {
+        var winObj;
+        //[2023.01.03] cwb 듀얼모니터 관련 수정
+        //var nLeft  = screen.width/2 - sizeW/2 ;
+        //var nTop  = screen.height/2 - sizeH/2 ;
+
+        var nLeft = Math.round(window.screenX + (window.outerWidth / 2) - (sizeW / 2));
+        var nTop = Math.round(window.screenY + (window.outerHeight / 2) - (sizeH / 2));
+
+        tms.ui.createFormObj("generatedSubmitForm", "post", jsonValue);
+
+        var opt = ",toolbar=no,menubar=no,location=no,scrollbars=yes,status=no, resizable=yes, left=" + nLeft + ",top=" + nTop;
+
+        try {
+            winObj = window.open("", winName, "width=" + sizeW + ",height=" + sizeH + opt);
+            common.app.win = winObj;
+        } catch (e) {
+
+        }
+
+        if (winObj == null) {
+            alert("팝업차단 기능을 해지 하시기 바랍니다..\n\n[ 도구->인터넷옵션->개인 정보->팝업차단] 체크해지");
+            return;
+        }
+
+        var userFrm = document.getElementById("generatedSubmitForm");
+        userFrm.target = winName;
+        var parameter = "";
+        try {
+            if (jexjs.null2Void(parent.CNTS_ID) != "") parameter = "?CNTS_ID=" + parent.CNTS_ID;
+        } catch (e) {
+
+        }
+
+        userFrm.action = url + parameter;
+        userFrm.submit();
+
+        tms.ui.removeFormObj("generatedSubmitForm");
+    };
+
+    // 새창 여는 함수(팝업 창 크기 고정) - 결재선 요청 팝업일 경우 팝업창 크기를 고정시킨다.
+    common.app.jexNewWin2 = function (url, winName, sizeW, sizeH, jsonValue) {
+        var winObj;
+        //var nLeft  = screen.width/2 - sizeW/2 ;
+        //var nTop  = screen.height/2 - sizeH/2 ;
+
+        var nLeft = Math.round(window.screenX + (window.outerWidth / 2) - (sizeW / 2));
+        var nTop = Math.round(window.screenY + (window.outerHeight / 2) - (sizeH / 2));
+
+        // console.log(jsonValue);
+        tms.ui.createFormObj("generatedSubmitForm", "post", jsonValue);
+
+        var opt = ",toolbar=no,menubar=no,location=no,scrollbars=yes,status=no, resizable=no, left=" + nLeft + ",top=" + nTop;
+
+        try {
+            winObj = window.open("", winName, "width=" + sizeW + ",height=" + sizeH + opt);
+            common.app.win = winObj;
+            /*
+			 * common.app.win.onbeforeunload = function(){ alert("등록되었습니다.22"); }
+			 */
+        } catch (e) {
+
+        }
+
+        if (winObj == null) {
+            alert("팝업차단 기능을 해지 하시기 바랍니다..\n\n[ 도구->인터넷옵션->개인 정보->팝업차단] 체크해지");
+            return;
+        }
+
+        var userFrm = document.getElementById("generatedSubmitForm");
+        userFrm.target = winName;
+        var parameter = "";
+        try {
+            if (jexjs.null2Void(parent.CNTS_ID) != "") parameter = "?CNTS_ID=" + parent.CNTS_ID;
+        } catch (e) {
+
+        }
+
+        userFrm.action = url + parameter;
+        userFrm.submit();
+
+        tms.ui.removeFormObj("generatedSubmitForm");
+    };
+
+    // 새창 여는 함수(팝업 창 크기 고정, 타이틀 제거) - 결재선 요청 팝업일 경우 팝업창 크기를 고정시킨다.
+    common.app.jexNewWin3 = function (url, winName, sizeW, sizeH, jsonValue) {
+        var winObj;
+        //var nLeft  = screen.width/2 - sizeW/2 ;
+        //var nTop  = screen.height/2 - sizeH/2 ;
+
+        var nLeft = Math.round(window.screenX + (window.outerWidth / 2) - (sizeW / 2));
+        var nTop = Math.round(window.screenY + (window.outerHeight / 2) - (sizeH / 2));
+
+        // console.log(jsonValue);
+        tms.ui.createFormObj("generatedSubmitForm", "post", jsonValue);
+
+        var opt = ",toolbar=no,title=no,menubar=no,location=no,scrollbars=yes,status=no, resizable=no, left=" + nLeft + ",top=" + nTop;
+
+        try {
+            winObj = window.open("", winName, "width=" + sizeW + ",height=" + sizeH + opt);
+            common.app.win = winObj;
+            /*
+			 * common.app.win.onbeforeunload = function(){ alert("등록되었습니다.22"); }
+			 */
+        } catch (e) {
+
+        }
+
+        if (winObj == null) {
+            alert("팝업차단 기능을 해지 하시기 바랍니다..\n\n[ 도구->인터넷옵션->개인 정보->팝업차단] 체크해지");
+            return;
+        }
+
+        var userFrm = document.getElementById("generatedSubmitForm");
+        userFrm.target = winName;
+        var parameter = "";
+        try {
+            if (jexjs.null2Void(parent.CNTS_ID) != "") parameter = "?CNTS_ID=" + parent.CNTS_ID;
+        } catch (e) {
+
+        }
+
+        userFrm.action = url + parameter;
+        userFrm.submit();
+
+        tms.ui.removeFormObj("generatedSubmitForm");
+    };
+
+
+	// 거래처 사용 팝업
+	common.app.jexNewWin4 =  function( url, winName, sizeW, sizeH, frm) {
+		var nLeft  = screen.width/2 - sizeW/2 ;
+		var nTop  = screen.height/2 - sizeH/2 ;
+		var pos = 0;
+		var winObj;
+		
+		//듀얼모니터
+		nLeft += window.screenLeft;
+		nTop += window.screenTop;
+		
+		opt = ",toolbar=no,menubar=no,location=no,scrollbars=yes,status=no,resizable=no, left=" + nLeft+ ",top=" + nTop;
+		winObj = window.open("", winName, "width=" + sizeW + ",height=" + sizeH  + opt ); 
+		
+		if (winObj == null) {
+			alert("팝업차단 기능을 해지하십시오.\n\n[ 도구->인터넷옵션->개인 정보->팝업차단] 체크해지"); 
+			return; 
+		}
+		
+		frm.target = winName;
+		frm.action = url;
+		frm.submit();//임시로 주석처리....
+	};
+
+	// 영수증 인쇄
+	common.app.jexNewWinPrint = function (url, winName, sizeW, sizeH, jsonValue) {
+		if($('#printForm').length == 0){
+			$('body').append('<iframe id="print_iframe" name="print_iframe" style="display:none;" height="0"></iframe>');
+		}
+		let $form = $(`<form method='post' action='${url}' target='print_iframe'></form>`);
+		for(let item in jsonValue){
+        	$form.append($(`<input name="${item}" />`).val(jsonValue[item]));
+		}
+		$form.appendTo('body').submit().remove();
+	};
+	// 공통 증빙버튼 팝업
+	common.app.evdcBtnPop = function (MENU, jsonValue) {
+		let href = {"prch_card":"comm_0028_01.act",
+					"prch_taxb":"comm_0029_01.act",
+					"prch_cash":"comm_0030_01.act",
+					"sale_cash":"comm_0031_01.act",
+					"sale_card":"comm_0032_01.act",
+					"sale_taxb":"comm_0029_01.act"};
+	    
+		let $form = $("<form method='post'></form>");
+		for(let item in jsonValue){
+        	$form.append($(`<input name="${item}" />`).val(jsonValue[item]));
+		}
+		open_smartPop({
+            href: href[MENU],
+            width: 1000,
+            height: 554,
+            target: window,
+            frm:$form,
+			iframe :"Y"
+        });
+	};
+
+    if (toastr) {
+        toastr.options = {
+// "closeButton": true,
+            "debug": false,
+            "preventDuplicates": true,
+            "positionClass": "toast-top-center",
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "1500",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        };
+    }
+
+    // Business Number format
+    common.app.bus_format = function (str) {
+        return str.replace(/(\d{3})(\d{2})(\d{5})/, "$1-$2-$3");
+    };
+
+    // 날짜형식 (YYYY-MM-DD)
+    common.app.date_format = function (str) {
+        if (common.app.null2void(str) == "") return str;
+        return str.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3");
+    };
+    // 날짜형식 (YYYY년 MM월 DD일)
+    common.app.date_format2 = function (str) {
+        if (common.app.null2void(str) == "") return str;
+        return str.replace(/(\d{4})(\d{2})(\d{2})/, "$1년 $2월 $3일");
+    };
+    // 날짜형식 (YY-MM-DD)
+    common.app.date_format3 = function (str) {
+        if (common.app.null2void(str) === "") return str;
+        return str.substring(2).replace(/(\d{2})(\d{2})(\d{2})/, "$1-$2-$3");
+    };
+    // 날짜형식 (MM월 DD일)
+    common.app.date_format3 = function (str) {
+        if (common.app.null2void(str) == "") return str;
+        return str.replace(/(\d{4})(\d{2})(\d{2})/, "$2월 $3일");
+    };
+    // 시간형식 (HH : MM)
+    common.app.time_format = function (str) {
+        return str.substring(0, 4).replace(/(\d{2})(\d{2})/, "$1:$2");
+    };
+    // 시간형식 (HH : MM : SS)
+    common.app.time_format2 = function (str) {
+        return str.substring(0, 6).replace(/(\d{2})(\d{2})(\d{2})/, "$1:$2:$3");
+    };
+    // 날짜 + 시간 형식 (YYYY-MM-DD HH:mm)
+    common.app.datetime_format = function (str) {
+        if (common.app.null2void(str) == "") return str;
+        return str.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, "$1-$2-$3 $4:$5");
+    };
+    // 날짜 + 시간 형식 (YYYY-MM-DD HH:mm:ss)
+    common.app.datetime_format2 = function (str) {
+        if (common.app.null2void(str) == "") return str;
+        return str.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, "$1-$2-$3 $4:$5:$6");
+    };
+    // 사업자번호형식
+    common.app.corpno_format = function (str) {
+        if (common.app.null2void(str) == "") return str;
+        return str.replace(/(\d{3})(\d{2})(\d{5})/, "$1-$2-$3");
+    };
+    // 법인자번호형식
+    common.app.corpno_format2 = function (str) {
+        if (common.app.null2void(str) == "") return str;
+        return str.replace(/(\d{6})(\d{7})/, "$1-$2");
+    };
+    //숫자 한글화(억, 만 표시)
+    common.app.numberToKorean = function(number = 0){
+	    var inputNumber  = parseInt(number);
+	    if(inputNumber == 0){
+			return 0;
+		}
+		
+		var minusYn		 = '';
+	    if(inputNumber < 0){
+			inputNumber = Math.abs(inputNumber);
+			minusYn		= '-';
+		}
+	    
+	    if(inputNumber < 10000){
+			return `${number}`.replace(/(\d)(?=(?:\d{3})+(?!\d))/g, '$1,');;
+		}
+		
+	    var unitWords    = ['', '만 ', '억 ', '조 ', '경 '];
+	    var splitUnit    = 10000;
+	    var splitCount   = unitWords.length;
+	    var resultArray  = [];
+	    var resultString = '';
+	
+	    for (var i = 0; i < splitCount; i++){
+	         var unitResult = (inputNumber % Math.pow(splitUnit, i + 1)) / Math.pow(splitUnit, i);
+	        unitResult = Math.floor(unitResult);
+	        if (unitResult > 0){
+	            resultArray[i] = unitResult;
+	        }
+	    }
+		//i=1 만단위 부터 0이면 1자리 숫자부터
+	    for (var i = 1; i < resultArray.length; i++){
+	        if(!resultArray[i]) continue;
+	        resultString = String(resultArray[i]) + unitWords[i] + resultString;
+	    }
+	
+	    return `${minusYn}${resultString}`;
+	};    
+    // 핸드폰형식
+    common.app.phoneFomatter = function (num, type) {
+        // console.log("num " , num);
+        var formatNum = '';
+        if (typeof (num) != "undefined" || num != "") {
+            if (num.length == 11) {
+                if (type == 0) {
+                    formatNum = num.replace(/(\d{3})(\d{4})(\d{4})/, '$1-****-$3');
+                } else {
+                    formatNum = num.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3');
+                }
+            } else if (num.length == 8) {
+                formatNum = num.replace(/(\d{4})(\d{4})/, '$1-$2');
+            } else {
+                if (num.indexOf('02') == 0) {
+                    if (type == 0) {
+                        formatNum = num.replace(/(\d{2})(\d{4})(\d{4})/, '$1-****-$3');
+                    } else {
+                        formatNum = num.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3');
+                    }
+                } else {
+                    if (type == 0) {
+                        formatNum = num.replace(/(\d{3})(\d{3})(\d{4})/, '$1-***-$3');
+                    } else {
+                        formatNum = num.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+                    }
+                }
+            }
+        }
+        return formatNum;
+    };
+    // 카드 MASK 형식
+    common.app.formatCardNumberStar = function (foo) {
+        var bar;
+
+        if (foo.length == 16) {
+            bar = foo.substr(0, 4) + "-" + foo.substr(4, 4) + "-" + "****" + "-" + foo.substr(12, 4);
+        } else if (foo.length == 15) {
+            bar = foo.substr(0, 4) + "-" + foo.substr(4, 4) + "-" + "****" + "-" + foo.substr(12, 3);
+        } else if (foo.length == 14) {
+            bar = foo.substr(0, 4) + "-" + foo.substr(4, 6) + "-" + "****";
+        } else {
+            bar = foo;
+        }
+
+        return bar;
+    };
+
+    common.app.formatCardNumber = function (foo) {
+        // 9430030192869921 카드번호로 parseInt 버그 있음...
+        // return gw.number.format(str, "####-####-####-####");
+        var bar;
+
+        if (foo.length == 16) {
+            bar = foo.substr(0, 4) + "-" + foo.substr(4, 4) + "-" + foo.substr(8, 4) + "-" + foo.substr(12, 4);
+        } else if (foo.length == 15) {
+            bar = foo.substr(0, 4) + "-" + foo.substr(4, 6) + "-" + foo.substr(10, 5);
+        } else if (foo.length == 14) {
+            bar = foo.substr(0, 4) + "-" + foo.substr(4, 6) + "-" + foo.substr(10, 4);
+        } else {
+            bar = foo;
+        }
+
+        return bar;
+    };
+
+    common.app.mestTaxtTyp = function (code) {
+
+        var type = {
+            "00": "미등록"
+            , "01": "일반"
+            , "02": "간이"
+            , "03": "면세"
+            , "04": "비영리"
+            , "07": "간이발급"
+            , "09": "휴업"
+            , "10": "폐업"
+        };
+
+        if (common.app.null2void(code, "") == "") {
+            return "";
+        } else {
+            if (type[code] == undefined) {
+                return code;
+            } else {
+                return type[code];
+            }
+        }
+    };
+
+
+    // 콤마찍기
+    common.app.comma = function (str) {
+        str = String(str);
+        return str.replace(/(\d)(?=(?:\d{3})+(?!\d))/g, '$1,');
+    };
+    // 콤마풀기
+    common.app.uncomma = function (str) {
+        str = String(str);
+//	    if(str.substr(0)==="-"){															// 음수이면
+        if (str.substring(0, 1) == "-") {															// 음수이면
+            // 음수값으로
+            // 반환
+            return "-" + str.replace(/[^\d]+/g, '').replace(/^0/g, '');
+        } else {
+            return str.replace(/[^\d]+/g, '').replace(/^0/g, '');
+        }
+    };
+    /**
+     * 콤마풀기
+     * 2023.02.15 : common.app.uncomma 동일 코드로 변경 필요.
+     * @deprecated
+     */
+    common.app.uncomma2 = function (str) {
+        str = String(str);
+        if (str.substring(0, 1) == "-") {															// 음수이면
+            // 음수값으로
+            // 반환
+            return "-" + str.replace(/[^\d]+/g, '').replace(/^0/g, '');
+        } else {
+            return str.replace(/[^\d]+/g, '').replace(/^0/g, '');
+        }
+    };
+    // 달러 콤마찍기 (미국 달러)
+    common.app.formatDollar = function (str) {
+        str = String(str);
+        var amt = str.substring(0, str.length - 2);
+        var deci = str.substring(str.length - 2, str.length);
+
+        amt = common.app.comma(amt);
+        return amt + "." + deci;
+    };
+    // null to void
+    common.app.null2void = function (str) {
+        if (str == null || str == "null" || str == undefined) str = '';
+        return str;
+    };
+    // null to default value
+    common.app.null2def = function (value, def) {
+        if (!value)
+            return !def ? "" : def;
+        else
+            return $.trim(value);
+    };
+    // null to zero
+    common.app.null2zero = function (str) {
+        if (str == null) str = '0';
+        if (str == "") str = '0';
+        if (isNaN(str.toString().replace(/,/g, ""))) str = '0';
+        return str;
+    };
+    // zero to void
+    common.app.zero2void = function (str) {
+        if (str == null || str == "null" || str == undefined || str == "0") str = '';
+        return str
+    };
+    // 파일다운
+    common.app.filedown = function () {
+        _WE_DRIVER.download($(event.target).closest("tr").find("input").val());
+    };
+    // datepicker
+    common.app.datepicker = function (from_Id, end_Id) {
+        // 시작일자 SETTING
+        $(from_Id).datepicker({
+            dateFormat: 'yy-mm-dd', // 데이터는 yyyy-MM-dd로 나옴
+            closeText: '닫기',
+            prevText: '이전달',
+            nextText: '다음달',
+            currentText: '오늘',
+            monthNames: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+            monthNamesShort: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+            dayNames: ['일', '월', '화', '수', '목', '금', '토'],
+            dayNamesShort: ['일', '월', '화', '수', '목', '금', '토'],
+            dayNamesMin: ['일', '월', '화', '수', '목', '금', '토'],
+            weekHeader: 'Wk',
+            firstDay: 0,
+            isRTL: false,
+            duration: 200,
+            showAnim: 'show',   // 애니메이션
+            changeMonth: true,
+            changeYear: true,
+            // yearRange: 'c-10:c',
+            showMonthAfterYear: true,
+            // yearSuffix: '년',
+            showOtherMonths: true, // 나머지 날짜도 화면에 표시
+            selectOtherMonths: true, // 나머지 날짜에도 선택을 하려면 true
+            showButtonPanel: true,
+            showOn: "both", // 버튼과 텍스트 필드 모두 캘린더를 보여준다.
+
+            onChangeMonthYear: function (year, month, inst) {
+                // 년 또는 월이 변경시 이벤트 발생
+            },
+            beforeShow: function (input, inst) {
+                // 일자 선택되기전 이벤트 발생
+            },
+            onSelect: function (dateText, inst) {
+                // 일자 선택된 후 이벤트 발생
+            },
+            onClose: function (selectedDate) {
+                $(end_Id).datepicker("option", "minDate", selectedDate);
+            }, yearRange: "-10:+1"
+        });
+        // 종료일자 SETTING
+        $(end_Id).datepicker({
+            dateFormat: 'yy-mm-dd', // 데이터는 yyyy-MM-dd로 나옴
+            closeText: '닫기',
+            prevText: '이전달',
+            nextText: '다음달',
+            currentText: '오늘',
+            monthNames: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+            monthNamesShort: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+            dayNames: ['일', '월', '화', '수', '목', '금', '토'],
+            dayNamesShort: ['일', '월', '화', '수', '목', '금', '토'],
+            dayNamesMin: ['일', '월', '화', '수', '목', '금', '토'],
+            weekHeader: 'Wk',
+            firstDay: 0,
+            isRTL: false,
+            duration: 200,
+            showAnim: 'show',   // 애니메이션
+            changeMonth: true,
+            changeYear: true,
+            // yearRange: 'c-10:c',
+            showMonthAfterYear: true,
+            // yearSuffix: '년',
+            showOtherMonths: true, // 나머지 날짜도 화면에 표시
+            selectOtherMonths: true, // 나머지 날짜에도 선택을 하려면 true
+            showButtonPanel: true,
+            showOn: "both", // 버튼과 텍스트 필드 모두 캘린더를 보여준다.
+
+            onChangeMonthYear: function (year, month, inst) {
+                // 년 또는 월이 변경시 이벤트 발생
+            },
+            beforeShow: function (input, inst) {
+                // 일자 선택되기전 이벤트 발생
+            },
+            onSelect: function (dateText, inst) {
+                // 일자 선택된 후 이벤트 발생
+            },
+            onClose: function (selectedDate) {
+                $(from_Id).datepicker("option", "maxDate", selectedDate);
+            }, yearRange: "-10:+1"
+        });
+    };
+
+
+    // datepicker
+    common.app.dateSinglePicker = function (dateId) {
+
+        $(dateId).val(dateUtil.month_minus(moment().format("YYYYMMDD"), 1)); // 기본값
+        // : 전월
+        $(dateId).datepicker({
+            changeMonth: true
+            , dateFormat: 'yymmdd'
+            , beforeShow: function () {
+                var today = new Date();
+                var startYear = today.getFullYear();
+
+                $.datepicker.regional['ko'] = {
+                    closeText: '닫기',
+                    prevText: '이전달',
+                    nextText: '다음달',
+                    currentText: '오늘',
+                    monthNames: ['1월', '2월', '3월', '4월', '5월', '6월',
+                        '7월', '8월', '9월', '10월', '11월', '12월'],
+                    monthNamesShort: ['1월', '2월', '3월', '4월', '5월', '6월',
+                        '7월', '8월', '9월', '10월', '11월', '12월'],
+                    dayNames: ['일', '월', '화', '수', '목', '금', '토'],
+                    dayNamesShort: ['일', '월', '화', '수', '목', '금', '토'],
+                    dayNamesMin: ['일', '월', '화', '수', '목', '금', '토'],
+                    weekHeader: 'Wk',
+                    dateFormat: 'yy-mm-dd',
+                    firstDay: 0,
+                    isRTL: false,
+                    showMonthAfterYear: false,
+                    // yearSuffix: suffix,
+                    changeYear: true,
+                    changeMonth: true,
+                    yearRange: (startYear - 70) + ':' + (startYear + 10)
+                };
+                $.datepicker.setDefaults($.datepicker.regional['ko']);
+            }
+        });
+
+        $(dateId).mask("99999999");
+    };
+
+
+    /* jQuery Toast Message */
+    common.app.getFullMsg = function (obj, msg) {
+        var fullMsg = "";
+        var code = "";
+
+        if (typeof (obj) == "object") {
+            code = obj.COMMON_HEAD["CODE"];
+            msg = obj.COMMON_HEAD["MESSAGE"];
+
+            fullMsg = msg;
+        } else {
+            code = obj;
+
+            fullMsg = code;
+        }
+
+        return fullMsg;
+    };
+    common.app.error = function (obj, msg) {
+        if (typeof (parent.toastr) != "undefined") {
+            parent.toastr.error(common.app.getFullMsg(obj, msg));
+        } else {
+            toastr.error(common.app.getFullMsg(obj, msg));
+        }
+
+        $.unblockUI();
+    };
+
+    common.app.info = function (obj, msg) {
+        if (typeof (parent.toastr) != "undefined") {
+            parent.toastr.info(common.app.getFullMsg(obj, msg));
+        } else {
+            toastr.info(common.app.getFullMsg(obj, msg));
+        }
+
+        $.unblockUI();
+    };
+
+    common.app.warning = function (obj, msg) {
+        if (typeof (parent.toastr) != "undefined") {
+            parent.toastr.warning(common.app.getFullMsg(obj, msg));
+        } else {
+            toastr.warning(common.app.getFullMsg(obj, msg));
+        }
+
+        $.unblockUI();
+    };
+
+    common.app.success = function (obj, msg) {
+        if (typeof (parent.toastr) != "undefined") {
+            parent.toastr.success(common.app.getFullMsg(obj, msg));
+        } else {
+            toastr.success(common.app.getFullMsg(obj, msg));
+        }
+
+        $.unblockUI();
+    };
+
+    common.app.getToday = function () {
+        var _date = new Date();
+        var d = _date.getDate();
+        var day = (d < 10) ? '0' + d : d;
+        var m = _date.getMonth() + 1;
+        var month = (m < 10) ? '0' + m : m;
+        var yy = _date.getYear();
+        var year = (yy < 1000) ? yy + 1900 : yy;
+
+        var hh0 = _date.getHours();
+        var hh = (hh0 < 10) ? '0' + hh0 : hh0;
+        var mi0 = _date.getMinutes();
+        var mi = (mi0 < 10) ? '0' + mi0 : mi0;
+        var ss0 = _date.getSeconds();
+        var ss = (ss0 < 10) ? '0' + ss0 : ss0;
+
+        var ms0 = _date.getMilliseconds();
+        var ms = (ms0 < 10) ? '000' + ms0 : (ms0 < 100) ? '00' + ms0 : (ms0 < 100) ? '0' + ms0 : ms0;
+
+        return year + "-" + month + "-" + day;
+    };
+
+    common.app.setAll = function (selector, dat) {
+        $.each($(selector).find("[id]"), function () {
+            var o = $(this).attr("id");
+            if (jexjs.isNull(o)) return true;
+            var d = dat[o];
+            if (d != undefined) $(this).setTagValue(d);
+        });
+        return this;
+
+    };
+
+    // 이메일 유효성 검사
+    common.app.emailChk = function (email) {
+        var regex = /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$/;
+        if (regex.test(email) == false) {
+            return false;
+        } else {
+            return true;
+        }
+    };
+
+    // 사업자번호 유효성 검사
+    common.app.busChk = function (corpNo) {
+        return common.app.isCorpNo(corpNo);
+        /*
+        var reg = /([0-9]{3})-?([0-9]{2})-?([0-9]{5})/;
+        if (!reg.test(corpNo)) return false;
+        corpNo = RegExp.$1 + RegExp.$2 + RegExp.$3;
+        var cVal = 0;
+        for (var i=0; i<8; i++) {
+            var cKeyNum = parseInt(((_tmp = i % 3) == 0) ? 1 : ( _tmp == 1 ) ? 3 : 7);
+            cVal += (parseFloat(corpNo.substring(i,i+1)) * cKeyNum) % 10;
+        }
+        var li_temp = parseFloat(corpNo.substring(i,i+1)) * 5 + '0';
+        cVal += parseFloat(li_temp.substring(0,1)) + parseFloat(li_temp.substring(1,2));
+        return (parseInt(corpNo.substring(9,10)) == 10-(cVal % 10)%10);
+        */
+    };
+
+    // 자식 창 닫기
+    common.app.closeChildWindow = function (msg, tempApprYn) {
+        if (tempApprYn) {	 		// 임시저장시에는 전자결재 팝업이 없기 때문에 바로 closeSmartPopup
+            close_smartPop("fn_search", msg);
+        } else {					// 결재요청 시에는 전자결재 팝업 창을 닫은 후 0.5초 후에 등록되었다는
+            // alert와 함께 테이블 reload
+            common.app.win.close();
+            setTimeout("closeApprPopup('" + msg + "')", 500);
+        }
+    };
+
+    // 자동콤마
+    common.app.numberWithCommas = function (str) {
+        return str ? str.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") : 0;
+    };
+
+    common.app.formatNumber = function (elem) {
+        var num;
+        var $this = $(elem);
+
+        // Remove comma
+        num = $this.val().replace(/,/g, "");
+
+        // If It is not an illegal number
+        // not .(dot) but 123
+        if (isNaN(num)) {
+            // Prevent begin with dot(.)
+            if (num.indexOf('.') == 0) {
+                $this.val('0.');
+            } else if (num.indexOf('-') >= 0) {
+                $this.val('-');
+            }
+            /*
+             * else{ num = num.substring(0, num.length-1);
+             * $this.val(common.comm.numberWithCommas(num)); }
+             */
+        } else {
+            // Not allow 00 after dot(decimal)
+            // 12.00 -> 12
+            if (num.lastIndexOf("00") == 0) {
+                num = num.substring(0, num.length - 1);
+                $this.val(common.app.numberWithCommas(num));
+            } else
+
+                // Prevent multi zero
+            if (parseFloat(num) == 0 && num.lastIndexOf(".") == -1) {
+                $this.val('0');
+            } else
+
+                // Prevent leading by zero
+                // 0123 -> 123
+            if (num.substring(0, 1) == 0 && num.length > 1 && num.lastIndexOf(".") == -1) {
+                num = num.substring(1);
+                $this.val(common.app.numberWithCommas(num));
+            } else
+
+                // If exist dot(.)
+            if (num.lastIndexOf(".") != -1) {
+
+                // / split number
+                var nsp = num.split(".");
+                var num2 = nsp[0].split(/(?=(?:\d{3})+$)/).join(",");
+                if (nsp[1] == "00") {
+                    $this.val(num2);
+                } else {
+                    $this.val(num2 + "." + nsp[1]);
+                }
+
+                // Allow maximum 2digits after dot(decimal)
+                // 12.23
+                if ((num.substring(num.lastIndexOf("."), num.length)).length > 3) {
+                    num = num.substring(0, num.indexOf('.') + 3);
+                    $this.val(common.app.numberWithCommas(num));
+                }
+            } else {
+                // Set to inputbox
+                $this.val(common.app.numberWithCommas(num));
+            }
+        }
+    };
+
+    common.app.getPopsCode = function (dat) {
+        if (dat === "01")
+            return "영수";
+        else if (dat === "02")
+            return "청구";
+    };
+
+    // corpNo or Not
+    common.app.isCorpNo = function (corpNo) {
+        // corpNo 숫자만 10자리로 해서 문자열로 넘긴다.
+        var checkID = [1, 3, 7, 1, 3, 7, 1, 3, 5, 1];
+        var tmpCorpNo, i, chkSum = 0, c2, remander;
+        corpNo = corpNo.replace(/-/gi, '');
+
+        for (i = 0; i <= 7; i++) chkSum += checkID[i] * corpNo.charAt(i);
+        c2 = "0" + (checkID[8] * corpNo.charAt(8));
+        c2 = c2.substring(c2.length - 2, c2.length);
+        chkSum += Math.floor(c2.charAt(0)) + Math.floor(c2.charAt(1));
+        remander = (10 - (chkSum % 10)) % 10;
+
+        if (Math.floor(corpNo.charAt(9)) == remander) return true; // OK!
+        return false;
+    };
+
+    $.fn.setTagValue = function (dat) {
+        var tag = $(this).get(0).tagName;
+        var type = $(this).attr("type");
+        switch (tag.toLowerCase()) {
+            case "textarea":
+            case "input":
+                if (type == "radio" || type == "checkbox" && !_jex.getInstance().isNull(dat)) $(this).attr("checked", true);
+                else $(this).val(dat);
+                break;
+            case "select":
+                $(this).val(dat);
+                break;
+            case "img" :
+                if (!jexjs.isNull(dat)) $(this).attr("src", dat);
+                else if (jexjs($(this).attr("src"))) $(this).remove();
+                break;
+            case "table" :
+                if (dat = "") $(this).find("tr").remove();
+                break;
+            default :
+                $(this).html(dat);
+                break;
+        }
+    };
+
+    /* ie 8에서 Object.keys 안먹힘 [재정의 함수] */
+    if (!Object.keys) Object.keys = function (o) {
+        if (o !== Object(o))
+            throw new TypeError('Object.keys called on a non-object');
+        var k = [], p;
+        for (p in o) if (Object.prototype.hasOwnProperty.call(o, p)) k.push(p);
+        return k;
+    };
+
+    String.prototype.replaceAll = function (str1, str2) {
+        var temp_str = this;
+        if (temp_str == null || temp_str == "undefined" || temp_str == "") {
+            return "";
+        } else {
+            temp_str = temp_str.replace(/(^\s*)|(\s*$)/gi, "");
+            temp_str = temp_str.replace(eval("/" + str1 + "/gi"), str2);
+            return temp_str;
+        }
+    };
+
+    /* 가로 스크롤 바 존재 여부 */
+    $.fn.hasHorizontalScrollBar = function () {
+        return this.get(0) ? this.get(0).scrollWidth > this.innerWidth() : false;
+    };
+
+    /* 세로 스크롤 바 존재 여부 */
+    $.fn.hasScrollBar = function () {
+        return (this.prop("scrollHeight") == 0 && this.prop("clientHeight") == 0)
+            || (this.prop("scrollHeight") > this.prop("clientHeight"));
+    };
+    /**
+     * 공통 캘린더 호출
+     *
+     * @param strDate
+     *            시작날짜
+     * @param endDate
+     *            마지막날짜
+     * @param callBackFn
+     *            function(data){}
+     * @callback claCallBackFn
+     *            data =  {"STR_DATE" : "0000-00-00", "END_DATE" : "0000-00-00"}
+     *
+     */
+    common.app.calendarPop = function (strDate, endDate, callBackFn) {
+        var JSON_DATA = {
+            "STR_DATE": strDate
+            , "END_DATE": endDate
+        }
+        if (typeof callBackFn == "function") {
+            commonCalendarCallBackFn = callBackFn;
+        }
+        var $form = $("<form method='post'></form>");
+        $form.append("<input name='JSON_DATA' value='" + JSON.stringify(JSON_DATA) + "'>");
+        
+        open_smartPop({
+            href: "comm_0009_01.act",
+            width: 555,
+            height: 536,
+            scrolling: false,
+            target: window,
+            frm: $form
+        });
+
+    };
+    /**
+     * 이미지 뷰어 호출
+     *
+     * @param imgIndex
+     *            시작 이미지 인덱스
+     * @param imgList [{FILE_PATH : "", ORG_FILE_NM : "", FILE_REG_NO : "", SEQ_NO : ""}]
+     *            이미지 데이터 배열
+     *
+     */
+    common.app.imgViewer = function (imgIndex, imgList) {
+        if (imgList == null || imgList == undefined || imgList == "") {
+            return false;
+        }
+        if (imgIndex == null || imgIndex == undefined) {
+            return false;
+        }
+
+        imgList.forEach(function (v) {
+            var sFullPath = v.FILE_PATH;
+            v.WEB_PATH = v.SEQ_NO != "eusr_0005_01" ? sFullPath.substr(sFullPath.indexOf("/file")) : sFullPath;
+
+            if (v.IMG_TYPE === 'bizplay') {
+                v.WEB_PATH = (v.FILE_PATH && v.FILE_PATH != "undefined")?v.FILE_PATH:v.ORG_FILE_NM;
+            }else if (v.IMG_TYPE === 'groupware') {
+                v.WEB_PATH = `${v.GW_URL}/upload_file${v.FILE_PATH.split('upload_file')[1]}`;
+            }else if (v.IMG_TYPE === 'webcash'){
+                let $form = $("<form method='post' action='/filedown_0001_01.act'></form>");
+                const keyword = 'file/';
+                const index = v.FILE_PATH.indexOf(keyword);
+                if (index !== -1) {
+                    const result = v.FILE_PATH.substring(index + keyword.length);
+                    console.log(result);
+                    $form.append($(`<input name="folder"  value="">`).val(result));
+                    $form.append($(`<input name="orgfilename"  value="">`).val(v.ORG_FILE_NM));
+                    $form.append($(`<input name="fileName"  value="">`).val(v.SAVE_FILE_NM));
+                    $('body').append($form);
+                    $form.submit().remove();
+                    return;
+                } else {
+                    console.log('경로가 잘못되었습니다.');
+                }
+            }
+        });
+        var shtml = ' <div class="commLayerWrap" style="display:none">'
+            + '<div class="modal_bg" style="z-index: 1111111;"></div>'
+            + '<div class="rphoto_layer">'
+            + '<div class="rphoto_layer_po">'
+            + '<a class="roll_left" title="이전"></a>'
+            + '<a class="roll_right" title="다음"></a>'
+            + '<div class="img_v">'
+            + '<img src="" alt="파일첨부">'
+            + '</div>'
+            + '<div class="down_wrap">'
+            + '<span class="img_name">img.png</span>&nbsp;&nbsp;&nbsp;&nbsp;'
+            + '<a class="btn_down">다운로드</a>'
+            + '</div>'
+            + '</div>'
+            + '</div>'
+            + '</div>';
+        // 바닥화면에서 이미지 뷰어 호출
+        if (window.location == window.parent.location) {
+            $("body").append(shtml);
+
+            //[2022.05.06] cwb 이미지 뷰어
+            var imgNm = imgList[imgIndex].WEB_PATH.substring(imgList[imgIndex].WEB_PATH.indexOf('.') + 1);
+            if (imgNm.indexOf('xls') > -1 || imgNm.indexOf('xlsx') > -1) {
+                imgNm = 'excel'
+            } else if (imgNm.indexOf('docx') > -1 || imgNm.indexOf('doc') > -1) {
+                imgNm = 'word'
+            } else if (imgNm.indexOf('pptx') > -1 || imgNm.indexOf('ppt') > -1) {
+                imgNm = 'ppt'
+            } else if (imgNm.indexOf('hwp') > -1) {
+                imgNm = 'hwp'
+            } else if (imgNm.indexOf('pdf') > -1) {
+                imgNm = 'pdf'
+            } else {
+                imgNm = ''
+            }
+
+
+            if (imgNm != '') {
+                $(".img_v > img").attr("src", "../../img/ico/ic_file_" + imgNm + "_115x146.png");
+            } else {
+                $(".img_v > img").attr("src", imgList[imgIndex].WEB_PATH);
+            }
+
+            $(".img_name").text(imgList[imgIndex].ORG_FILE_NM);
+            // 다운로드 버튼 숨기기
+            if (common.app.null2void(imgList[imgIndex].SEQ_NO) == "" && common.app.null2void(imgList[imgIndex].FILE_REG_NO) == "") {
+                $(".btn_down").hide();
+            } else {
+                $(".btn_down").show();
+            }
+            if (common.app.null2void(imgList[imgIndex].SEQ_NO) == "eusr_0005_01" || imgList[imgIndex].IMG_TYPE == 'bizplay' || imgList[imgIndex].IMG_TYPE == 'groupware') {
+
+                $(".roll_right").remove();
+                $(".roll_left").remove();
+            }
+            // 버튼 활성화 & 비활성화 처리
+            imgIndex == imgList.length - 1 ? $(".roll_right").addClass("off") : $(".roll_right").removeClass("off");
+            imgIndex == 0 ? $(".roll_left").addClass("off") : $(".roll_left").removeClass("off");
+
+            $(".commLayerWrap").show();
+
+            // 이미지뷰어 이벤트 처리
+            $(".commLayerWrap").off().on("click", function (e) {
+
+                var _target = $(e.target);
+                // 이미지뷰어 닫기
+                if (_target.is(".img_v")) {
+                    $(".commLayerWrap").remove();
+                }
+                // 왼쪽 화찰표 버튼
+                if (_target.is(".roll_right")) {
+                    if (imgIndex != imgList.length - 1) {
+                        imgIndex++;
+                    }
+                }
+                // 오른쪽 화살표 버튼
+                if (_target.is(".roll_left")) {
+                    if (imgIndex != 0) {
+                        imgIndex--;
+                    }
+                }
+                // 이미지 다운로드
+                if (_target.is(".btn_down")) {
+                    if (imgList[imgIndex].SEQ_NO == "eusr_0005_01" || imgList[imgIndex].SEQ_NO == 'sale_m004_01') {
+                        location.href = "/eusr_0005_01_r004.act?IMG_URL=" + imgList[imgIndex].WEB_PATH + "&FILE_NM=" + imgList[imgIndex].ORG_FILE_NM;
+
+                    } else if (imgList[imgIndex].IMG_TYPE == 'bizplay') {
+                        _WE_DRIVER.download(imgList[imgIndex].SAVE_FILE_NM);
+
+                    } else if (imgList[imgIndex].IMG_TYPE == 'groupware') {
+                        location.href = imgList[imgIndex].GW_URL + "/filedown_0001_01.act?FILE_INFO=" + JSON.stringify(imgList[imgIndex]); //첨부파일 다운로드
+                    }
+                    else {
+                        location.href = "/filedown_0002_01.act?FILE_REG_NO=" + imgList[imgIndex].FILE_REG_NO + "&SEQ_NO=" + imgList[imgIndex].SEQ_NO;
+                    }
+                }
+
+                //[2022.05.06] cwb 이미지 뷰어
+                var imgNm = imgList[imgIndex].WEB_PATH.substring(imgList[imgIndex].WEB_PATH.indexOf('.') + 1);
+                if (imgNm.indexOf('xls') > -1 || imgNm.indexOf('xlsx') > -1) {
+                    imgNm = 'excel'
+                } else if (imgNm.indexOf('docx') > -1 || imgNm.indexOf('doc') > -1) {
+                    imgNm = 'word'
+                } else if (imgNm.indexOf('pptx') > -1 || imgNm.indexOf('ppt') > -1) {
+                    imgNm = 'ppt'
+                } else if (imgNm.indexOf('hwp') > -1) {
+                    imgNm = 'hwp'
+                } else if (imgNm.indexOf('pdf') > -1) {
+                    imgNm = 'pdf'
+                } else {
+                    imgNm = ''
+                }
+
+
+                if (imgNm != '') {
+                    $(".img_v > img").attr("src", "../../img/ico/ic_file_" + imgNm + "_115x146.png");
+                } else {
+                    $(".img_v > img").attr("src", imgList[imgIndex].WEB_PATH);
+                }
+
+                $(".img_name").text(imgList[imgIndex].ORG_FILE_NM);
+                // 다운로드 버튼 숨기기
+                if (common.app.null2void(imgList[imgIndex].SEQ_NO) == "" && common.app.null2void(imgList[imgIndex].FILE_REG_NO) == "") {
+                    $(".btn_down").hide();
+                } else {
+                    $(".btn_down").show();
+                }
+                // 버튼 활성화 & 비활성화 처리
+                imgIndex == imgList.length - 1 ? $(".roll_right").addClass("off") : $(".roll_right").removeClass("off");
+                imgIndex == 0 ? $(".roll_left").addClass("off") : $(".roll_left").removeClass("off");
+            });
+        }
+        // 프레임팝업에서 이미지뷰어 호출
+        else {
+            var $topDoument = $(parent.document);
+
+            // 웹경리나라
+            if (window.parent.location.pathname.indexOf('wserp') > -1) {
+                $topDoument = $(window.top.frames[0].document)
+            }
+
+            $topDoument.find("body").append(shtml);
+
+            //[2022.05.06] cwb 이미지 뷰어
+            var imgNm = imgList[imgIndex].WEB_PATH.substring(imgList[imgIndex].WEB_PATH.indexOf('.') + 1);
+            if (imgNm.indexOf('xls') > -1 || imgNm.indexOf('xlsx') > -1) {
+                imgNm = 'excel'
+            } else if (imgNm.indexOf('docx') > -1 || imgNm.indexOf('doc') > -1) {
+                imgNm = 'word'
+            } else if (imgNm.indexOf('pptx') > -1 || imgNm.indexOf('ppt') > -1) {
+                imgNm = 'ppt'
+            } else if (imgNm.indexOf('hwp') > -1) {
+                imgNm = 'hwp'
+            } else if (imgNm.indexOf('pdf') > -1) {
+                imgNm = 'pdf'
+            } else {
+                imgNm = ''
+            }
+
+
+            if (imgNm != '') {
+                $topDoument.find(".img_v > img").attr("src", "../../img/ico/ic_file_" + imgNm + "_115x146.png");
+            } else {
+                $topDoument.find(".img_v > img").attr("src", imgList[imgIndex].WEB_PATH);
+            }
+
+            $topDoument.find(".img_name").text(imgList[imgIndex].ORG_FILE_NM);
+            // 다운로드 버튼 숨기기
+            if (common.app.null2void(imgList[imgIndex].SEQ_NO) == "" && common.app.null2void(imgList[imgIndex].FILE_REG_NO) == "") {
+                $topDoument.find(".btn_down").hide();
+            } else {
+                $topDoument.find(".btn_down").show();
+            }
+
+            if (common.app.null2void(imgList[imgIndex].SEQ_NO) == "eusr_0005_01" || imgList[imgIndex].IMG_TYPE == 'bizplay' || imgList[imgIndex].IMG_TYPE == 'groupware') {
+                $topDoument.find(".roll_right").remove();
+                $topDoument.find(".roll_left").remove();
+            }
+
+            // 버튼 활성화 & 비활성화 처리
+            imgIndex == imgList.length - 1 ? $topDoument.find(".roll_right").addClass("off") : $topDoument.find(".roll_right").removeClass("off");
+            imgIndex == 0 ? $topDoument.find(".roll_left").addClass("off") : $topDoument.find(".roll_left").removeClass("off");
+
+            $topDoument.find(".commLayerWrap").show();
+
+            // 이미지뷰어 이벤트 처리
+            $topDoument.find(".commLayerWrap").off().on("click", function (e) {
+
+                var _target = $(e.target);
+                // 이미지뷰어 닫기
+                if (_target.is(".img_v")) {
+                    $topDoument.find(".commLayerWrap").remove();
+                }
+                // 왼쪽 화찰표 버튼
+                if (_target.is(".roll_right")) {
+                    if (imgIndex != imgList.length - 1) {
+                        imgIndex++;
+                    }
+                }
+                // 오른쪽 화살표 버튼
+                if (_target.is(".roll_left")) {
+                    if (imgIndex != 0) {
+                        imgIndex--;
+                    }
+                }
+                // 이미지 다운로드
+                if (_target.is(".btn_down")) {
+                    //location.href="/filedown_0002_01.act?FILE_REG_NO=" + imgList[imgIndex].FILE_REG_NO + "&SEQ_NO=" +imgList[imgIndex].SEQ_NO;
+
+                    //if (imgList[imgIndex].SEQ_NO == "eusr_0005_01" || imgList[imgIndex].IMG_TYPE == 'bizplay') {
+                    //[2023.03.17] cwb 수정
+                    if (imgList[imgIndex].SEQ_NO == "eusr_0005_01" || imgList[imgIndex].SEQ_NO == 'sale_m004_01') {
+                        location.href = "/eusr_0005_01_r004.act?IMG_URL=" + imgList[imgIndex].WEB_PATH + "&FILE_NM=" + imgList[imgIndex].ORG_FILE_NM;
+                    } else if (imgList[imgIndex].IMG_TYPE == 'bizplay') {
+                        _WE_DRIVER.download(imgList[imgIndex].SAVE_FILE_NM);
+
+                    } else if (imgList[imgIndex].IMG_TYPE == 'groupware') {
+                        location.href = imgList[imgIndex].GW_URL + "/filedown_0001_01.act?FILE_INFO=" + JSON.stringify(imgList[imgIndex]); //첨부파일 다운로드
+                    }
+                    else {
+                        location.href = "/filedown_0002_01.act?FILE_REG_NO=" + imgList[imgIndex].FILE_REG_NO + "&SEQ_NO=" + imgList[imgIndex].SEQ_NO;
+                    }
+
+
+                    /*		if(imgList[imgIndex].SEQ_NO != "eusr_0005_01"){
+                                location.href="/filedown_0002_01.act?FILE_REG_NO=" + imgList[imgIndex].FILE_REG_NO + "&SEQ_NO=" +imgList[imgIndex].SEQ_NO;
+                            }else{
+                                location.href="/eusr_0005_01_r004.act?IMG_URL=" + imgList[imgIndex].WEB_PATH + "&FILE_NM="+imgList[imgIndex].ORG_FILE_NM ;
+                            }*/
+
+                }
+
+                //[2022.05.06] cwb 이미지 뷰어
+                var imgNm = imgList[imgIndex].WEB_PATH.substring(imgList[imgIndex].WEB_PATH.indexOf('.') + 1);
+                if (imgNm.indexOf('xls') > -1 || imgNm.indexOf('xlsx') > -1) {
+                    imgNm = 'excel'
+                } else if (imgNm.indexOf('docx') > -1 || imgNm.indexOf('doc') > -1) {
+                    imgNm = 'word'
+                } else if (imgNm.indexOf('pptx') > -1 || imgNm.indexOf('ppt') > -1) {
+                    imgNm = 'ppt'
+                } else if (imgNm.indexOf('hwp') > -1) {
+                    imgNm = 'hwp'
+                } else if (imgNm.indexOf('pdf') > -1) {
+                    imgNm = 'pdf'
+                } else {
+                    imgNm = ''
+                }
+
+
+                if (imgNm != '') {
+                    $topDoument.find(".img_v > img").attr("src", "../../img/ico/ic_file_" + imgNm + "_115x146.png");
+                } else {
+                    $topDoument.find(".img_v > img").attr("src", imgList[imgIndex].WEB_PATH);
+                }
+
+                $topDoument.find(".img_name").text(imgList[imgIndex].ORG_FILE_NM);
+                // 다운로드 버튼 숨기기
+                if (common.app.null2void(imgList[imgIndex].SEQ_NO) == "" && common.app.null2void(imgList[imgIndex].FILE_REG_NO) == "") {
+                    $topDoument.find(".btn_down").hide();
+                } else {
+                    $topDoument.find(".btn_down").show();
+                }
+                // 버튼 활성화 & 비활성화 처리
+                imgIndex == imgList.length - 1 ? $topDoument.find(".roll_right").addClass("off") : $topDoument.find(".roll_right").removeClass("off");
+                imgIndex == 0 ? $topDoument.find(".roll_left").addClass("off") : $topDoument.find(".roll_left").removeClass("off");
+            });
+
+        }
+
+    };
+    /**
+     * 이미지 뷰어 호출(base64 직접호출)
+     *
+     * @param imgIndex
+     *            시작 이미지 인덱스
+     * @param imgList [{FILE_PATH : "", ORG_FILE_NM : "", FILE_REG_NO : "", SEQ_NO : ""}]
+     *            이미지 데이터 배열
+     *
+     */
+    common.app.imgViewerBase64 = function (imgIndex, imgList) {
+        if (imgList == null || imgList == undefined || imgList == "") {
+            return false;
+        }
+        if (imgIndex == null || imgIndex == undefined) {
+            return false;
+        }
+
+        imgList.forEach(function (v) {
+            var sFullPath = v.FILE_PATH;
+            v.WEB_PATH = sFullPath;
+        });
+
+        var base64Img = fileToBase64(imgList[imgIndex].FILE_REG_NO, imgList[imgIndex].SEQ_NO);
+
+        var shtml = ' <div class="commLayerWrap" style="display:none">'
+            + '<div class="modal_bg" style="z-index: 1111111;"></div>'
+            + '<div class="rphoto_layer">'
+            + '<div class="rphoto_layer_po">'
+            + '<a class="roll_left" title="이전"></a>'
+            + '<a class="roll_right" title="다음"></a>'
+            + '<div class="img_v">'
+            + '<img src="" alt="파일첨부">'
+            + '</div>'
+            + '<div class="down_wrap">'
+            + '<span class="img_name">img.png</span>&nbsp;&nbsp;&nbsp;&nbsp;'
+            + '<a class="btn_down">다운로드</a>'
+            + '</div>'
+            + '</div>'
+            + '</div>'
+            + '</div>';
+        // 바닥화면에서 이미지 뷰어 호출
+        if (window.location == window.parent.location) {
+            $("body").append(shtml);
+
+            //[2022.05.06] cwb 이미지 뷰어
+            var imgNm = imgList[imgIndex].WEB_PATH.substring(imgList[imgIndex].WEB_PATH.indexOf('.') + 1);
+            if (imgNm.indexOf('xls') > -1 || imgNm.indexOf('xlsx') > -1) {
+                imgNm = 'excel'
+            } else if (imgNm.indexOf('docx') > -1 || imgNm.indexOf('doc') > -1) {
+                imgNm = 'word'
+            } else if (imgNm.indexOf('pptx') > -1 || imgNm.indexOf('ppt') > -1) {
+                imgNm = 'ppt'
+            } else if (imgNm.indexOf('hwp') > -1) {
+                imgNm = 'hwp'
+            } else if (imgNm.indexOf('pdf') > -1) {
+                imgNm = 'pdf'
+            } else {
+                imgNm = ''
+            }
+
+
+            if (imgNm != '') {
+                $(".img_v > img").attr("src", "../../img/ico/ic_file_" + imgNm + "_115x146.png");
+            } else {
+                $(".img_v > img").attr("src", "data:image/png;base64," + base64Img);
+            }
+
+            $(".img_name").text(imgList[imgIndex].ORG_FILE_NM);
+            // 다운로드 버튼 숨기기
+            if (common.app.null2void(imgList[imgIndex].SEQ_NO) == "" && common.app.null2void(imgList[imgIndex].FILE_REG_NO) == "") {
+                $(".btn_down").hide();
+            } else {
+                $(".btn_down").show();
+            }
+            if (common.app.null2void(imgList[imgIndex].SEQ_NO) == "eusr_0005_01" || imgList[imgIndex].IMG_TYPE == 'bizplay') {
+
+                $(".roll_right").remove();
+                $(".roll_left").remove();
+            }
+            // 버튼 활성화 & 비활성화 처리
+            imgIndex == imgList.length - 1 ? $(".roll_right").addClass("off") : $(".roll_right").removeClass("off");
+            imgIndex == 0 ? $(".roll_left").addClass("off") : $(".roll_left").removeClass("off");
+
+            $(".commLayerWrap").show();
+
+            // 이미지뷰어 이벤트 처리
+            $(".commLayerWrap").off().on("click", function (e) {
+
+                var _target = $(e.target);
+                // 이미지뷰어 닫기
+                if (_target.is(".img_v")) {
+                    $(".commLayerWrap").remove();
+                }
+                // 왼쪽 화찰표 버튼
+                if (_target.is(".roll_right")) {
+                    if (imgIndex != imgList.length - 1) {
+                        imgIndex++;
+                    }
+                }
+                // 오른쪽 화살표 버튼
+                if (_target.is(".roll_left")) {
+                    if (imgIndex != 0) {
+                        imgIndex--;
+                    }
+                }
+                // 이미지 다운로드
+                if (_target.is(".btn_down")) {
+                    location.href = "/filedown_0002_01.act?FILE_REG_NO=" + imgList[imgIndex].FILE_REG_NO + "&SEQ_NO=" + imgList[imgIndex].SEQ_NO;
+                }
+
+                //[2022.05.06] cwb 이미지 뷰어
+                var imgNm = imgList[imgIndex].WEB_PATH.substring(imgList[imgIndex].WEB_PATH.indexOf('.') + 1);
+                if (imgNm.indexOf('xls') > -1 || imgNm.indexOf('xlsx') > -1) {
+                    imgNm = 'excel'
+                } else if (imgNm.indexOf('docx') > -1 || imgNm.indexOf('doc') > -1) {
+                    imgNm = 'word'
+                } else if (imgNm.indexOf('pptx') > -1 || imgNm.indexOf('ppt') > -1) {
+                    imgNm = 'ppt'
+                } else if (imgNm.indexOf('hwp') > -1) {
+                    imgNm = 'hwp'
+                } else if (imgNm.indexOf('pdf') > -1) {
+                    imgNm = 'pdf'
+                } else {
+                    imgNm = ''
+                }
+
+                base64Img = fileToBase64(imgList[imgIndex].FILE_REG_NO, imgList[imgIndex].SEQ_NO);
+                if (imgNm != '') {
+                    $(".img_v > img").attr("src", "../../img/ico/ic_file_" + imgNm + "_115x146.png");
+                } else {
+                    $(".img_v > img").attr("src", "data:image/png;base64," + base64Img);
+                }
+
+                $(".img_name").text(imgList[imgIndex].ORG_FILE_NM);
+                // 다운로드 버튼 숨기기
+                if (common.app.null2void(imgList[imgIndex].SEQ_NO) == "" && common.app.null2void(imgList[imgIndex].FILE_REG_NO) == "") {
+                    $(".btn_down").hide();
+                } else {
+                    $(".btn_down").show();
+                }
+                // 버튼 활성화 & 비활성화 처리
+                imgIndex == imgList.length - 1 ? $(".roll_right").addClass("off") : $(".roll_right").removeClass("off");
+                imgIndex == 0 ? $(".roll_left").addClass("off") : $(".roll_left").removeClass("off");
+            });
+        }
+        // 프레임팝업에서 이미지뷰어 호출
+        else {
+            var $topDoument = $(parent.document);
+
+            // 웹경리나라
+            if (window.parent.location.pathname.indexOf('wserp') > -1) {
+                $topDoument = $(window.top.frames[0].document)
+            }
+
+            $topDoument.find("body").append(shtml);
+
+            //[2022.05.06] cwb 이미지 뷰어
+            var imgNm = imgList[imgIndex].WEB_PATH.substring(imgList[imgIndex].WEB_PATH.indexOf('.') + 1);
+            if (imgNm.indexOf('xls') > -1 || imgNm.indexOf('xlsx') > -1) {
+                imgNm = 'excel'
+            } else if (imgNm.indexOf('docx') > -1 || imgNm.indexOf('doc') > -1) {
+                imgNm = 'word'
+            } else if (imgNm.indexOf('pptx') > -1 || imgNm.indexOf('ppt') > -1) {
+                imgNm = 'ppt'
+            } else if (imgNm.indexOf('hwp') > -1) {
+                imgNm = 'hwp'
+            } else if (imgNm.indexOf('pdf') > -1) {
+                imgNm = 'pdf'
+            } else {
+                imgNm = ''
+            }
+
+            base64Img = fileToBase64(imgList[imgIndex].FILE_REG_NO, imgList[imgIndex].SEQ_NO);
+            if (imgNm != '') {
+                $topDoument.find(".img_v > img").attr("src", "../../img/ico/ic_file_" + imgNm + "_115x146.png");
+            } else {
+                $topDoument.find(".img_v > img").attr("src", "data:image/png;base64," + base64Img);
+            }
+
+            $topDoument.find(".img_name").text(imgList[imgIndex].ORG_FILE_NM);
+            // 다운로드 버튼 숨기기
+            if (common.app.null2void(imgList[imgIndex].SEQ_NO) == "" && common.app.null2void(imgList[imgIndex].FILE_REG_NO) == "") {
+                $topDoument.find(".btn_down").hide();
+            } else {
+                $topDoument.find(".btn_down").show();
+            }
+
+            if (common.app.null2void(imgList[imgIndex].SEQ_NO) == "eusr_0005_01" || imgList[imgIndex].IMG_TYPE == 'bizplay') {
+
+                $topDoument.find(".roll_right").remove();
+                $topDoument.find(".roll_left").remove();
+            }
+
+            // 버튼 활성화 & 비활성화 처리
+            imgIndex == imgList.length - 1 ? $topDoument.find(".roll_right").addClass("off") : $topDoument.find(".roll_right").removeClass("off");
+            imgIndex == 0 ? $topDoument.find(".roll_left").addClass("off") : $topDoument.find(".roll_left").removeClass("off");
+
+            $topDoument.find(".commLayerWrap").show();
+
+            // 이미지뷰어 이벤트 처리
+            $topDoument.find(".commLayerWrap").off().on("click", function (e) {
+
+                var _target = $(e.target);
+                // 이미지뷰어 닫기
+                if (_target.is(".img_v")) {
+                    $topDoument.find(".commLayerWrap").remove();
+                }
+                // 왼쪽 화찰표 버튼
+                if (_target.is(".roll_right")) {
+                    if (imgIndex != imgList.length - 1) {
+                        imgIndex++;
+                    }
+                }
+                // 오른쪽 화살표 버튼
+                if (_target.is(".roll_left")) {
+                    if (imgIndex != 0) {
+                        imgIndex--;
+                    }
+                }
+                // 이미지 다운로드
+                if (_target.is(".btn_down")) {
+                    //location.href="/filedown_0002_01.act?FILE_REG_NO=" + imgList[imgIndex].FILE_REG_NO + "&SEQ_NO=" +imgList[imgIndex].SEQ_NO;
+
+                    if (imgList[imgIndex].SEQ_NO == "eusr_0005_01" || imgList[imgIndex].SEQ_NO == 'sale_m004_01') {
+                        location.href = "/eusr_0005_01_r004.act?IMG_URL=" + imgList[imgIndex].WEB_PATH + "&FILE_NM=" + imgList[imgIndex].ORG_FILE_NM;
+                    } else if (imgList[imgIndex].IMG_TYPE == 'bizplay') {
+                        _WE_DRIVER.download(imgList[imgIndex].SAVE_FILE_NM);
+
+                    } else {
+                        location.href = "/filedown_0002_01.act?FILE_REG_NO=" + imgList[imgIndex].FILE_REG_NO + "&SEQ_NO=" + imgList[imgIndex].SEQ_NO;
+                    }
+
+
+                    /*		if(imgList[imgIndex].SEQ_NO != "eusr_0005_01"){
+                                location.href="/filedown_0002_01.act?FILE_REG_NO=" + imgList[imgIndex].FILE_REG_NO + "&SEQ_NO=" +imgList[imgIndex].SEQ_NO;
+                            }else{
+                                location.href="/eusr_0005_01_r004.act?IMG_URL=" + imgList[imgIndex].WEB_PATH + "&FILE_NM="+imgList[imgIndex].ORG_FILE_NM ;
+                            }*/
+
+                }
+
+                //[2022.05.06] cwb 이미지 뷰어
+                var imgNm = imgList[imgIndex].WEB_PATH.substring(imgList[imgIndex].WEB_PATH.indexOf('.') + 1);
+                if (imgNm.indexOf('xls') > -1 || imgNm.indexOf('xlsx') > -1) {
+                    imgNm = 'excel'
+                } else if (imgNm.indexOf('docx') > -1 || imgNm.indexOf('doc') > -1) {
+                    imgNm = 'word'
+                } else if (imgNm.indexOf('pptx') > -1 || imgNm.indexOf('ppt') > -1) {
+                    imgNm = 'ppt'
+                } else if (imgNm.indexOf('hwp') > -1) {
+                    imgNm = 'hwp'
+                } else if (imgNm.indexOf('pdf') > -1) {
+                    imgNm = 'pdf'
+                } else {
+                    imgNm = ''
+                }
+
+                base64Img = fileToBase64(imgList[imgIndex].FILE_REG_NO, imgList[imgIndex].SEQ_NO);
+                if (imgNm != '') {
+                    $topDoument.find(".img_v > img").attr("src", "../../img/ico/ic_file_" + imgNm + "_115x146.png");
+                } else {
+                    $topDoument.find(".img_v > img").attr("src", "data:image/png;base64," + base64Img);
+                }
+
+                $topDoument.find(".img_name").text(imgList[imgIndex].ORG_FILE_NM);
+                // 다운로드 버튼 숨기기
+                if (common.app.null2void(imgList[imgIndex].SEQ_NO) == "" && common.app.null2void(imgList[imgIndex].FILE_REG_NO) == "") {
+                    $topDoument.find(".btn_down").hide();
+                } else {
+                    $topDoument.find(".btn_down").show();
+                }
+                // 버튼 활성화 & 비활성화 처리
+                imgIndex == imgList.length - 1 ? $topDoument.find(".roll_right").addClass("off") : $topDoument.find(".roll_right").removeClass("off");
+                imgIndex == 0 ? $topDoument.find(".roll_left").addClass("off") : $topDoument.find(".roll_left").removeClass("off");
+            });
+
+        }
+
+    };
+
+    common.app.acctDvNm = function (code) {
+        var type = {"01": "위탁", "02": "펀드", "05": "CMA"};
+
+        if (common.app.null2void(code, "") == "") {
+            return "";
+        } else {
+            if (type[code] == undefined) {
+                return code;
+            } else {
+                return type[code];
+            }
+        }
+    };
+    common.app.balDvNm = function (code) {
+        var type = {"R": "위탁", "F": "펀드", "C": "CMA"};
+
+        if (common.app.null2void(code, "") == "") {
+            return "";
+        } else {
+            if (type[code] == undefined) {
+                return code;
+            } else {
+                return type[code];
+            }
+        }
+    };
+
+    /**
+     * 품목 자동완성
+     *
+     * @param $target
+     *  품목 input target
+     */
+    common.app.autoItemList = function ($this) {
+
+        $(".combo_postAdd").css({
+            "border": "0px"
+            , "background-color": ""
+            , "display": "block"
+        });
+
+
+        $this.autocomplete({
+            appendTo: $(".combo_postAdd_inner"),
+            minLength: 1,
+            source: function (request, response) {
+                var jexAjax = jexjs.plugin("ajax", "comm_s001_01_r001");
+                jexAjax.set("SRCH_WD", $this.val());
+                jexAjax.setting('async', false);
+                jexAjax.execute(function (data) {
+                    response(
+                        $.map(data.REC, function (v) {
+                            return {
+                                label: common.app.null2void(v.ITEM_NM),
+	        					value: common.app.null2void(v.ITEM_ID),
+	        					infm: common.app.null2void(v.ITEM_INFM)
+                            }
+                        })
+                    );
+                });
+            },
+            open: function () {
+                $(".ui-autocomplete").css({
+                    "top": "0",
+                    "width": "99%",
+                    "max-height": "250px",
+                    "z-index": 99999999999999
+                });
+            },
+            focus: function (event, ui) {
+                return false;
+            },
+            select: function (event, ui) {
+	            $(this).data("ITEM_ID",ui.item.value);
+	            $(this).data("ITEM_NM",ui.item.label);
+	            $(this).val(ui.item.label);
+	            $(this).css("color","#666");
+
+
+                //[2022.07.25] cwb 보고서용 품목을 위한 mode
+                if (document.getElementById("itemSearch")) {
+                    $(this).data("MODE", "S");
+                }
+                //20200706 품목 조회 시, / 앞부분까지만 보여주는 것으로 수정.
+
+                //[2022.07.25] cwb 보고서용 돋보기
+                if (document.getElementById("itemSearch")) {
+                    $("#itemSearch").hide();
+                    $("#itemDel").show();
+                }
+
+                return false;
+            }
+        }).keyup(function (e) {
+            if (e.keyCode == 13 || e.keyCode == 38 || e.keyCode == 40 || e.keyCode == 229) {
+                return;
+            }
+
+            if ($(e.target).val() == " ") $(e.target).val("");  //첫글자스페이스입력시 자동완성사용하지 않음
+
+            $(this).css("color", "#bbbbbb");
+            $(this).data("ITEM_ID", "");
+            $(this).data("ITEM_NM", "");
+        }).data('ui-autocomplete')._renderItem = function (ul, item) {
+            if(item.BUTTON){
+					return $("<li></li>").data("item.autocomplete", item).appendTo(ul);
+				}
+				
+				var $target = $this.val();
+				var itemId = common.app.null2void(item.value);
+				var xHtml = `<a href="#none" class="combo_postAdd_item">`;
+				
+				var tmpLabel = item.value;
+				var start_pos = item.value.toUpperCase().indexOf($target.toUpperCase());
+				if(start_pos > -1){
+					tmpLabel = item.value.substring(0, start_pos);
+					tmpLabel += "<strong style=\"color:#fe1a1a;\">" + item.value.substring(start_pos, start_pos + $target.length) + "</strong>";
+					tmpLabel += item.value.substring(start_pos + $target.length);
+				}
+				//tmpLabel.length > 10 ? tmpLabel.substring(0,10) + "<br>" + tmpLabel.substring(10,tmpLabel.length) : tmpLabel
+				var tmpLabel2 = item.label;
+				var start_pos2 = item.label.toUpperCase().indexOf($target.toUpperCase());
+				if(start_pos2 > -1){
+					tmpLabel2 = item.label.substring(0, start_pos2);
+					tmpLabel2 += "<strong style=\"color:#fe1a1a;\">" + item.label.substring(start_pos2, start_pos2 + $target.length).replace(/"/gi,"&quot;").replace(/'/gi,"&apos;").replace(/</gi,"&lt;").replace(/>/gi,"&gt;") + "</strong>";
+					tmpLabel2 += item.label.substring(start_pos2 + $target.length);
+				}
+				//tmpLabel2.length > 10 ? tmpLabel2.substring(0,10) + "<br>" + tmpLabel2.substring(10,tmpLabel2.length) : tmpLabel2
+				var tmpLabel3 = item.infm;
+				var start_pos3 = item.infm.toUpperCase().indexOf($target.toUpperCase());
+				if(start_pos3 > -1){
+					tmpLabel3 = item.infm.substring(0, start_pos3);
+					tmpLabel3 += "<strong style=\"color:#fe1a1a;\">" + item.infm.substring(start_pos3, start_pos3 + $target.length).replace(/"/gi,"&quot;").replace(/'/gi,"&apos;").replace(/</gi,"&lt;").replace(/>/gi,"&gt;") + "</strong>";
+					tmpLabel3 += item.infm.substring(start_pos3 + $target.length);
+				}
+				//tmpLabel3.length > 10 ? tmpLabel3.substring(0,10) + "<br>" + tmpLabel3.substring(10,tmpLabel3.length) : tmpLabel
+				xHtml += "<span class=\"tx_no\" 	title='" + item.value + 	"'>" +tmpLabel +"</span>";
+				xHtml += "<span class=\"tx_name\" style=\"width: 220px !important\" 	title='" + item.label + 	"'>" +tmpLabel2+ " / " +tmpLabel3+"</span>";
+				
+				xHtml += "</a>";
+				
+				return $(`<li class=${itemId.length > 10 ? "row2" : ""} ></li>`).data("ui-autocomplete-item",item).append(xHtml).appendTo(ul);
+        }
+    };
+
+    /**
+     * `timeout` 만큼 함수 실행을 지연시킵니다.
+     * 사용자 입력(자동완성, 검색)이 끝나고 함수 실행이 필요한 경우에 사용합니다.
+     * @example
+     * $('#input').on('keyup', common.app.debounce(function (evt) {
+     *     // keyup 이벤트가 발생한지 500ms동안 추가요청이 없을때 함수가 실행됩니다.
+     * }, 500));
+     * @param func 실행함수
+     * @param timeout 지연시간 (밀리초)
+     */
+    common.app.debounce = function debounce(func, timeout = 300) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                func.apply(this, args);
+            }, timeout);
+        };
+    };
+
+    /**
+     * 공급가액 계산
+     * - 2023.04.06 : 소수점 이하 반올림 처리
+     * @param totlAmt {String || Number} - 총 금액
+     * @returns {Number} - 공급가액
+     */
+    common.app.calculateSupplyAmt = function (totlAmt) {
+        return Math.round((Number(common.app.null2zero(totlAmt)) / 11) * 10);
+    };
+}
+
+/**
+ * smartPopup Open 함수
+ *
+ * @param option
+ * @return
+ */
+function open_smartPop(opt) {
+    var doc;
+    try {
+        doc = window.parent;
+        doc.smartOpenPop(opt);
+    } catch (e) {
+        smartOpenPop(opt);
+    }
+}
+
+/**
+ * smartPopUp Close 함수
+ *
+ * @param clllback
+ *            리턴받을 함수
+ * @param data
+ *            리턴함수에 전달한 JSON DATA
+ */
+function close_smartPop(callbackFn, data) {
+    var doc;
+    try {
+        doc = window.parent;
+        doc.smartClosePop(callbackFn, data);
+    } catch (e) {
+
+        // window.close();
+        smartClosePop(callbackFn, data); // smartClosePop
+    }
+}
+
+/**
+ * IEVersionCheck 함수
+ *
+ * @param
+ * @param
+ */
+function IEVersionCheck() {
+
+    var word;
+    var version = "N/A";
+
+    var agent = navigator.userAgent.toLowerCase();
+    var name = navigator.appName;
+
+    // IE old version ( IE 10 or Lower )
+    if (name == "Microsoft Internet Explorer") word = "msie ";
+
+    else {
+        // IE 11
+        if (agent.search("trident") > -1) word = "trident/.*rv:";
+
+        // IE 12 ( Microsoft Edge )
+        else if (agent.search("edge/") > -1) word = "edge/";
+    }
+
+    var reg = new RegExp(word + "([0-9]{1,})(\\.{0,}[0-9]{0,1})");
+    if (reg.exec(agent) != null)
+        version = RegExp.$1 + RegExp.$2;
+
+    return parseInt(version);
+}
+
+/**
+ * @title 금액을 한글로 반환
+ * @since 2015-04-07
+ * @author y2twind@gmail.com
+ * @version 0.1
+ * @param amt
+ *            금액
+ * @returns {String}
+ */
+function getAmountKorean() {
+    var args = arguments;
+    var arrDigit1 = Array('', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구');
+    var arrDigit3 = Array('', '십', '백', '천');
+    var arrDigit4 = Array('', '만', '억', '조', '경', '해', '자', '양', '구', '간', '정', '재', '극');
+    var digitIdx = 0;  // 자릿수
+    var digit4Idx = 0;  // arrDigit4의 index
+    var digit4Rest = 0;  // 4로 나눈 나머지
+    var digit4Used = false;  // arrDigit4 사용여부
+    var rslt = '';  // 결과
+    var amt = args[0];
+    amt = amt.toString().replace(/[^\d\.]/g, '').replace(/\.\d+$/g, '');
+
+    for (var idx = amt.length - 1; idx >= 0; idx--) {
+        digit4Rest = digitIdx % 4;
+
+        if (digitIdx && !digit4Rest) {
+            digit4Idx++;
+            digit4Used = false;
+        }
+
+        if (amt[idx] > 0) {
+            if (!digit4Used) {
+                rslt = arrDigit4[digit4Idx] + rslt;
+                digit4Used = true;
+            }
+            rslt = arrDigit3[digit4Rest] + rslt;
+            rslt = arrDigit1[amt[idx]] + rslt;
+        }
+        digitIdx++;
+    }
+    return rslt;
+}
+
+
+/**
+ * 전자결재 팝업 종료 후 '등록되었습니다' 라는 메시지를 띄우고 테이블 reload하는 함수
+ *
+ * @param msg
+ */
+function closeApprPopup(msg) {
+    if (!common.app.win || typeof (common.app.win.closed) == 'undefined' || common.app.win.closed) {
+        close_smartPop("fn_search", msg);
+    }
+}
+
+function isImage(ext) {
+    var isImg = false;
+
+    ext = ext.toUpperCase();
+    switch (ext) {
+        case '.BPM':
+            isImg = true;
+            break;
+        case '.JPEG':
+            isImg = true;
+            break;
+        case '.JPG':
+            isImg = true;
+            break;
+        case '.GIF':
+            isImg = true;
+            break;
+        case '.PNG':
+            isImg = true;
+            break;
+        case '.TIFF':
+            isImg = true;
+            break;
+        case '.TIF':
+            isImg = true;
+            break;
+    }
+    return isImg;
+}
+
+
+function fileToBase64(reg_seq_no, seq_no) {
+    var jexAjax = jexjs.plugin("ajax", "fileview_0001_01");
+    jexAjax.set("FILE_REG_NO", reg_seq_no);
+    jexAjax.set("SEQ_NO", seq_no);
+    jexAjax.setting('async', false);
+    jexAjax.execute(function (data) {
+        base64Data = data.FILE_PATH;
+    });
+    return base64Data;
+}
+
+// 2023-11-06 
+function fn_getBankUrl(bank_cd,evdc_dv){
+	switch (bank_cd){
+		case "40000001" : return "www.11st.co.kr"; //11번가
+		case "40000004" : return "www.auction.co.kr"; //옥션
+		case "40000005" : return "www.interpark.com"; //인터파크
+		case "40000006" : return "dnstore.com"; //디앤샵
+		case "40000007" : return "www.gmarket.co.kr"; //G마켓
+		case "40000009" : return "sell.smartstore.naver.com"; //스마트스토어
+		case "40000010" : return "www.coupang.com"; //쿠팡
+		case "40000011" : return "front.wemakeprice.com"; //위메프
+		case "40000012" : return "www.tmon.co.kr"; //티몬
+		case "40000008" : return "www.auction.co.kr"; //옥션＆G마켓
+		case "60000002" : return "www.nps.or.kr"; //국민연금공단
+		case "60000003" : return "www.nhis.or.kr"; //국민건강보험공단
+		case "40000013" : return "store-sell.kakao.com"; //카카오톡스토어
+		case "40000021" : return "www.baemin.com"; //배달의민족
+		case "40000022" : return "www.yogiyo.co.kr"; //요기요
+		case "41000010" : return "trip.coupang.com"; //쿠팡(여행)
+		case "41000081" : return "tour.tmon.co.kr"; //티몬(여행)
+		case "40000023" : return "www.bdtong.co.kr"; //배달통
+		case "40000024" : return "www.baegofa.net"; //배고파
+		case "40000027" : return "boss.ddangyo.com"; //땡겨요
+		case "40000028" : return "partner.wmpo.co.kr"; //위메프오
+		case "40000029" : return "www.specialdelivery.co.kr"; //배달특급
+		case "40000030" : return "www.shuttledelivery.co.kr"; //셔틀딜리버리
+		case "40000015" : return "www.lotteon.com"; //롯데닷컴
+		case "40000016" : return "display.cjmall.com"; //CJ Mall
+		case "40000020" : return "shinsegaemall.ssg.com"; //신세계몰
+		case "40000042" : return "www.goodchoice.kr"; //여기어때
+		case "40000043" : return "www.yanolja.com"; //야놀자
+		case "41000082" : return "tour.wd.wemakeprice.com"; //위메프(여행)
+		case "40000083" : return "domeggook.com"; //도매꾹
+		case "42000061" : return "pay.naver.com"; //네이버페이
+		case "42000062" : return "www.kcp.co.kr"; //KCP
+		case "40000084" : return "www.hwahae.co.kr"; //화해
+		case "40000053" : return "www.hoteltime.co.kr"; //호텔타임
+		case "40000054" : return "www.hoteltime.co.kr"; //호텔타임(여기어때)
+		case "40000055" : return "www.dailyhotel.com"; //데일리호텔
+		case "40000056" : return ""; //호텔나우
+		case "40000085" : return "www.lotteon.com"; //롯데ON
+		case "40000026" : return "www.coupangeats.com"; //쿠팡이츠
+		case "42000063" : return "www.payco.com"; //PAYCO
+		case "42000065" : return "www.payapp.kr"; //페이앱
+		case "42000066" : return "www.mobilians.co.kr"; //KG모빌리언스
+		case "42000064" : return "www.inicis.com"; //KG이니시스
+		case "40000086" : return "www.a-bly.com"; //에이블리
+	}
+	switch (evdc_dv){
+		case "10" : return "www.hometax.go.kr"; //에이블리
+		case "30" : return "www.crefia.or.kr"; //에이블리
+		case "99" : return "www.serp.co.kr"; //에이블리
+	}
+	return "";
+}
+function fn_getBankNM(bank_cd,evdc_dv){
+	switch (bank_cd){
+	case "40000001" : return "11번가"
+	case "40000004" : return "옥션"
+	case "40000005" : return "인터파크"
+	case "40000006" : return "디앤샵"
+	case "40000007" : return "G마켓"
+	case "40000009" : return "스마트스토어"
+	case "40000010" : return "쿠팡"
+	case "40000011" : return "위메프"
+	case "40000012" : return "티몬"
+	case "40000008" : return "옥션＆G마켓"
+	case "60000002" : return "국민연금공단"
+	case "60000003" : return "국민건강보험공단"
+	case "40000013" : return "카카오톡스토어"
+	case "40000021" : return "배달의민족"
+	case "40000022" : return "요기요"
+	case "41000010" : return "쿠팡(여행)"
+	case "41000081" : return "티몬(여행)"
+	case "40000023" : return "배달통"
+	case "40000024" : return "배고파"
+	case "40000027" : return "땡겨요"
+	case "40000028" : return "위메프오"
+	case "40000029" : return "배달특급"
+	case "40000030" : return "셔틀딜리버리"
+	case "40000015" : return "롯데닷컴"
+	case "40000016" : return "CJ Mall"
+	case "40000020" : return "신세계몰"
+	case "40000042" : return "여기어때"
+	case "40000043" : return "야놀자"
+	case "41000082" : return "위메프(여행)"
+	case "40000083" : return "도매꾹"
+	case "42000061" : return "네이버페이"
+	case "42000062" : return "KCP"
+	case "40000084" : return "화해"
+	case "40000053" : return "호텔타임"
+	case "40000054" : return "호텔타임(여기어때)"
+	case "40000055" : return "데일리호텔"
+	case "40000056" : return "호텔나우"
+	case "40000085" : return "롯데ON"
+	case "40000026" : return "쿠팡이츠"
+	case "42000063" : return "PAYCO"
+	case "42000065" : return "페이앱"
+	case "42000066" : return "KG모빌리언스"
+	case "42000064" : return "KG이니시스"
+	case "40000086" : return "에이블리"
+	}
+	switch (evdc_dv){
+	case "10" : return "홈택스";
+	case "30" : return "여신금융협회";
+	case "99" : return "경리나라";
+	}
+	return "";
+}
+
+function fn_getBankIcon(bank_nm) {
+	var path = "../img/sb_img20x20/sb_new/";
+	switch (bank_nm){
+		//case "한국은행" : 	return path + "00.png" 
+		case "기업은행" : 		return path + "01기업은행.png"      
+		case "국민은행" : 		
+		case "국민은행(기타카드)" : 
+		case "국민카드" : 		
+			return path + "02국민은행.png"      
+		case "농협은행" :
+		case "농협(기타카드)" :
+			return path + "03농협은행.png"      
+		// 롯데카드	
+		case "KEB하나은행" : 	
+		case "하나카드(기타카드)" : 	
+			return path + "04KEB하나은행.png"   
+		case "신한은행" : 		
+		case "신한카드(기타카드)" : 		
+			return path + "05신한은행.png"      
+		case "우리은행" : 		
+		case "우리카드" : 		
+			return path + "06우리은행.png"      
+		case "부산은행" : 		return path + "07부산은행.png"   
+		//비씨카드
+		case "iM뱅크(대구)" : 		return path + "08대구은행.png"      
+		case "경남은행" : 		return path + "09경남은행.png"      
+		case "SC제일은행" : 	return path + "10SC제일은행.png"    
+		case "우체국" : 		return path + "11우체국.png"        
+		case "광주은행" : 		return path + "12광주은행.png"      
+		case "새마을금고" : 		return path + "13새마을금고.png"     
+		case "한국씨티은행" : 	
+		case "씨티은행(기타카드)" : 	
+			return path + "14한국씨티은행.png"    
+		case "신협" : 		return path + "15신협.png"         
+		case "수협은행" : 		return path + "16수협은행.png"      
+		case "전북은행" : 		return path + "17전북은행.png"      
+		case "산업은행" : 		return path + "18산업은행.png"      
+		case "제주은행" : 		return path + "19제주은행.png"      
+		// 코나아이
+		case "케이뱅크" : 		return path + "20케이뱅크.png"      
+		case "카카오뱅크" : 		return path + "21카카오뱅크.png"     
+		case "토스뱅크" : 		return path + "22토스뱅크.png"      
+		case "산림조합" : 		return path + "23산림조합.png"      
+		case "상호저축은행" : 	return path + "24상호저축은행.png"    
+		case "HSBC" : 		return path + "25HSBC.png"        
+		case "뱅크오브아메리카" : 	return path + "26뱅크오브아메리카.png" 
+		case "JP모건" : 		return path + "27JP모건.png"       
+		case "도이치은행" : 		return path + "29도이치은행.png"     
+		case "교보증권" : 		return path + "30교보증권.png"      
+		case "신한금융투자" : 	return path + "31신한투자증권.png"    
+		case "대신증권" : 		return path + "32대신증권.png"      
+		case "미래에셋대우증권" : 	return path + "33미래에셋대우증권.png" 
+		case "DB금융투자" : 	return path + "34DB금융투자.png"    
+		case "유안타증권" : 		return path + "35유안타증권.png"     
+		case "메리츠종금증권" : 	return path + "36메리츠종금증권.png"  
+		case "부국증권" : 		return path + "37부국증권.png"      
+		case "삼성증권" : 		
+		case "삼성카드" : 		
+			return path + "38삼성증권.png"      
+		case "유진투자증권" : 	return path + "39유진투자증권.png"    
+		case "신영증권" : 		return path + "40신영증권.png"      
+		case "현대차투자증권" : 	
+		case "현대카드" : 	
+			return path + "41현대차투자증권.png"  
+		case "한화투자증권" : 	return path + "42한화투자증권.png"    
+		case "SK증권" : 		return path + "43SK증권.png"       
+		case "키움증권" : 		return path + "44키움증권.png"      
+		case "하이투자증권" : 	return path + "45하이투자증권.png"    
+		case "하나금융투자" : 	return path + "46하나금융투자.png"    
+		case "한국투자증권" : 	return path + "47한국투자증권.png"    
+		case "LS증권" : 	return path + "48LS증권.png" 
+		case "NH투자증권" : 	return path + "49NH투자증권.png"    
+		case "IBK투자증권" : 	return path + "50IBK투자증권.png"   
+		case "KB증권" : 		return path + "51KB증권.png"       
+		case "한국증권금융" : 	return path + "53한국증권금융.png" 
+		default:			return "";
+		//case "기타은행" : 	return path + "99.png"
+	}
+}
+
+function setting_popup() {
+	var $form = $("<form method='post'></form>"); 
+	open_smartPop({ href: "scmst_popup.act", width: 800, height: 254, scrolling: false, target: window, frm: $form });
+}
+
+
+

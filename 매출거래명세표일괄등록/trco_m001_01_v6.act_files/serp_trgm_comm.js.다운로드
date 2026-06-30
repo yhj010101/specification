@@ -1,0 +1,481 @@
+document.write('<script type="text/javascript" src="/js/tcmc/comm/serp.datepicker.js"></script>');
+/**
+ * <pre>
+ * TCMC PROJECT
+ * @COPYRIGHT (c) 2009-2012 WebCash, Inc. All Right Reserved.
+ *
+ * @File Name      : trgm_comm_01
+ * @File path    	 : TCMC_PT_STATIC/web/serp/js
+ * @author       	 : 관리자 ( jexframe@webcash.co.kr )
+ * @Description    :
+ * @History      	 : 2017-09-25, 관리자
+ * </pre>
+ **/
+var _loding = null;
+var _datEtaxList = [];
+
+var _searchWord = ""; // 검색 조건(회사명, 메모)에 대한 변수설정
+var _dtlSearchWord = {};
+
+var taxPopState; // Taxbill 팝업 상태 변수
+
+new (Jex.extend({
+
+	onload:function() {
+		_this = this;
+		//--- todo onload start ---//
+
+		// 체크박스 ALL OR NOT ALL 컨트롤
+        $("table.tbl_result > thead > tr:first-child").find("input:checkbox").live("click", function() {
+            $("table.tbl_result > tbody > tr input:checkbox").not(":disabled").prop("checked", $(this).is(":checked"));
+        });
+
+	}, event:function() {
+		//--- define event action ---//
+		
+		// 상세조회 화면 이벤트 
+		this.addEvent("#aSrchDtl", "click",function(){
+			$(".table_wrap").toggle();
+			// 펼쳤을때 up
+			if($(".table_wrap").is(":visible") == true){
+				$("#aSrchDtl").removeClass("down").addClass("up");
+				$("#srchDtArea").hide();//상세검색시에는 기본날짜검색영역숨김
+				//조회기간 동일하게 맞추기
+				$("#txtDtlSrcStartDt").val($("#txtSrcStartDt").val());
+				$("#txtDtlSrcEndDt").val($("#txtSrcEndDt").val());
+				//검색어 동일하게 맞추기
+				$("#txtDtlSrcMemo").val($("#txtSrcWd").val());
+			} else {
+				$("#aSrchDtl").removeClass("up").addClass("down");
+				$("#srchDtArea").show();
+				//조회기간 동일하게 맞추기
+				$("#txtSrcStartDt").val($("#txtDtlSrcStartDt").val());
+				$("#txtSrcEndDt").val($("#txtDtlSrcEndDt").val());
+				//검색어 동일하게 맞추기
+				$("#txtSrcWd").val($("#txtDtlSrcMemo").val());
+			}
+			
+		});
+		
+		// 검색버튼 클릭 함수
+		this.addEvent("#btnSrc","click",function(){
+			_searchWord = $("#txtSrcWd").val();
+            getSQL(1, {});
+		}); 
+
+		// 상세검색버튼 클릭 함수
+		this.addEvent("#btnDtlSrc","click",function(){
+			// 매입, 견, 수, 발 : 거래시작일, 거래종료일, 회사, 메모
+			_dtlSearchWord = {"STR_DT":$("#txtDtlSrcStartDt").val(), "END_DT":$("#txtDtlSrcEndDt").val(), "CMNM":$("#txtDtlSrcCorpNm").val(), "MEMO":$("#txtDtlSrcMemo").val()};
+			_searchWord = $("#txtDtlSrcCorpNm").val();
+			getSQL(1, {});
+			// 상세검색후 검색조건 초기화
+		}); 
+		
+	}
+
+}))();
+
+
+/**
+ * 팝업 열기
+ * @param formId
+ * @param options sizeW : 팝업넓이, sizeH: 팝업높이, target: form타켓, action : 웹서비스ID
+ * @return
+ */
+function open_popup(formId, options){
+	var	sizeW = parseInt(options.sizeW, 10);	
+	var	sizeH = parseInt(options.sizeH, 10);
+	var nLeft = screen.width/2 - sizeW/2 ;
+	var nTop  = screen.height/2- sizeH/2 ;
+	
+	//듀얼모니터
+	nLeft += window.screenLeft;
+	nTop += window.screenTop;
+
+	var option= ",toolbar=no,menubar=no,location=no,scrollbars=yes,status=no,resizable=no";
+	var winObj= window.open("", options.target, "left=" + nLeft + ",top=" +  nTop + ",width=" + sizeW + ",height=" + sizeH  + option );
+
+    taxPopState = winObj;
+	
+	try{
+		//winObj.blur(); 	//크롭에서 focus()만 호출할경우 작동하지 않아서 blur()를 먼저 호출한후 focus()호출하도록 수정함.
+		//winObj.focus();	//팝업이 이미 열려있는경우 앞으로 나오도록 한다.
+	} catch(e){}
+	var frm = document.getElementById(formId);
+
+	if(!!frm){
+		frm.method = "post";
+		frm.target = options.target;
+		
+		if(!!options.action)	frm.action = options.action;
+		
+		frm.submit();
+	}
+	frm.target = "";
+}
+
+
+/**
+ * 현재 페이지 번호
+ */
+function getThisPageNo() {
+    var _thisPageNo;
+    $(".pag_num>a").each(function () {
+        if($(this).hasClass("on")){
+            _thisPageNo = $(this).html();
+        }
+    });
+    return _thisPageNo;
+}
+
+function sendPopup(elementList,sendGubn,bsnnNo,sessionData,taxCode){
+	var checkList = $(elementList).find("input[type=checkbox]:checked");
+	var call_url = "",url = "",totl_amt = 0,isValid = true;
+	var dvsn_code = "",task_code = "",send_type = "";
+	var connect_key = [],connect_info = [],req = {};
+	var add_file_list = [];
+
+	//elements 가 존재 하지는 확인
+	if($(elementList).length  ==  0 ){
+		alert('element 가 존재 하지 않습니다.');
+		isValid = false;
+		return false;
+	}
+	//전송 구분 확인
+	if(sendGubn == "" || ( sendGubn != "fax" && sendGubn != "email")){
+		alert('전송 구분값이 잘못 되었습니다.');
+		isValid = false;
+		return false;
+	}
+	// 사업자번호
+	if(bsnnNo == ""){
+		alert('사업자번호가 누락 되었습니다.');
+		isValid = false;
+		return false;
+	}
+	//session data
+	if(!sessionData){
+		alert('SESSION DATA가 누락 되었습니다.');
+		isValid = false;
+		return false;
+	}
+	//타입코드
+	if(taxCode	 == ""){
+		alert('타입 코드가 누락 되었습니다.');
+		isValid = false;
+		return false;
+	}
+	
+	
+	//체크된 항목
+	if(checkList.length == 0) {
+		alert("전송할 대상을 선택해 주세요.");
+		isValid = false;
+		return false;
+	}
+	
+	//최개갯수 
+	if(checkList.length > 5){
+		alert("메일 및 팩스 전송은 최대 5개까지만 가능 합니다.");
+		isValid = false;
+		return false;
+	}
+	
+	var strCompare = "";
+	var strTrcoBsnnNo = "";
+	var strTrcoBsnnNm = "";
+	var strTrcoFaxNo = "";
+	//동일 사업자번호 검증
+	checkList.each(function(){		
+		var trRow = $(this).closest('tr').prevAll().length; 
+		var checkList =  _datList[trRow];
+//		if ("" != strCompare && strCompare != checkList.BUYR_CORP_NO){
+//			alert("사업자번호가 같은 건을 선택해 주세요.");
+//			isValid = false;
+//			return false;
+//		}
+//		strCompare = null2void(checkList.BUYR_CORP_NO,"");
+		
+		if ("" != strCompare && strCompare != checkList.TRCO_KEY){
+			alert("같은 사업자의 자료를 선택해 주세요.");
+			isValid = false;
+			return false;
+		}
+		strCompare = null2void(checkList.TRCO_KEY,"");
+		strTrcoBsnnNo = null2void(checkList.BUYR_CORP_NO,"");
+		strTrcoBsnnNm = null2void(checkList.BUYR_CORP_NM,"");
+		strTrcoFaxNo = null2void(checkList.BUYR_FAX,"");
+		
+		connect_key.push(checkList.TRANS_STAT_SEQ);
+		totl_amt += parseInt(checkList.TOTL_AMT.replaceAll(',',''));
+		var tmp = {
+				"CONNECT_KEY" : checkList.TRANS_STAT_SEQ,
+				"CONNECT_AMT" : checkList.TOTL_AMT,
+				"REGS_DATE" : checkList.REGS_DATE.replace(/[^0-9]/gi,"")
+		}
+		connect_info.push(tmp);
+		
+		$.each(checkList.ADD_FILE_LIST, function(i,v) {
+			var tmpfile = {
+					"ADD_FILE_NAME" : v.FILE_ORIGN_NM,
+					"ADD_FILE_PATH" : v.FILE_NM,
+					"ADD_FILE_ORG_PATH" : v.FILE_PATH
+			}
+			add_file_list.push(tmpfile);
+		});
+	});
+	
+	var connect_rec = { "CONNECT_INFO" : connect_info};
+	var add_file_info = { "ADD_FILE_LIST" : add_file_list};
+	
+	if(sendGubn == "fax" ){ url = "trco_fax_popup1.jsp";
+	}else{ url = "trco_mail_popup1.jsp"; }
+	
+	if(taxCode == "16"){
+		call_url  = "trgm_buyr_captur.jsp";
+		dvsn_code = "S";
+		task_code = "S001";
+		send_type = "tran"; 
+	}else{
+		call_url  = "trgm_etc_capture.jsp";
+		dvsn_code = "R";
+		if(taxCode == "17"){ task_code = "R001"; send_type = "r001";}
+		else if(taxCode == "18"){ task_code = "R002"; send_type = "r002";}
+		else if(taxCode == "19"){ task_code = "R003"; send_type = "r003";}
+		else{ task_code  = ""; send_type = "r001";}
+	}
+
+	req["TRCO_KEY"] 	= strCompare;
+	req["TRCO_BSNN_NO"] = strTrcoBsnnNo.replace(/-/gi,"");
+	req["DVSN_CODE"] 	= dvsn_code;
+	req["TASK_CODE"] 	= task_code;
+	req["TOTL_AMT"] 	= totl_amt;
+	req["BUYR_CORP_NM"]	= strTrcoBsnnNm;//일시성거래처명 추가
+	req["BUYR_CORP_FAX"]= strTrcoFaxNo;//일시성거래처 팩스번호 추가
+	
+	param = {"SESSION_DATA"	: sessionData,
+			//"CONNECT_KEY" 	: connect_key,
+			"CONNECT_REC" 	: encodeURIComponent(JSON.stringify(connect_rec)),
+			"PRI_MY_IMG"	:"",
+			"SEND_TYPE" 	:send_type,
+			"CALL_URL"		: call_url,//"trgm_buyr_captur.jsp",
+			"BSNN_NO"		: bsnnNo,
+			"TRCO_INFO"		:encodeURIComponent(JSON.stringify(req)),
+			"ADD_FILE_INFO"	:encodeURIComponent(JSON.stringify(add_file_info))
+			
+	}
+	if(isValid){
+		setFormToTaxbill(url, taxCode, param);
+	}
+}
+
+//파일 다운로드
+function fn_fileDownload(org_file_nm, save_file_nm, file_path){
+    //var folder = file_path.replace($("#root").val(),"").replace(save_file_nm,"");
+    var folder = file_path;
+    $("#Form1").remove();
+    var $form = $('<form id="Form1"></form>');
+    $form.attr('action', 'serp_fileDownload.act');
+    $form.attr('method', 'post');
+    $form.appendTo('body');
+    var fileName = $('<input type="hidden" name="fileName" value="'+save_file_nm+'">');
+    var orgfilename = $('<input type="hidden" name="orgfilename" value="'+org_file_nm+'">');
+    var folder = $('<input type="hidden" name="folder" value="'+folder+'">');
+    $form.append(fileName).append(orgfilename).append(folder);
+    $form.submit();
+}
+
+var trgm={};
+trgm.comm={};
+trgm.comm.calendarPop = function(strDate, endDate, callBackFn){
+		trgmCalCallBackFn = function(){};
+		var JSON_DATA = {
+			    "STR_DATE" : strDate
+			  , "END_DATE" : endDate
+		}
+		if(typeof callBackFn == "function") {
+			trgmCalCallBackFn = callBackFn;
+		}	
+		var $form = $("<form method='post'></form>");
+		$form.append("<input name='JSON_DATA' value='" + JSON.stringify(JSON_DATA) + "'>");
+		$form.append("<input name='GB' value='TRGM'>");
+		open_smartPop({href: "comm_0009_01.act", width:555, height:536, scrolling:false, target:window, frm:$form});
+	}
+
+var serp_trgm_comm = {
+	calCallBackFn : function(){},
+	calendarPop : function(strDate, endDate, callBackFn){
+		var JSON_DATA = {
+			    "STR_DATE" : strDate
+			  , "END_DATE" : endDate
+		}
+		if(typeof callBackFn == "function") {
+			serp_trgm_comm.calCallBackFn = callBackFn;
+		}	
+		var $form = $("<form method='post'></form>");
+		$form.append("<input name='JSON_DATA' value='" + JSON.stringify(JSON_DATA) + "'>");
+		$form.append("<input name='GB' value='TRGM'>");
+		open_smartPop({href: "comm_0009_01.act", width:555, height:536, scrolling:false, target:window, frm:$form});
+	},
+	/**
+     * 이미지 뷰어 호출
+     * 
+     * @param imgIndex
+     *            시작 이미지 인덱스
+     * @param imgList [{FILE_PATH : "", ORG_FILE_NM : "", FILE_REG_NO : "", SEQ_NO : ""}]
+     *            이미지 데이터 배열
+     *            
+     */
+    imgViewer : function(imgIndex, imgList){
+    	if(imgList == null || imgList == undefined || imgList == ""){
+    		return false;
+    	}
+    	if(imgIndex == null || imgIndex == undefined){
+    		return false;
+    	}
+    	
+    	imgList.forEach(function(v){
+    		var sFullPath	= "/file/tcmc_attach/"+v.FILE_PATH;    	
+            //v.WEB_PATH 		= v.SEQ_NO != "eusr_0005_01" ? sFullPath.substr(sFullPath.indexOf("/file")) : sFullPath;
+            v.WEB_PATH 		= sFullPath;
+    	});
+    	var shtml = ' <div class="commLayerWrap" style="display:none">'
+    			+       '<div class="modal_bg" style="z-index: 1111111;"></div>'
+    			+       '<div class="rphoto_layer">'
+    			+          '<div class="rphoto_layer_po">'
+    			+ 	          '<a class="roll_left" title="이전" style="display:none;"></a>'
+    			+ 	          '<a class="roll_right" title="다음" style="display:none;"></a>'
+    			+ 	          '<div class="rphoto_layer_tb">'
+    			+ 		         '<img src="" alt="파일첨부">'
+    			+ 	        '</div>'
+    			+ 	        '<div class="down_wrap">'
+    			+ 		       '<span class="img_name">img.png</span>&nbsp;&nbsp;&nbsp;&nbsp;'
+    			+ 		       '<a class="btn_down">다운로드</a>'
+    			+ 	        '</div>'
+    			+        '</div>'
+    			+      '</div>'
+    			+   '</div>';
+    	// 바닥화면에서 이미지 뷰어 호출
+    	if(window.location == window.parent.location){
+        	$("body").append(shtml);
+        	
+        	$(".rphoto_layer_tb > img").attr("src", imgList[imgIndex].WEB_PATH);
+        	$(".img_name").text(imgList[imgIndex].ORG_FILE_NM);
+        	// 다운로드 버튼 숨기기
+        	if(null2void(imgList[imgIndex].SEQ_NO) == "" && null2void(imgList[imgIndex].FILE_REG_NO) == ""){
+        		$(".btn_down").hide();
+        	}else{
+        		$(".btn_down").show();
+        	}
+        	// 버튼 활성화 & 비활성화 처리
+        	imgIndex == imgList.length-1 ? $(".roll_right").addClass("off") : $(".roll_right").removeClass("off");
+			imgIndex == 0 ? $(".roll_left").addClass("off") : $(".roll_left").removeClass("off");
+     		        	
+            $(".commLayerWrap").show();
+            
+            // 이미지뷰어 이벤트 처리
+            $(".commLayerWrap").off().on("click", function(e){
+            	
+            	var _target = $(e.target);
+            	// 이미지뷰어 닫기
+        		if(_target.is(".rphoto_layer_tb")){
+        			$(".commLayerWrap").remove();
+                }
+        		// 왼쪽 화찰표 버튼
+        		if(_target.is(".roll_right")){
+        			if(imgIndex != imgList.length-1){
+    	    			imgIndex++;
+        			}
+        		}
+        		// 오른쪽 화살표 버튼
+        		if(_target.is(".roll_left")){
+        			if(imgIndex != 0){
+        				imgIndex--;
+        			}
+        		}
+        		// 이미지 다운로드
+        		if(_target.is(".btn_down")){
+    				//location.href="/filedown_0002_01.act?FILE_REG_NO=" + imgList[imgIndex].FILE_REG_NO + "&SEQ_NO=" +imgList[imgIndex].SEQ_NO;
+        			fn_fileDownload(imgList[imgIndex].ORG_FILE_NM, imgList[imgIndex].FILE_PATH, "tcmc_attach");
+    			}
+        		
+        		$(".rphoto_layer_tb > img").attr("src", imgList[imgIndex].WEB_PATH);
+    			$(".img_name").text(imgList[imgIndex].ORG_FILE_NM);
+    			// 다운로드 버튼 숨기기
+    			if(null2void(imgList[imgIndex].SEQ_NO) == "" && null2void(imgList[imgIndex].FILE_REG_NO) == ""){
+            		$(".btn_down").hide();
+            	}else{
+            		$(".btn_down").show();
+            	}
+    			// 버튼 활성화 & 비활성화 처리
+    			imgIndex == imgList.length-1 ? $(".roll_right").addClass("off") : $(".roll_right").removeClass("off");
+    			imgIndex == 0 ? $(".roll_left").addClass("off") : $(".roll_left").removeClass("off");
+            });
+    	}
+    	// 프레임팝업에서 이미지뷰어 호출
+    	else{
+    		var $topDoument = $(parent.document);
+
+    		// 웹경리나라
+    		if(window.parent.location.pathname.indexOf('wserp') > -1) {
+    			$topDoument = $(window.top.frames[0].document)
+    		}
+    		
+    		$topDoument.find("body").append(shtml);
+        	
+    		$topDoument.find(".rphoto_layer_tb > img").attr("src", imgList[imgIndex].WEB_PATH);
+    		$topDoument.find(".img_name").text(imgList[imgIndex].ORG_FILE_NM);
+    		// 다운로드 버튼 숨기기
+    		if(null2void(imgList[imgIndex].SEQ_NO) == "" && null2void(imgList[imgIndex].FILE_REG_NO) == ""){
+    			$topDoument.find(".btn_down").hide();
+        	}else{
+        		$topDoument.find(".btn_down").show();
+        	}
+    		// 버튼 활성화 & 비활성화 처리
+    		imgIndex == imgList.length-1 ? $topDoument.find(".roll_right").addClass("off") : $topDoument.find(".roll_right").removeClass("off");
+    		imgIndex == 0 ? $topDoument.find(".roll_left").addClass("off") : $topDoument.find(".roll_left").removeClass("off");
+     		        	
+     		$topDoument.find(".commLayerWrap").show();
+            
+            // 이미지뷰어 이벤트 처리
+     		$topDoument.find(".commLayerWrap").off().on("click", function(e){
+            	
+            	var _target = $(e.target);
+            	// 이미지뷰어 닫기
+        		if(_target.is(".rphoto_layer_tb")){
+        			$topDoument.find(".commLayerWrap").remove();
+                }
+        		// 왼쪽 화찰표 버튼
+        		if(_target.is(".roll_right")){
+        			if(imgIndex != imgList.length-1){
+    	    			imgIndex++;
+        			}
+        		}
+        		// 오른쪽 화살표 버튼
+        		if(_target.is(".roll_left")){
+        			if(imgIndex != 0){
+        				imgIndex--;
+        			}
+        		}
+        		// 이미지 다운로드
+        		if(_target.is(".btn_down")){
+        			//location.href="/filedown_0002_01.act?FILE_REG_NO=" + imgList[imgIndex].FILE_REG_NO + "&SEQ_NO=" +imgList[imgIndex].SEQ_NO;
+        			fn_fileDownload(imgList[imgIndex].ORG_FILE_NM, imgList[imgIndex].FILE_PATH, "tcmc_attach");
+        		}
+        		
+        		$topDoument.find(".rphoto_layer_tb > img").attr("src", imgList[imgIndex].WEB_PATH);
+        		$topDoument.find(".img_name").text(imgList[imgIndex].ORG_FILE_NM);
+        		// 다운로드 버튼 숨기기
+        		if(null2void(imgList[imgIndex].SEQ_NO) == "" && null2void(imgList[imgIndex].FILE_REG_NO) == ""){
+        			$topDoument.find(".btn_down").hide();
+            	}else{
+            		$topDoument.find(".btn_down").show();
+            	}
+        		// 버튼 활성화 & 비활성화 처리
+        		imgIndex == imgList.length-1 ? $topDoument.find(".roll_right").addClass("off") : $topDoument.find(".roll_right").removeClass("off");
+        		imgIndex == 0 ? $topDoument.find(".roll_left").addClass("off") : $topDoument.find(".roll_left").removeClass("off");
+            });
+    	}
+    }
+}

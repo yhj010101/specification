@@ -1,0 +1,4151 @@
+
+//거래처 목록 표시
+
+var category = ""; //카테고리 (sales:매출, buy:매입, fnc: 금융,etc:기타)
+var autoComplete_REC = sessionStorage.getItem("TCMC_REC");
+var userSetOption;		//사용자 설정 옵션
+var isMembGrp = "N";
+
+var _eventIndex = {
+	nowIndex : 0
+  , maxIndex : 0
+};
+
+var grp_cnt = {};
+
+$(function(){
+	_setFoot = { // 이벤트
+			    imgEvent 	 : $('.gift_banner')
+			  , ulEvent 	 : $('.gift_banner ul')};
+
+	if(self !== top){
+		if(location.href.indexOf("trco_m005_02") > -1){
+			return;
+		}
+	}
+	leftcreateForm();
+	//사용자 그룹 조회
+	drawUserGrpList();
+	
+	//설정에 따라 메뉴 보여 주기
+	getSetUp();
+	
+	//거래관리 주문관리 하위 메뉴 열고 닫기
+	if (localStorage.getItem("trgm_menu_SHOW_YN") == "N") {
+		$('#trgm_menu').next().hide();
+	}
+	if (localStorage.getItem("ordr_menu_SHOW_YN") == "N") {
+		$('#ordr_menu').next().hide();
+	}
+	if (localStorage.getItem("cafe_menu_SHOW_YN") == "N") {
+		$('#cafe_menu').next().hide();
+	}
+
+	//거래처 목록(자동완성) 섹션 스토리지 저장 
+	if(null2void(autoComplete_REC,"") == ""){
+        //JSON.parse(sessionStorage.getItem("TCMC_REC"));
+		getTrcoData();
+	}
+	
+	if ($('.gift_banner').is(':visible')) {
+		if(typeof _eventInterval != 'undefined'){
+			clearInterval(_eventInterval);
+	     }  
+		
+		/* 이벤트 어드민 추가되면 수정 */
+		//_eventIndex.maxIndex = _setFoot.imgEvent.find('li').length - 1;
+		_eventIndex.maxIndex = _setFoot.imgEvent.find('li').length - 1;
+		if (_eventIndex.maxIndex == 1) {
+			_eventIndex.nowIndex = Math.round(Math.random());
+		}
+		
+		if (_eventIndex.nowIndex == 1) {
+			var $temp = _setFoot.imgEvent.find('li').first().clone();
+			_setFoot.ulEvent.append($temp);
+			_setFoot.imgEvent.find('li').first().remove();
+		}
+		
+		// 이벤트 이미지 자동 넘김
+		_eventInterval = setInterval(function() {
+			rightMoveEventImg();
+		}, 10000);
+		
+		// 이벤트 배너 클릭
+		_setFoot.imgEvent.find('li').click(function(){
+			var url = $(this).data('page_url');
+			
+			if(url == 'meal_ticket'){
+				movePage('mXXX3', null, null);
+			}else if(url == 'give_gift'){
+				movePage('mXXX5', null, 'null');
+			}else if(url == 'invite_event'){
+				movePage('mXXX4', null, 'blbd_0003_01');
+			}
+		});
+	}
+	
+	//왼쪽 메뉴 수정 아이콘
+	$("#userGrpList .btn_mygroup").live("click", function(){
+		//$(this).parent().parent().find(".mygroup_layer").fadeIn();
+		
+		if ($('.inner_mygroup_layer').is(':visible')) {
+			$('.inner_mygroup_layer').hide();
+		}
+		
+		$(this).parent().next().attr('val-grpcd', $(this).siblings('a').attr('val-grpcd'));
+		$(this).parent().next().attr('val-grpnm', $(this).siblings('a').attr('val-grpnm'));
+		$(this).parent().next().attr('val-grpicon', $(this).siblings('a').attr('val-grpicon'));
+		$(this).parent().next().css("top", $(this).offset().top);
+		$(this).parent().next().css("left", "195px");
+		$(this).parent().next().show();
+	});
+	$(document).on("click", "html", function(e){
+		var _target = $(e.target);
+		if (!_target.hasClass('btn_mygroup')) {
+			$(".inner_mygroup_layer").fadeOut();
+		}
+	});
+	/*$(".inner_mygroup_layer").live("mouseleave", function(){
+		$(this).fadeOut();
+	});*/
+	
+	//그룹 선택시
+	$("#userGrpList li a").live("click", function(){
+		
+		var grpcd = "";
+
+		//그룹명 수정에서 v,x 버튼 눌렀을 경우는 실행안되게...
+		if($(this).parent().parent().hasClass('new_group') || $(this).parent().parent().hasClass('mod_group') || $('.inner_mygroup_layer').is(':visible') == true){
+			return; 
+		}
+		_searchList.setTrcoCmnm("");
+		leftMenuAllOff();
+		//$(this).addClass("active");
+
+		if($(this).attr("val-grpcd") == "S"){ //매출 조회
+			category = "sales";
+			grpcd = "S";
+			_searchList.setInqyDsnc("2");
+			_searchList.setGrpCd(grpcd);
+		}else if($(this).attr("val-grpcd") == "B"){ //매입 조회시
+			category = "buy";
+			grpcd = "B";
+			_searchList.setInqyDsnc("2");
+			_searchList.setGrpCd(grpcd);
+		}else if($(this).attr("val-grpcd") == "F"){ //금융 조회시
+			category = "fnc";
+			grpcd = "F";
+			_searchList.setInqyDsnc("2");
+			_searchList.setGrpCd(grpcd);
+		}else if($(this).attr("val-grpcd") == "E"){ //기타 조회시
+			category = "etc";
+			grpcd = "E";
+			_searchList.setInqyDsnc("2");
+			_searchList.setGrpCd(grpcd);
+		}else{ // 기타 사용자 조회 및 전체 조회시
+			if(null2void($(this).attr("val-grpcd"),"") == ""){
+				category = "";
+				_searchList.setInqyDsnc("1");
+				_searchList.setGrpCd("");
+			}else{
+				category = "usg";
+				grpcd = $(this).attr("val-grpcd");
+				_searchList.setInqyDsnc("3");
+				_searchList.setGrpCd(grpcd);
+			}
+		}
+		_searchList.setOrderColor("");	//범주 초기화
+		if(location.pathname != "/trco_m001_01.act"){
+			
+			if(location.pathname.indexOf("trgm_m00") > -1){
+				//---------------------------
+				$.cookie("use_search_option", "Y", { expires: 1  , path :"/" });
+				$.cookie("search_option", encodeURIComponent(JSON.stringify(_searchList.getSearchJson())), { expires: 1  , path :"/" });
+				
+				leftMenuAllOff();
+				
+				var reqDatas   = [];
+				var reqData = {};
+				reqData.APP_ID     = "";
+				reqData.MENU_ID    = "m1100";
+				reqData.MENU_TITLE = "거래처조회";
+				reqData.MENU_PARAM = {}
+				reqDatas.push(reqData);
+				cs.web_function.SERP30_SVC_P010(reqDatas); //cs메뉴이동
+				//---------------------------
+			}else{
+				$("#grp_cd").val(grpcd);
+				$("#cate_gory").val(category);
+				cf_submit(document.subfrm,"/trco_m001_01.act");
+			}
+		}else{
+			drawTrcoList();				//거래처 목록 표시
+			getUserGrpList();		    //그룹지정 > 사용자그룹
+			drawUserGrpList();		//사용자그룹 목록 표시
+		}
+	});
+	
+	
+	//left메뉴 휴지통
+	$("#leftTrcoDelBtn").live("click", function () {
+		_searchList.setGrpCd(""); //초기화
+		
+		if(location.pathname != "/trco_m001_01.act"){
+			//cf_submit(document.subfrm,"/trco_m001_01.act");
+			//---------------------------
+			leftMenuAllOff();
+			_searchList.setInqyDsnc("4");	//1:전체,2:기본그룹,3:사용자그룹,4:휴지통
+			$.cookie("use_search_option", "Y", { expires: 1  , path :"/" });
+			$.cookie("search_option", encodeURIComponent(JSON.stringify(_searchList.getSearchJson())), { expires: 1  , path :"/" });
+			var reqDatas   = [];
+			var reqData = {};
+			reqData.APP_ID     = "";
+			reqData.MENU_ID    = "m1100";
+			reqData.MENU_TITLE = "거래처조회";
+			reqData.MENU_PARAM = {}
+			reqDatas.push(reqData);
+			cs.web_function.SERP30_SVC_P010(reqDatas); //cs메뉴이동
+			//---------------------------
+		}else{
+			searchBasket();
+		}
+	});
+
+
+
+	//환경설정 아이콘 클릭 시 옵션 드롭다운 (그룹추가, 휴지통) 2021-08-13
+	$('.left_btn_set').live('click', function() {
+		if ($('.left_btn_set_layer').css('display') == "none") {
+			$('.left_btn_set_layer').show();
+			//alert("opening");
+		}
+		else {
+			$('.left_btn_set_layer').fadeOut();
+			//alert("closing");
+		}
+	});
+	
+	//거래처조회(더보기 - 휴지통 이용내역) 버튼 2023-07-18
+	$('#trcoSetBtn').live('click', function() {
+		$(this).next().toggle();
+	});
+	
+	//클릭 후 마우스 떠나면 레이어 닫기
+	$('.left_btn_set_layer').live('mouseleave', function() {
+		if ($('.left_btn_set_layer').is(':visible')) {
+			$(".left_btn_set_layer").fadeOut();
+		}
+	});
+
+	//환경설정 외 클릭 시 옵션 레이어 닫기 2021-08-13
+	$(document).on("click", "html", function(e){
+		if (!$(e.target).is("#trcoSetBtn")) {
+			if ($('.left_btn_set_layer').css('display') == "block") {
+				$('.left_btn_set_layer').hide();
+			}
+		}
+	});
+	
+	//휴지통 클릭 시 팝업창 열기 2021-08-13
+	$("#delTrcoBtn").live("click", function() {
+		if (_ACS_DVC == "WEB") {
+			common.app.jexNewWin2("/trco_m001_04.act", "DELTRCO", 800, 537, {}); 
+		} else {
+			common.app.jexNewWin2("/trco_m001_04.act", "DELTRCO", 800, 531, {}); 
+		} 	
+	});
+
+	//그룹등록 입력창 표시
+	$("#addGroupBtn").live("click", function() {
+		
+		$('.left_btn_set_layer').hide();
+		
+		//그룹명 변경창이 있으면 닫기
+		$(".li_mygroup .new_group").each(function(){
+			if ($('.new_group').length != 1) {
+				$(this).parent().remove();
+			}
+		});
+		$(".new_group #GRP_NM").val("");
+		$(".new_group").slideDown(200);
+		$(".new_group #GRP_NM").css('width', '112px');
+		$(".new_group #GRP_NM").focus();
+	});
+
+	//그룹등록 입력창 숨기기
+//	$("#new_group_cancel").live("click", function() {
+//		$(".new_group").slideUp(200);
+//	});
+//	$(".new_group #GRP_NM").live("keypress", function(e){
+//		if(e.which==13) $("#new_group_save").click();
+//	});
+
+	//그룹등록 처리
+//	$("#new_group_save").live("click", function() {
+//		var objGrpNm = $("#GRP_NM");
+//		if($(objGrpNm).val() == ""){
+//			$(objGrpNm).focus();
+//			malert("WE0034");
+//			return;
+//		}
+//		if(chkStrLength($(objGrpNm).val()) > 100 ){
+//			$(objGrpNm).focus();
+//			malert("WE0035")
+//			//parent.showPrintInfoMsg("WE0035");
+//			return;
+//		}
+//
+//		$(".new_group").hide();
+//
+//		var jexAjax = jex.createAjaxUtil("trco_0005_05_c001");
+//		jexAjax.set("GRP_NM",$(objGrpNm).val());
+//		jexAjax.set("GRP_ICON","6_1");
+//		jexAjax.execute(function(dat) {
+//			//showPrintInfoMsg("WM0002");
+//			drawUserGrpList();
+//			getUserGrpList();
+//			if(typeof drawOriginTrcoInfo !== "undefined"){
+//				drawOriginTrcoInfo();
+//			}
+//		});
+//	});
+
+	//그룹명 변경입력창 닫기
+//	$(".mod_group .mod_cancel").live("click" , function(){
+//		$("#userGrpList .li_mygroup").each(function(){
+//			$(this).show(); //그룹명 변경에 의해 숨김처리된 그룹항목은 표시처리
+//		});
+//		$(this).closest('.li_mygroup').remove();
+//	});
+//	$(".mod_group input").live("keypress", function(e){
+//		if(e.which==13) $(".mod_group .mod_save").click();
+//	});
+//
+	// 경리나라 6.1
+	//그룹명 변경처리
+//	$(".mod_group .mod_save").live("click" , function(){
+	$("#group_layer label.modify .btn_addgp").live("click" , function(){
+//		var objGrpNm = $(this).closest('.mod_group').find('input');
+		var objGrpNm = $(this).closest('.ipt_gp').find('input');
+		
+		if($(objGrpNm).val() == ""){
+			$(objGrpNm).focus();
+			malert('WE0034');
+			//parent.showPrintInfoMsg("WE0034");
+			return;
+		}
+		if(chkStrLength($(objGrpNm).val()) > 100 ){
+			$(objGrpNm).focus();
+			malert('WE0035')
+			//parent.showPrintInfoMsg("WE0035");
+			return;
+		}
+		if (isMembGrp == "N") {
+			var jexAjax = jex.createAjaxUtil("trco_0005_06_u001");
+			jexAjax.set("GRP_CD", _tmpCurGrpCd);
+			jexAjax.set("GRP_ICON", "6_1");
+			jexAjax.set("GRP_NM", $(objGrpNm).val());
+			jexAjax.execute(function (dat) {
+				common.app.success("저장되었습니다.");
+				$(objGrpNm).closest('.li_mygroup').remove();
+				drawUserGrpList();
+				getUserGrpList();
+
+				// 변경 후, 그룹 필터 재조회
+				$("#order_group_li").html("<li><strong class=\"filter_tit\">거래처 그룹</strong></li><li><label><input type=\"radio\" name=\"order_group\" val-grpcd=\"\" val-grpnm=\"전체 그룹\"  style=\"margin-top:-2px;\" checked>&nbsp;전체</label></li>");
+				callTrcoGrp();
+			});
+		} else {
+			var jexAjax = jex.createAjaxUtil("memb_m001_01_u004");
+			jexAjax.set("GRP_CD", _tmpCurGrpCd);
+			jexAjax.set("GRP_NM", $(objGrpNm).val());
+			jexAjax.execute(function (dat) {
+				if (dat.RSLT_CD == "0000") {
+					common.app.success("저장되었습니다.");
+					$(objGrpNm).closest('.li_mygroup').remove();
+					_searchList.setSrchWd($("#search_txt").val());
+					_searchList.setPageNo(1);
+					_searchList.setInqyDsnc("1"); // 전체
+					_searchList.setGrpCd("");
+					$('#order_group_nm').html('전체');
+					membUserGrpList();
+					drawMembList();
+				} else {
+					common.app.warning(RSLT_MSG);
+				}
+			});
+		}
+	});
+	
+	//페이지 사이즈 조절
+	$(window).resize(function(){
+		fn_window_resize();
+    });
+
+	//그룹아이콘변경 레이어팝업창 닫기(X버튼)
+	$("#layer_popup_wrapIcon a:eq(0) ").live( "click", function() {
+		$("#layer_popup_wrapIcon").fadeOut();
+	});
+	//그룹아이콘변경 레이어팝업창 닫기(취소버튼)
+	$("#layer_popup_wrapIcon a:eq(2) ").live( "click", function() {
+		$("#layer_popup_wrapIcon").fadeOut();
+	});
+	//그룹아이콘변경 색상선택
+	$("#layer_popup_wrapIcon .color_select_wrap ul li ").live( "click", function() {
+		var _this = $(this);
+		$(".color_select_wrap ul li").each(function(){
+			$(this).removeClass("on");
+		});
+		_this.addClass("on");
+	});
+	//그룹아이콘변경 아이콘선택
+	$("#layer_popup_wrapIcon .icon_select_wrap ul li ").live("click", function() {
+		var _this = $(this);
+		$(".icon_select_wrap ul li").each(function(){
+			$(this).removeClass("on");
+		});
+		_this.addClass("on");
+	});
+	
+	// 경리나라 6.1
+	//그룹아이콘변경 처리
+//	$("#layer_popup_wrapIcon a:eq(1) ").live("click", function() {
+//		var grpColorNo = $(".color_select_wrap ul li").index($(".color_select_wrap ul li[class=on]"));
+//		var grpIconNo = $(".icon_select_wrap ul li").index($(".icon_select_wrap ul li[class=on]"));
+//		var grpIcon = (grpIconNo+1) + "_" + (grpColorNo+1);
+//
+//		var jexAjax = jex.createAjaxUtil("trco_0005_06_u001");
+//		jexAjax.set("GRP_CD", _tmpCurGrpCd);
+//		jexAjax.set("GRP_ICON", grpIcon);
+//		jexAjax.set("GRP_NM", _tmpCurGrpNm);
+//		jexAjax.execute(function(dat) {
+//			$("#layer_popup_wrapIcon").fadeOut();
+//			drawUserGrpList();
+//		});
+//	});
+
+	//그룹비우기 레이어팝업창 닫기(X버튼)
+	$("#layer_popup_wrapGrpEmp a:eq(0) ").live( "click", function() {
+		$("#layer_popup_wrapGrpEmp").fadeOut();
+	});
+	//그룹비우기 레이어팝업창 닫기(취소버튼)
+	$("#layer_popup_wrapGrpEmp a:eq(2) ").live( "click", function() {
+		$("#layer_popup_wrapGrpEmp").fadeOut();
+	});
+	//그룹비우기 처리
+	$("#layer_popup_wrapGrpEmp a:eq(1) ").live( "click", function() {
+		var jexAjax = jex.createAjaxUtil("trco_0005_07_d001");
+		jexAjax.set("GRP_CD", _tmpCurGrpCd);
+
+		jexAjax.execute(function(dat) {
+			// 경리나라 6.1
+//			malert("WM0015");
+			$("#layer_popup_wrapGrpEmp").fadeOut();
+			common.app.success("그룹이 비워졌습니다.");
+			//if(_searchList.getGrpCd() == _tmpCurGrpCd){
+			//	drawTrcoList();
+			//}
+			drawUserGrpList();
+			drawTrcoList();
+		});
+	});
+
+	//그룹비우기 레이어팝업창 닫기(X버튼)
+	$("#layer_popup_wrapGrpMemb a:eq(0) ").live( "click", function() {
+		$("#layer_popup_wrapGrpMemb").fadeOut();
+	});
+	//그룹비우기 레이어팝업창 닫기(취소버튼)
+	$("#layer_popup_wrapGrpMemb a:eq(2) ").live( "click", function() {
+		$("#layer_popup_wrapGrpMemb").fadeOut();
+	});
+	//그룹비우기 처리
+	$("#layer_popup_wrapGrpMemb a:eq(1) ").live( "click", function() {
+		var jexAjax = jex.createAjaxUtil("memb_m001_01_u005");
+		jexAjax.set("GRP_CD", _tmpCurGrpCd);
+		jexAjax.execute(function(dat) {
+			$("#layer_popup_wrapGrpMemb").fadeOut();
+			common.app.success("그룹이 비워졌습니다.");
+			_searchList.setSrchWd($("#search_txt").val());
+			_searchList.setPageNo(1);
+			_searchList.setInqyDsnc("1"); // 전체
+			_searchList.setGrpCd("");
+			$('#order_group_nm').html('전체');
+			membUserGrpList();
+			drawMembList();
+		});
+	});
+
+	//그룹삭제 레이어창 닫기(X버튼)
+	$("#layer_popup_wrapGrpDel a:eq(0) ").live( "click", function() {
+		$("#layer_popup_wrapGrpDel").fadeOut();
+	});
+	//그룹삭제 레이어창 닫기(취소버튼)
+	$("#layer_popup_wrapGrpDel a:eq(2) ").live("click", function() {
+		$("#layer_popup_wrapGrpDel").fadeOut();
+	});
+	//그룹삭제 처리
+	$("#layer_popup_wrapGrpDel a:eq(1) ").live("click", function() {
+		if (isMembGrp == "N") {
+			var jexAjax = jex.createAjaxUtil("trco_0005_08_d001");
+			jexAjax.set("GRP_CD", _tmpCurGrpCd);
+			jexAjax.execute(function (dat) {
+				if (dat.CNT == "1") {
+					malert("WE0101");
+					$("#layer_popup_wrapGrpDel").fadeOut();
+				} else {
+					// 경리나라 6.1
+//				malert("WM0004");
+					$("#layer_popup_wrapGrpDel").hide();
+					common.app.success("삭제되었습니다.");
+					//현재선택된 그룹을 삭제하거나 그룹이 하나였을때 삭제한 경우라면 전체로
+					if ($("#userGrpList .li_mygroup").length == 1) {
+						$("#contentTitle h1").html("거래처");
+						category = "";
+						_searchList.setInqyDsnc("1");
+						_searchList.setGrpCd("");
+					}
+					// 삭제 후, 그룹 필터 재조회
+					$("#order_group_li").html("<li><strong class=\"filter_tit\">거래처 그룹</strong></li><li><label><input type=\"radio\" name=\"order_group\" val-grpcd=\"\" val-grpnm=\"전체 그룹\"  style=\"margin-top:-2px;\" checked>&nbsp;전체</label></li>");
+					callTrcoGrp();
+
+					drawUserGrpList();
+					getUserGrpList();
+					/* 그룹 삭제 후 전체 거래처 조회 */
+					if (_tmpCurGrpCd == _searchList.getGrpCd()) {
+						category = "";
+						_searchList.setInqyDsnc("1");
+						_searchList.setGrpCd("");
+						drawUserGrpList();
+						getUserGrpList();
+						drawTrcoList();
+					}
+					/* //그룹 삭제 후 전체 거래처 조회 */
+					if (typeof drawOriginTrcoInfo !== "undefined") {
+						drawOriginTrcoInfo();
+					}
+				}
+			});
+			$("#bscGrpList dt").each(function () {
+				$(this).addClass("on");
+			});
+		} else {
+			var jexAjax = jex.createAjaxUtil("memb_m001_01_u006");
+			jexAjax.set("GRP_CD", _tmpCurGrpCd);
+			jexAjax.execute(function(dat) {
+				$("#layer_popup_wrapGrpDel").fadeOut();
+				common.app.success("삭제되었습니다.");
+				_searchList.setSrchWd($("#search_txt").val());
+				_searchList.setPageNo(1);
+				_searchList.setInqyDsnc("1"); // 전체
+				_searchList.setGrpCd("");
+				$('#order_group_nm').html('전체');
+				membUserGrpList();
+				drawMembList();
+			});
+		}
+	});
+
+	// 경리나라 6.1
+	$('.ly_edit_gp ul li').live('click', function(){
+		var idx = $(this).index();
+		_tmpCurGrpCd = $(this).closest('.bt_edits_gp').siblings("a").attr('val-grpcd');
+		_tmpCurGrpNm = $(this).closest('.bt_edits_gp').siblings("a").attr('val-grpnm');
+		
+		fn_window_resize();
+
+		//그룹명 변경
+		if(idx == 0){
+			var html = '';
+			$(".slbx_cont > label").removeClass("modify");
+			$(this).closest("label").addClass("modify");
+
+		}
+		//그룹 비우기
+		else if(idx == 1){
+			if (isMembGrp == "N") {
+				$("#layer_popup_wrapGrpEmp").find("strong").html("'"+_tmpCurGrpNm+"'");
+				$("#layer_popup_wrapGrpEmp").fadeIn();
+				drawTrcoList();
+			} else {
+				$("#layer_popup_wrapGrpMemb").find("strong").html("'"+_tmpCurGrpNm+"'");
+				$("#layer_popup_wrapGrpMemb").fadeIn();
+				drawMembList();
+			}
+		}
+		//그룹 삭제
+		else if(idx == 2){
+			$("#layer_popup_wrapGrpDel").find("strong").html("'"+_tmpCurGrpNm+"'");
+			$("#layer_popup_wrapGrpDel").fadeIn();
+		}
+	});
+	
+	$('#trgm_menu, #ordr_menu, #cafe_menu').click(function() {
+		var idName = $(this).attr('id');1
+		
+		if ($(this).next().is(':visible')) {
+			$(this).next().hide();
+			localStorage.setItem(idName+"_SHOW_YN", "N");
+		} else {
+			$(this).next().show();
+			localStorage.setItem(idName+"_SHOW_YN", "Y");
+		}
+	});
+});
+
+
+var _searchList = new function(){
+	var PAGE_PER_CNT = 20;	//한페이지당 표시 목록 수
+	var PAGE_NO = 1;		//현재페이지 번호
+	var INQY_DSNC = "1";	//1:전체,2:기본그룹,3:사용자그룹,4:휴지통
+	var GRP_CD = "";		//그룹검색
+	var TRCO_CMNM = "";		//거래처명 검색
+	var SRCH_WD = "";				//회원관리 검색어
+	var TOTL_PAGE_NCNT = 1; //총페이지수
+	var ORDER_BY	= "ACVT_DTTM";	//정렬방식
+	var ORDER_COLOR	= "";	//정렬방식
+	var LNP_WAY	= "D";		//정렬방식 A:오름차순,D:내림차순
+    var ACS_DVC = '';       // check if it is web version
+	this.setPagePerCnt 		= function(pagepercnt){	PAGE_PER_CNT = pagepercnt; };
+	this.getPagePerCnt		= function(){ return PAGE_PER_CNT; };
+	this.setPageNo			= function(pageno){	PAGE_NO = pageno; };
+	this.getPageNo			= function(){ return parseInt(PAGE_NO);	};
+	this.setTotlPageNcnt	= function(totlpagencnt){ TOTL_PAGE_NCNT = totlpagencnt; };
+	this.getTotlPageNcnt	= function(){ return parseInt(TOTL_PAGE_NCNT); };	
+	this.setInqyDsnc		= function(inqydsnc){ INQY_DSNC = inqydsnc;	};
+	this.getInqyDsnc		= function(){ return INQY_DSNC; };
+	this.setGrpCd			= function(grpcd){ GRP_CD = grpcd; };
+	this.getGrpCd			= function(){ return GRP_CD; };
+	this.setTrcoCmnm		= function(trcocmnm){ TRCO_CMNM = trcocmnm;	};
+	this.getTrcoCmnm		= function(){ return TRCO_CMNM;	};
+	this.setSrchWd			= function(srchwd){ SRCH_WD = srchwd;	};
+	this.getSrchWd			= function(){ return SRCH_WD;	};
+	this.setOrderBy			= function(ord){ ORDER_BY = ord;}
+	this.getOrderBy			= function(){ return ORDER_BY;}
+	this.setOrderColor		= function(ord){ ORDER_COLOR = ord;}
+	this.getOrderColor		= function(){ return ORDER_COLOR;}
+	this.setLnpWay			= function(ord){ LNP_WAY = ord;}
+	this.getLnpWay			= function(){ return LNP_WAY;}
+    this.setAcsDvc          = function (ord) { ACS_DVC = ord };
+    this.getAcsDvc          = function () {return ACS_DVC; };
+	this.setSearchJson	= function(queryJson){
+		PAGE_PER_CNT	= queryJson.PAGE_PER_CNT;
+		PAGE_NO			= queryJson.PAGE_NO;
+		INQY_DSNC		= queryJson.INQY_DSNC;
+		GRP_CD			= queryJson.GRP_CD;
+		TRCO_CMNM		= queryJson.TRCO_CMNM;
+		SRCH_WD			= queryJson.SRCH_WD;
+		TOTL_PAGE_NCNT	= queryJson.TOTL_PAGE_NCNT;
+		ORDER_BY		= queryJson.ORDER_BY;
+		ORDER_COLOR		= queryJson.ORDER_COLOR;
+		LNP_WAY			= queryJson.LNP_WAY;
+        ACS_DVC         = queryJson.ACS_DVC;
+	};
+	this.getSearchJson =  function(){
+		var ret = {};
+		ret.PAGE_PER_CNT	= this.getPagePerCnt();	//한페이지당 표시 목록 수
+		ret.PAGE_NO			= this.getPageNo();		//현재페이지 번호
+		ret.INQY_DSNC		= this.getInqyDsnc();	//1:전체,2:기본그룹,3:사용자그룹,4:휴지통
+		ret.GRP_CD			= this.getGrpCd();		//그룹검색
+		ret.TRCO_CMNM		= this.getTrcoCmnm();	//거래처명 검색
+		ret.SRCH_WD			= this.getSrchWd();		//회원관리 검색어
+		ret.TOTL_PAGE_NCNT	= this.getTotlPageNcnt(); //총페이지수
+		ret.ORDER_BY		= this.getOrderBy();	//정렬방식
+		ret.ORDER_COLOR		= this.getOrderColor();	//정렬방식
+		ret.LNP_WAY			= this.getLnpWay();  	//정렬방식 A:오름차순,D:내림차순
+        ret.ACS_DVC			= this.getAcsDvc();     // check if it web version
+		return ret;
+	};
+	this.getSearchString		= function(){
+		return "PAGE_PER_CNT="+PAGE_PER_CNT+"&PAGE_NO="+PAGE_NO+"&INQY_DSNC="+INQY_DSNC+"&GRP_CD="+GRP_CD+"&TRCO_CMNM="+TRCO_CMNM+"&SRCH_WD="+SRCH_WD;
+	};
+};
+
+function movePage(pageCode, searchDate, pageName) {
+	var reqData = {};
+	var reqDatas   = [];
+	var input      = {};
+	
+	reqData.APP_ID     = '';
+	reqData.MENU_ID    = pageCode;
+//	reqData.MENU_TITLE = '매출(세금계산서)';
+	
+	if(pageCode == 'mXXX3'){
+		if(pageName == undefined){
+			pageName = 'tkst_0003_01';
+		}
+		reqData.T_MENU_CD = pageCode;
+		reqData.MENU_URL = document.location.href.substring(0, document.location.href.lastIndexOf('/')) + "/" + pageName + ".act";
+		input.TRAN_NO  = 'SERP30_SVC_P032';
+	
+	}else if(pageCode == 'mXXX4'){
+		reqData.T_MENU_CD = pageCode;
+		reqData.MENU_URL = "/"+pageName + ".act?RECOMMEND_POP=1";
+		input.TRAN_NO  = 'SERP30_SVC_P032';
+	}else if(pageCode == 'mXXX5'){
+		reqData.T_MENU_CD = pageCode;
+		input.TRAN_NO  = 'SERP30_SVC_P032';
+	}
+	
+	console.log(reqData);
+	reqDatas.push(reqData);
+	
+	input.USER_ID  = _USER_ID;
+	input.WOPL_NO  = _bsnnNo; 
+	input.DATETIME = moment().format('YYYYMMDDHHmmSS');
+	input.REQ_DATA = reqDatas;
+	
+	var JSonInp = JSON.stringify(input);
+	
+	if(typeof(window.external) != 'undefined') {
+		var result;
+		try{
+			result = window.external.RequestEmWebApi(JSonInp);
+			result = JSON.parse(result);
+			console.log(result);
+		}catch(e) {
+			result = {RSLT_CD:'9999',RSLT_MSG:e};
+		}
+		
+		if(result.RSLT_CD != '0000') {
+			alert(result.RSLT_MSG);
+		}
+	}
+}
+
+function rightMoveEventImg() {
+	if(_eventIndex.maxIndex == 0) return;
+			
+	if(_eventIndex.maxIndex > _eventIndex.nowIndex){
+		_setFoot.imgEvent.animate({scrollLeft : _setFoot.imgEvent.width() * ++_eventIndex.nowIndex}, 300);
+
+	}else{
+		var $temp = _setFoot.imgEvent.find('li').first().clone();
+		_setFoot.ulEvent.append($temp);
+		_setFoot.imgEvent.animate({scrollLeft : _setFoot.imgEvent.width() * ++_eventIndex.nowIndex}
+							    , 300
+							    , function(){
+								    _setFoot.imgEvent.scrollLeft(0);
+								    _eventIndex.nowIndex = 0;
+								    $temp.remove();
+							    });
+	}
+}
+	
+function fn_window_resize(){
+	var popTop = ($(window).height()-$('#layer_popup_wrapGrpEmp').height())/2;
+	var popLeft = ($('.content_wrap').width()-$('#layer_popup_wrapGrpEmp').width())/2+210;
+	$('#layer_popup_wrapGrpEmp').css("top",popTop);
+	$('#layer_popup_wrapGrpEmp').css("left",popLeft);
+	var popTop2 = ($(window).height()-$('#layer_popup_wrapIcon').height())/2;
+	var popLeft2 = ($('.content_wrap').width()-$('#layer_popup_wrapIcon').width())/2+210;
+	$('#layer_popup_wrapIcon').css("top",popTop2);
+	$('#layer_popup_wrapIcon').css("left",popLeft2);
+	var popTop3 = ($(window).height()-$('#layer_popup_wrapGrpDel').height())/2;
+	var popLeft3 = ($('.content_wrap').width()-$('#layer_popup_wrapGrpDel').width())/2+210;
+	$('#layer_popup_wrapGrpDel').css("top",popTop3);
+	$('#layer_popup_wrapGrpDel').css("left",popLeft3);
+	var popTop4 = ($(window).height()-$('#layer_popup_wrapGrpMemb').height())/2;
+	var popLeft4 = ($('.content_wrap').width()-$('#layer_popup_wrapGrpMemb').width())/2+210;
+	$('#layer_popup_wrapGrpMemb').css("top",popTop4);
+	$('#layer_popup_wrapGrpMemb').css("left",popLeft4);
+	//선물하기 APP
+	/*if ($('.snb').height() <= $('.snb_box').height() + $('.left_banner2').height()) {
+		$('.left_banner2').removeClass('btmFix');
+	} else {
+		$('.left_banner2').addClass('btmFix');
+	}*/
+}
+
+/* 조회 테이블 TH, TD 동시 스크롤 컨트롤 */
+function scrollAuto($listClassNm) {
+    $listClassNm.scrollTop(1);
+    if($listClassNm.scrollTop() == 1){
+        $listClassNm.scrollTop(0);
+    }
+    $listClassNm.unbind("scroll").scroll(function(){
+        $(".list_scroll_top").scrollLeft($(this).scrollLeft());
+    });
+
+    if($listClassNm.hasHorizontalScrollBar() && $listClassNm.hasScrollBar()){ // 가로 & 세로
+        $listClassNm.attr("style", "height:509px;min-width:100%;overflow-y:auto;overflow-x:auto;max-height:inherit");
+        $(".list_scroll_top").addClass("pdr");
+    }else if ($listClassNm.hasScrollBar()){ // 세로만
+        $(".list_scroll_top").addClass("pdr");
+    }else if(!$listClassNm.hasHorizontalScrollBar() && !$listClassNm.hasScrollBar()){
+        $listClassNm.attr("style", "height:509px;min-width:100%;overflow-y:auto;overflow-x:auto;");
+        $(".list_scroll_top").removeClass("pdr");
+    }
+}
+/* 틀 고정 된 조회 테이블 TH, TD 동시 스크롤 컨트롤 */
+function fixScrollAuto($listClassNm) {
+    $listClassNm.scrollTop(1);
+    if($listClassNm.scrollTop() == 1){
+        $listClassNm.scrollTop(0);
+    }
+    $listClassNm.unbind("scroll").scroll(function(){
+        $(".fix_table_head .fix_mid").scrollLeft($(this).scrollLeft());
+        $(".fix_table_body .fix_mid").scrollLeft($(this).scrollLeft());
+    });
+
+    /*if($listClassNm.hasHorizontalScrollBar() && $listClassNm.hasScrollBar()){ // 가로 & 세로
+		console.log("a");
+        $listClassNm.attr("style", "height:509px;min-width:100%;overflow-y:auto;overflow-x:auto;max-height:inherit");
+        $(".fix_table_head .fix_mid").addClass("pdr");
+        $(".fix_table_body .fix_mid").addClass("pdr");
+    }else if ($listClassNm.hasScrollBar()){ // 세로만
+        console.log("b");
+        $(".fix_table_head .fix_mid").addClass("pdr");
+        $(".fix_table_body .fix_mid").addClass("pdr");
+    }else if(!$listClassNm.hasHorizontalScrollBar() && !$listClassNm.hasScrollBar()){
+        console.log("c");
+        $listClassNm.attr("style", "height:509px;min-width:100%;overflow-y:auto;overflow-x:auto;");
+        $(".fix_table_head .fix_mid").removeClass("pdr");
+        $(".fix_table_body .fix_mid").removeClass("pdr");
+    }*/
+}
+
+function fixScrollRightAuto($listClassNm) {
+    $listClassNm.scrollTop(1);
+    if($listClassNm.scrollTop() == 1){
+        $listClassNm.scrollTop(0);
+    }
+    $listClassNm.unbind("scroll").scroll(function(){
+        $(".fix_table_head .fixr_mid").scrollLeft($(this).scrollLeft());
+        $(".fix_table_body .fixr_mid").scrollLeft($(this).scrollLeft());
+    });
+
+    /*if($listClassNm.hasHorizontalScrollBar() && $listClassNm.hasScrollBar()){ // 가로 & 세로
+		console.log("a");
+        $listClassNm.attr("style", "height:509px;min-width:100%;overflow-y:auto;overflow-x:auto;max-height:inherit");
+        $(".fix_table_head .fix_mid").addClass("pdr");
+        $(".fix_table_body .fix_mid").addClass("pdr");
+    }else if ($listClassNm.hasScrollBar()){ // 세로만
+        console.log("b");
+        $(".fix_table_head .fix_mid").addClass("pdr");
+        $(".fix_table_body .fix_mid").addClass("pdr");
+    }else if(!$listClassNm.hasHorizontalScrollBar() && !$listClassNm.hasScrollBar()){
+        console.log("c");
+        $listClassNm.attr("style", "height:509px;min-width:100%;overflow-y:auto;overflow-x:auto;");
+        $(".fix_table_head .fix_mid").removeClass("pdr");
+        $(".fix_table_body .fix_mid").removeClass("pdr");
+    }*/
+}
+//사용자그룹목록 표시
+function drawUserGrpList_before(){
+	if(category !== "" || _searchList.getGrpCd() != ""){
+		$("#showCtmer dd").removeClass("on");
+	}
+
+	$("#allCheck").attr("checked",false);
+	var jexAjax = jex.createAjaxUtil("trco_0005_02_l001");
+	jexAjax.setAsync(false);
+	jexAjax.execute(function(dat) {
+
+		var html = "";
+
+		var dtSaleClass = "";
+		var dtBuyClass 	= "";
+		var dtEtcClass 	= "";
+		var dtFncClass	= "";
+		if(category == "sales" || _searchList.getGrpCd() == "S"){
+			dtSaleClass = "on";
+			dtBuyClass = "";
+			dtEtcClass = "";
+			dtFncClass = "";
+		}else if(category == "buy" || _searchList.getGrpCd() == "B"){
+			dtSaleClass = "";
+			dtBuyClass = "on";
+			dtEtcClass = "";
+			dtFncClass = "";
+		}else if(category == "fnc" || _searchList.getGrpCd() == "F"){
+			dtSaleClass = "";
+			dtBuyClass = "";
+			dtEtcClass = "";
+			dtFncClass = "on";
+		}else if(category == "etc" || _searchList.getGrpCd() == "E"){
+			dtSaleClass = "";
+			dtBuyClass = "";
+			dtEtcClass = "on";
+			dtFncClass = "";
+		}
+
+		//거래처수 표시
+		$("#ALL_TRCO_CNT").html(dat.ALL_TRCO_CNT); //전체거래처수
+		$("#DEL_TRCO_CNT").html(dat.DEL_TRCO_CNT); //휴지통수
+
+		html += "\n  <dt class=\"on\">그룹<a class=\"btn_set\" title=\"환경설정\"></a></dt>";
+		/*html += "\n  <div class=\"set_ly\" style=\"top:-2px;left:160px;display:none;\">";
+		html += "\n		 <ul><li><a href=\"#none\" id=\"addGroupBtn\"><span class=\"icon fold\"></span>그룹추가</a></li>";
+		html += "\n      <li><a href=\"#none\" id=\"delTrcoBtn\"><span class=\"icon del\"></span>휴지통</a></li></ul>";
+		html += "\n  </div></dt>";*/
+		
+		html += "\n  <dd class=\""+dtSaleClass+"\"><span class=\"bg\"></span>";
+		html +=	"\n	     <a href=\"#none\" val-grpcd=\"S\"><div class=\"line\"><span class=\"icon mygroup_icon9_1\"></span>매출 <span class=\"badge2\"><strong id='AMSL_TRCO_CNT'>"+dat.AMSL_TRCO_CNT+"</strong></span></div></a>";
+		html += "\n  </dd>";
+
+		html += "\n  <dd class=\""+dtBuyClass+"\"><span class=\"bg\"></span>";
+		html += "\n	     <a href=\"#none\" val-grpcd=\"B\"><div class=\"line\"><span class=\"icon mygroup_icon10_1\"></span>매입 <span class=\"badge2\"><strong id='BNG_TRCO_CNT'>"+dat.BNG_TRCO_CNT+"</strong></span></div></a>";
+		html += "\n  </dd>";
+		
+		html += "\n  <dd class=\""+dtFncClass+"\"><span class=\"bg\"></span>";
+		html += "\n	     <a href=\"#none\" val-grpcd=\"\F\"><div class=\"line\"><span class=\"icon mygroup_icon4_1\"></span>금융 <span class=\"badge2\"><strong id='BNG_TRCO_CNT'>"+dat.FNC_TRCO_CNT+"</strong></span></div></a>";
+		html += "\n  </dd>";
+		
+		html += "\n  <dd class=\""+dtEtcClass+"\"><span class=\"bg\"></span>";
+		html += "\n	     <a href=\"#none\" val-grpcd=\"E\"><div class=\"line\"><span class=\"icon mygroup_icon4_1\"></span>기타 <span class=\"badge2\"><strong id='BNG_TRCO_CNT'>"+dat.ETC_TRCO_CNT+"</strong></span></div></a>";
+		html += "\n  </dd>";
+
+		//그룹목록 표시
+		for(var i=0; i < dat.GRP_LIST.length; i++){
+			var liClass = "";
+
+			if(/*category == "etc" &&*/ _searchList.getGrpCd() == dat.GRP_LIST[i].GRP_CD){
+				liClass = "on";
+			}
+
+			var firstDD = i==0?"first":"";
+			html += "\n <dd class=\""+liClass+"\" id='"+dat.GRP_LIST[i].GRP_CD+"'><span class=\"bg\"></span>";
+			html += "\n <div class=\"line "+firstDD+"\">";
+			html +=	"\n   <span class=\"icon mygroup_icon"+dat.GRP_LIST[i].GRP_ICON+"\"></span>";
+			html += "\n      <a href=\"#none\" val-grpcd=\""+dat.GRP_LIST[i].GRP_CD+"\" val-grpnm=\""+dat.GRP_LIST[i].GRP_NM+"\" val-grpicon=\""+dat.GRP_LIST[i].GRP_ICON+"\">";
+			html += "\n         <span title=\""+dat.GRP_LIST[i].GRP_NM+"\" style=\"width:115px;height:30px;line-height:33px;margin-top:-10px;overflow:hidden;text-overflow:ellipsis;-o-text-overflow:ellipsis;white-space:nowrap;display:block;\">"+dat.GRP_LIST[i].GRP_NM+"</span>";
+			html += "\n      </a>";
+			html += "\n   <span class=\"count2 badge2\"><strong>"+dat.GRP_LIST[i].GRP_CNT+"</strong></span>";
+			html += "\n </div>";
+			html += "\n <!-- layer -->";
+			/*html += "\n <div class=\"mygroup_layer\">";
+			html += "\n 	<div class=\"mygroup_layer_po\">";
+			html += "\n 		<span class=\"tail\"></span>";
+			html += "\n 		<ul>";
+			html += "\n 			<li>그룹명 변경</li>";
+			html += "\n 			<li>그룹 비우기</li>";
+			html += "\n 			<li>아이콘 변경</li>";
+			html += "\n 			<li>그룹 삭제</li>";
+			html += "\n 		</ul>";
+			html += "\n 	</div>";
+			html += "\n </div>";*/
+			html += "\n </dd>";
+
+		}
+
+		$("#userGrpList").html(html);		//화면 왼쪽 사용자그룹목록 표시
+		//그룹 클릭시
+		/*$("#userGrpList dd").each(function(){
+			var _this = $(this);
+			var grpcd = $(this).find("a:eq(0)").attr("val-grpcd");
+			var grpnm = $(this).find("a:eq(0)").attr("val-grpnm");
+			var grpicon = $(this).find("a:eq(0)").attr("val-grpicon");
+
+			$(this).find("ul li").each(function(idx){
+				$(this).click( function(){
+
+					_tmpCurGrpCd = grpcd;
+					_tmpCurGrpNm = grpnm;
+					_tmpCurGrpIcon = grpicon;
+
+					$(".layer_popup_wrap").each(function(){
+						$(this).hide(); //기존 레이어팝업창이 있으면 닫기
+					});
+					$("#userGrpList dd").each(function(){
+						$(this).show(); //기존에 그룹숨김항목은 표시처리
+					});
+					$("#userGrpList dd .new_group").each(function(){
+						$(this).parent().remove(); //기존에 그룹명변경 입력창 있으면 삭제하기
+					});
+					$(".new_group").hide(); //기존에 그룹추가 입력창 있으면 닫기처리
+
+					//그룹명 수정
+					if(idx == 0){
+						var sInputRenameDD = "";
+						sInputRenameDD += "\n    <!-- 그룹명변경 -->";
+						sInputRenameDD += "\n    <dd><span class=\"bg\"></span>";
+						sInputRenameDD += "\n        <div class=\"line\" style=\"display:none;\"><span class=\"icon mygroup_icon3_1\"></span>특별관리icon3 <span class=\"count2\"><em>12,500</em></span></div>";
+						sInputRenameDD += "\n        <!-- 새그룹 -->";
+						sInputRenameDD += "\n        <div class=\"new_group\">";
+						sInputRenameDD += "\n            <input type=\"text\" value=\""+_tmpCurGrpNm+"\"><a href=\"#none\"><img src=\"../img/btn/btn_new_group_ok.gif\" alt=\"확인\"></a><a href=\"#none\"><img src=\"../img/btn/btn_new_group_cnl.gif\" alt=\"취소\"></a>";
+						sInputRenameDD += "\n        </div>";
+						sInputRenameDD += "\n        <!-- //새그룹 -->";
+						sInputRenameDD += "\n    </dd>";
+						sInputRenameDD += "\n    <!-- //그룹명변경 -->";
+						$(this).parent().parent().parent().parent().after($(sInputRenameDD));
+						$(_this).hide();
+
+						$("#userGrpList dd .new_group input").focus();
+					}
+					//그룹 비우기
+					else if(idx == 1){
+						$(".layer_popup_wrap:eq(1)").find("strong").html("'"+_tmpCurGrpNm+"'");
+						$(".layer_popup_wrap:eq(1)").fadeIn();
+					}
+					//그룹 아이콘변경
+					else if(idx == 2){
+						$(".layer_popup_wrap:eq(0)").fadeIn();
+
+						var grpIconNo = _tmpCurGrpIcon.split("_")[0];
+						var grpColorNo = _tmpCurGrpIcon.split("_")[1];
+
+						$(".icon_select_wrap ul li").each(function(){
+							$(this).removeClass("on");
+						});
+						$(".color_select_wrap ul li").each(function(){
+							$(this).removeClass("on");
+						});
+						$(".icon_select_wrap ul li:eq("+(grpIconNo-1)+")").addClass("on");
+						$(".color_select_wrap ul li:eq("+(grpColorNo-1)+")").addClass("on");
+					}
+					//그룹 삭제
+					else if(idx == 3){
+						$(".layer_popup_wrap:eq(2)").find("strong").html("'"+_tmpCurGrpNm+"'");
+						$(".layer_popup_wrap:eq(2)").fadeIn();
+					}
+				});
+			});
+		});*/
+
+		/*if ($('.snb').height() <= $('.snb_box').height() + $('.banner_div').height()) {
+			$('.banner_div').removeClass('btmFix');
+		} else {
+			$('.banner_div').addClass('btmFix');
+		}*/
+	});
+	
+}
+
+//사용자그룹목록 표시
+function drawUserGrpList(){
+	if(category !== "" || _searchList.getGrpCd() != ""){
+		$(".allTrco").removeClass("active");
+	}
+
+	$("#allCheck").attr("checked",false);
+	var jexAjax = jex.createAjaxUtil("trco_0005_02_l001");
+	//jexAjax.setAsync(false);
+	jexAjax.execute(function(dat) {
+
+		var html = '';
+
+		var dtSaleClass = "";
+		var dtBuyClass 	= "";
+		var dtEtcClass 	= "";
+		var dtFncClass	= "";
+		if(category == "sales" || _searchList.getGrpCd() == "S"){
+			dtSaleClass = "active";
+			dtBuyClass = "";
+			dtEtcClass = "";
+			dtFncClass = "";
+		}else if(category == "buy" || _searchList.getGrpCd() == "B"){
+			dtSaleClass = "";
+			dtBuyClass = "active";
+			dtEtcClass = "";
+			dtFncClass = "";
+		}else if(category == "fnc" || _searchList.getGrpCd() == "F"){
+			dtSaleClass = "";
+			dtBuyClass = "";
+			dtEtcClass = "";
+			dtFncClass = "active";
+		}else if(category == "etc" || _searchList.getGrpCd() == "E"){
+			dtSaleClass = "";
+			dtBuyClass = "";
+			dtEtcClass = "active";
+			dtFncClass = "";
+		}
+
+		html += '\n	<li><a href="#" class="'+dtSaleClass+'" val-grpcd="S"><i class="ico_lnb_sales"></i><span>매출</span></a></li>';
+		html += '\n	<li><a href="#" class="'+dtBuyClass+'" val-grpcd="B"><i class="ico_lnb_purchase"></i><span>매입</span></a></li>';
+		html += '\n	<li><a href="#" class="'+dtEtcClass+'" val-grpcd="E"><i class="ico_lnb_etc"></i><span>기타</span></a></li>';
+	
+		grp_cnt["ALL"] = dat.ALL_TRCO_CNT;
+		grp_cnt["S"] = dat.AMSL_TRCO_CNT;
+		grp_cnt["B"] = dat.BNG_TRCO_CNT;
+		grp_cnt["E"] = dat.ETC_TRCO_CNT;
+
+		//그룹목록 표시
+		for(var i=0; i < dat.GRP_LIST.length; i++){
+			var liClass = "";
+
+			if(/*category == "etc" &&*/ _searchList.getGrpCd() == dat.GRP_LIST[i].GRP_CD){
+				liClass = "active";
+			}
+			
+			html += '\n <li class="li_mygroup">';
+			html += '\n		<a href="#" class="'+liClass+'" id="'+dat.GRP_LIST[i].GRP_CD+'" val-grpcd="'+dat.GRP_LIST[i].GRP_CD+'" val-grpnm="'+dat.GRP_LIST[i].GRP_NM+'" val-grpicon="'+dat.GRP_LIST[i].GRP_ICON+'">';
+			html += '\n			<i class="ico_my mygroup_icon'+dat.GRP_LIST[i].GRP_ICON+'"></i>';
+			html += '\n			<span>'+dat.GRP_LIST[i].GRP_NM+'</span>';
+			html += '\n		</a>';
+			html += '\n		<div class="lnb_mygroup_wrap">';
+			html += '\n		<a href="#" class="btn_mygroup"><span class="blind">수정</span></a>';
+			html += '\n     </div>';
+	       	html += '\n		<div class="inner_mygroup_layer" style="display:none; position:fixed; z-index: 600;">';
+	        html += '\n		    <ul class="inner_layer_list">';
+	        html += '\n		        <li><a href="#"><span>그룹명 변경</span></a></li>';
+	        html += '\n		        <li><a href="#"><span>그룹 비우기</span></a></li>';
+	        html += '\n		        <li><a href="#"><span>아이콘 변경</span></a></li>';
+	        html += '\n		        <li><a href="#"><span>그룹 삭제</span></a></li>';
+	        html += '\n		    </ul>';
+	        html += '\n		</div>';
+			html += '\n	</li>';
+			
+			grp_cnt[dat.GRP_LIST[i].GRP_CD] = dat.GRP_LIST[i].GRP_CNT;
+
+		}
+		
+		html += '\n		<li class="li_mygroup">';
+        html += '\n		<!-- 새그룹 추가 -->';
+        html += '\n		<div class="new_group_box new_group" style="display:none;">';
+        html += '\n			<div class="new_group_inner">';
+        html += '\n			<input type="text" id="GRP_NM">';
+        html += '\n			<a href="#none"><img src="../img/lnb/ico/ico_mygroup_ok.png" alt="확인" id="new_group_save" class="mCS_img_loaded"></a>';
+        html += '\n			<a href="#none"><img src="../img/lnb/ico/ico_mygroup_x.png" alt="취소" id="new_group_cancel" class="mCS_img_loaded"></a>';
+        html += '\n			</div>';
+        html += '\n		</div>';
+        html += '\n		<!-- //새그룹 추가 -->';
+        html += '\n		</li>';
+
+		$("#userGrpList").html(html);		//화면 왼쪽 사용자그룹목록 표시
+		
+		if (($('.depth1_list .active').length + $('.hometax_box .active').length) == 0) {
+			$('.allTrco').addClass('active');
+		}
+		
+		if (_ACS_DVC == "WEB") {
+			$('.left_layout .snb').css('height', 'calc(100% - 88px)');
+			$('.snb .left_banner2').css('height', '88px');
+		} else {
+			$('.left_layout .snb').css('height', 'calc(100% - 58px)');
+			$('.snb .left_banner2').css('height', '58px');
+			$('.snb .online_cs').hide();
+		}
+	});
+	
+}
+
+
+
+/**
+ * 페이징처리
+ * @param  div_id		페이징 표시할 요소 id
+ * @param  callback		페이징 표시 후 실행될 함수
+ * @param  curPageNo	현재페이지 번호 
+ * @param  totPage		전체페이지 번호 
+ */
+function serp_drawTablePaing( div_id, callback, curPageNo, totPage) {
+	var page_size = 10; //표시할 페이지 수
+	if(_searchList.getPagePerCnt() == "7"){
+		page_size  = _searchList.getPagePerCnt();
+	}
+	var currentPage  = (curPageNo)?curPageNo:1;
+	if(currentPage < 1) currentPage = 1;
+	if(currentPage > totPage) currentPage = totPage;
+	var currentBlock = Math.ceil(currentPage/page_size);
+	var firstPage     = currentBlock*page_size-page_size+1;
+	var lastPage      = currentBlock*page_size;
+	//combo box
+	var comboHtml = "";
+	comboHtml += '<div class="combo_wrap">' 
+	comboHtml += '<div class="combo_style" id="pagingPopBtn">';
+	comboHtml += '<a href="#none" class="btn_style btn_combo_down"><span>'+_searchList.getPagePerCnt()+'</span></a>';	
+	comboHtml += '<ul class="up" style="display: none;top:-93px;">';
+	if(document.URL.indexOf("trgm_m002_03.act") > -1 || document.URL.indexOf("trco_m006_01.act") > -1 || document.URL.indexOf("trco_m003_01.act") > -1 || document.URL.indexOf('memb_m002_01.act') > -1 || document.URL.indexOf("memb_m001_03.act") > -1){
+		//거래명세표일괄등록 이전등록내역팝업, 활동내역팝업, 거래처상세조회 활동내역
+		comboHtml += '<li><a href="#none" name="pageCntCheckBox">100</a></li>';
+		comboHtml += '<li><a href="#none" name="pageCntCheckBox">40</a></li>';
+		comboHtml += '<li><a href="#none" name="pageCntCheckBox">20</a></li>';
+	}else{
+		comboHtml += '<li><a href="#none" name="pageCntCheckBox">500</a></li>';
+		comboHtml += '<li><a href="#none" name="pageCntCheckBox">100</a></li>';
+		comboHtml += '<li><a href="#none" name="pageCntCheckBox">50</a></li>';
+		comboHtml += '<li><a href="#none" name="pageCntCheckBox">20</a></li>';
+	}
+	
+	if(document.URL.indexOf("trco_m006_01.act"|| document.URL.indexOf("memb_m001_03.act") > -1) > -1){
+		comboHtml += '<li><a href="#none" name="pageCntCheckBox">10</a></li>';
+	}else if(callback.name == "trco_acvt_hstr" || document.URL.indexOf('memb_m002_01.act') > -1){
+		comboHtml += '<li><a href="#none" name="pageCntCheckBox">7</a></li>';
+	}else if(document.URL.indexOf("trco_m001_01.act") > -1 || document.URL.indexOf("trgm_m002_01.act") > -1 || document.URL.indexOf("trgm_m003_01.act") > -1
+			|| document.URL.indexOf("trgm_m004_01.act") > -1 || document.URL.indexOf("trgm_m005_01.act") > -1 || document.URL.indexOf("trgm_m006_01.act") > -1
+			|| document.URL.indexOf("trco_m012_01.act") > -1){
+		//거래처 조회, 매출/매입 거래명세표, 견적서, 수주서, 발주서는 20 부터 시작
+		//20230714 거래처 대시보드 추가
+	}/*else{
+		comboHtml += '<li><a href="#none" name="pageCntCheckBox">12</a></li>';
+	}*/
+	comboHtml += '</ul>';
+	comboHtml += '</div>';
+	comboHtml += '</div>';
+	comboHtml += '<div class="paging" id="'+div_id+'"></div>';
+	comboHtml += '<div class="unit_wrap"><span class="txt_unit grp_cnt"></span></div>';
+	
+	if($(".paging_wrap").html() == ""){
+		$(".paging_wrap").append(comboHtml);	
+	}else{
+		$("a.btn_combo_down span").html(_searchList.getPagePerCnt());
+	}
+	
+	$("#"+div_id).children().remove();
+	
+	if(totPage > 0){
+		var firstHtml   = '<a href="#none" class="btn_pag_cntr first" id="paging_first"><span class="blind">first</span></a>';
+		var prevHtml 	= '<a href="#none" class="btn_pag_cntr prev" id="paging_pre"><span class="blind">previous</span></a>';
+		var nextHtml	= '<a href="#none" class="btn_pag_cntr next on" id="paging_next"><span class="blind">next</span></a>';
+		var lastHtml	= '<a href="#none" class="btn_pag_cntr last on" id="paging_last"><span class="blind">last</span></a>'
+		var pageHtml    = '<span class="pag_num">';
+		for(var i = firstPage; i <= lastPage && i <= totPage;  i++){
+			if(currentPage == i){
+				pageHtml += "<a class=\"on\">"+i+"</a>";
+			}else{ 
+				pageHtml += "<a>"+i+"</a>";				
+			}
+			if(i != lastPage && i != totPage){
+				pageHtml += "&nbsp;";
+			}
+		} 	
+		pageHtml += " </span>";
+		
+		$("#"+div_id).append(firstHtml);
+		$("#"+div_id).append(prevHtml);
+		$("#"+div_id).append(pageHtml);
+		$("#"+div_id).append(nextHtml);
+		$("#"+div_id).append(lastHtml);
+	}
+	$("#"+div_id).find("#paging_first").click(function(){
+		if($.isFunction(callback)){
+			callback(1, {});
+		}
+	});
+	$("#"+div_id).find("#paging_pre").click(function(){
+		currentBlock--;
+		currentPage = currentBlock*page_size-page_size+1;
+		if(currentPage < 0) currentPage = 1;
+		if($.isFunction(callback)){
+			callback(currentPage,{});
+		}
+	});
+	$("#"+div_id).find("#paging_next").click(function(){
+		currentBlock++;
+		currentPage = currentBlock*page_size-page_size+1;
+		if(currentPage > totPage){
+			currentPage = totPage;
+		}
+		if($.isFunction(callback)){
+			callback(currentPage,{});
+		}
+	});
+	$("#"+div_id).find("#paging_last").click(function(){
+		if($.isFunction(callback)){
+			callback(totPage,{});
+		}
+	});
+	$("#"+div_id).find(".pag_num a").click(function(){
+		currentPage = $(this).html();
+		if($.isFunction(callback)){
+			callback(currentPage,{});
+		}
+	});
+	
+	//combo box click 
+	//페이징 수 선택 팝업div
+	$('#pagingPopBtn a.btn_combo_down').unbind('click').bind('click', function(e) {
+		$(this).parent().find("ul.up").fadeIn();
+	});
+	$('#pagingPopBtn').unbind('mouseleave').bind('mouseleave', function(e) {
+		$(this).find("ul.up").fadeOut();
+	});
+
+	$("#pagingPopBtn ul li").unbind('click').bind("click", function() {
+		
+		$("#pagingPopBtn a.btn_combo_down").find("span").text($(this).find('a').text());
+		$("#pagingPopBtn").find("ul.up").fadeOut();
+		
+		_searchList.setPagePerCnt($(this).find("a").text());
+		_searchList.setPageNo(1);
+		
+		var currAct = location.href.substring(location.href.lastIndexOf("/")+1, location.href.lastIndexOf("."));
+		localStorage.setItem(currAct + "_PAGE_PER_CNT", $(this).find("a").text());
+		
+		//drawTrcoList();
+		callback(1,{});
+	});
+	
+	//화살표 표시
+	if(currentPage == 1){
+		$("#paging_first").removeClass("on");
+		$("#paging_pre").removeClass("on");
+	}else{
+		$("#paging_first").addClass("on")
+		$("#paging_pre").addClass("on");
+		$("#paging_next").addClass("on")
+		$("#paging_last").addClass("on");
+	}
+	if(currentPage == totPage){
+		$("#paging_next").removeClass("on");
+	}
+	if(currentPage == totPage){
+		$("#paging_last").removeClass("on");
+	}
+	
+}
+
+
+
+
+function cf_submit(frm,url,m,t){
+	if(url == undefined || url == null || url == ""){
+		alert('URL 정보가 없습니다.');
+		return;
+	}
+	var method = null2void(m,"post"),target = null2void(t,"_self");
+	frm.method = null2void(method,'post');
+	frm.target = null2void(target,'_self');
+	frm.action = url;
+	frm.submit();
+}
+
+// 그룹 지정 목록 표시
+function getUserGrpList(){
+	var jexAjax = jex.createAjaxUtil("trco_0005_02_l001");
+	//jexAjax.setAsync(false);
+	jexAjax.execute(function(dat) {
+
+// 경리나라 6.1
+		var html = "";
+		html += "  <label><a href=\"#none\" class=\"gpChk\" val-grpcd=\"S\"><img src=\"../img/btn/btn_checkbox3.gif\" alt=\"\" /></a> 매출</label>";
+		html += "  <label><a href=\"#none\" class=\"gpChk\" val-grpcd=\"B\"><img src=\"../img/btn/btn_checkbox3.gif\" alt=\"\" /></a> 매입</label>";
+		html += "  <label><a href=\"#none\" class=\"gpChk\" val-grpcd=\"E\"><img src=\"../img/btn/btn_checkbox3.gif\" alt=\"\" /></a> 기타</label>";
+//		html += "  <label><input type=\"checkbox\" name=\"userGrpCheckBox\" val-grpcd=\"S\">매출</label>";
+//		html += "  <label><input type=\"checkbox\" name=\"userGrpCheckBox\" val-grpcd=\"B\">매입</label>";
+//		html += "  <label><input type=\"checkbox\" name=\"userGrpCheckBox\" val-grpcd=\"E\">기타</label>";
+		for(var i=0; i < dat.GRP_LIST.length; i++){
+//			html += "  <label><a href=\"#none\" val-grpcd=\""+dat.GRP_LIST[i].GRP_CD+"\"><img src=\"../img/btn/btn_checkbox3.gif\" alt=\"\" /></a> "+dat.GRP_LIST[i].GRP_NM+"</label>";
+			html += "<label>";
+			html += 	"<a href=\"#none\" class=\"gpChk\" val-grpcd=\""+ dat.GRP_LIST[i].GRP_CD +"\" val-grpnm=\""+ dat.GRP_LIST[i].GRP_NM +"\" ><img src=\"../img/btn/btn_checkbox3.gif\" alt=\"\" /></a><span class=\"gpNm\" title=\""+dat.GRP_LIST[i].GRP_NM+"\">"+dat.GRP_LIST[i].GRP_NM+"</span>";
+//			html += 	"<div class=\"ipt_gp\"><input type=\"text\" value=\""+dat.GRP_LIST[i].GRP_NM+"\" placeholder=\""+dat.GRP_LIST[i].GRP_NM+"\" style=\"width:119px;\"><a href=\"#none\" class=\"btn_addgp\"><span class=\"blind\">추가</span></a><a href=\"#none\" class=\"btn_csgp\"><span class=\"blind\">취소</span></a></div>";
+			html += 	"<div class=\"ipt_gp\"><input type=\"text\" value=\""+ dat.GRP_LIST[i].GRP_NM + "\" placeholder=\""+ dat.GRP_LIST[i].GRP_NM +"\" style=\"width:119px;\"><a href=\"#none\" class=\"btn_addgp\"><span class=\"blind\">추가</span></a><a href=\"#none\" class=\"btn_csgp\"><span class=\"blind\">취소</span></a></div>";
+			html += 	"<div class=\"bt_edits_gp\">";
+			html += 		"<a href=\"#none\" class=\"bt_edit\"><span class=\"blind\">수정</span></a>";
+			html += 		"<div class=\"ly_edit_gp\" style=\"display:none;\">";
+			html += 			"<ul>"
+			html += 				"<li><a href=\"#none\"><span>그룹명 변경</span></a></li>";
+			html += 				"<li><a href=\"#none\"><span>그룹 비우기</span></a></li>";
+			html += 				"<li><a href=\"#none\"><span>그룹 삭제</span></a></li>";
+			html += 			"</ul>";
+			html += 		"</div>";
+			html += 	"</div>";
+			html += "</label>";
+		}
+
+		$("#group_layer").html(html);	//그룹지정 > 사용자그룹목록 표시
+		
+		if(html == "") {
+//			$("#group_crud_layer").hide();
+			$("#group_layer").hide();
+		} else {
+//			$("#group_crud_layer").show();
+			$("#group_layer").show();
+		}
+	});
+}
+
+function membUserGrpList() {
+	isMembGrp = "Y";
+	var jexAjax = jex.createAjaxUtil("memb_m001_01_r001");
+	jexAjax.execute(function(dat) {
+		var html = "";
+		let view_html = ``;
+		html += "  <label><a href=\"#none\" class=\"gpChk\" val-grpcd=\"Y\"><img src=\"../img/btn/btn_checkbox3.gif\" alt=\"\" /></a> 회원</label>";
+		html += "  <label><a href=\"#none\" class=\"gpChk\" val-grpcd=\"N\"><img src=\"../img/btn/btn_checkbox3.gif\" alt=\"\" /></a> 비회원</label>";
+
+		view_html += '<li><strong class="filter_tit">회원 그룹</strong></li>';
+		view_html += '<li><label><input type="radio" name="order_group" val-grpcd="" val-grpnm="전체 그룹" style="margin-top:-2px;" checked>&nbsp;전체</label></li>';
+		view_html += '<li><label><input type="radio" name="order_group" val-grpcd="Y" val-grpnm="회원" style="margin-top:-2px;">&nbsp;회원</label></li>';
+		view_html += '<li><label><input type="radio" name="order_group" val-grpcd="N" val-grpnm="비회원" style="margin-top:-2px;">&nbsp;비회원</label></li>';
+		for(var i=0; i < dat.GRP_LIST.length; i++){
+			html += "<label>";
+			html += 	"<a href=\"#none\" class=\"gpChk\" val-grpcd=\""+dat.GRP_LIST[i].GRP_CD+"\" val-grpnm=\""+dat.GRP_LIST[i].GRP_NM+"\" ><img src=\"../img/btn/btn_checkbox3.gif\" alt=\"\" /></a><span class=\"gpNm\" title=\""+dat.GRP_LIST[i].GRP_NM+"\">"+dat.GRP_LIST[i].GRP_NM+"</span>";
+			html += 	"<div class=\"ipt_gp\"><input type=\"text\" value=\""+ dat.GRP_LIST[i].GRP_NM + "\" placeholder=\""+dat.GRP_LIST[i].GRP_NM+"\" style=\"width:119px;\"><a href=\"#none\" class=\"btn_addgp\"><span class=\"blind\">추가</span></a><a href=\"#none\" class=\"btn_csgp\"><span class=\"blind\">취소</span></a></div>";
+			html += 	"<div class=\"bt_edits_gp\">";
+			html += 		"<a href=\"#none\" class=\"bt_edit\"><span class=\"blind\">수정</span></a>";
+			html += 		"<div class=\"ly_edit_gp\" style=\"display:none;\">";
+			html += 			"<ul>"
+			html += 				"<li><a href=\"#none\"><span>그룹명 변경</span></a></li>";
+			html += 				"<li><a href=\"#none\"><span>그룹 비우기</span></a></li>";
+			html += 				"<li><a href=\"#none\"><span>그룹 삭제</span></a></li>";
+			html += 			"</ul>";
+			html += 		"</div>";
+			html += 	"</div>";
+			html += "</label>";
+
+			view_html += `<li><label><input type="radio" name="order_group" val-grpcd="`+dat.GRP_LIST[i].GRP_CD+`" val-grpnm="`+dat.GRP_LIST[i].GRP_NM+`" style="margin-top:-2px;">&nbsp;`+dat.GRP_LIST[i].GRP_NM+`</label></li>`;
+		}
+
+		$("#group_layer").html(html);
+
+		if(html == "") {
+			$("#group_layer").hide();
+		} else {
+			$("#group_layer").show();
+		}
+
+		$("#order_group_li").empty().append(view_html);
+	})
+}
+
+// 그룹 지정 목록 수정
+function crudUserGrpList() {
+	var jexAjax = jex.createAjaxUtil("trco_0005_02_l001");
+	//jexAjax.setAsync('false');
+	jexAjax.execute(function(dat) {
+		var html = "";
+		html += "  <label><a href=\"#none\" class=\"gpChk\" val-grpcd=\"S\"><img src=\"../img/btn/btn_checkbox3.gif\" alt=\"\" /></a> 매출</label>";
+		html += "  <label><a href=\"#none\" class=\"gpChk\" val-grpcd=\"B\"><img src=\"../img/btn/btn_checkbox3.gif\" alt=\"\" /></a> 매입</label>";
+		html += "  <label><a href=\"#none\" class=\"gpChk\" val-grpcd=\"E\"><img src=\"../img/btn/btn_checkbox3.gif\" alt=\"\" /></a> 기타</label>";
+//		html += "  <label><input type=\"checkbox\" name=\"userGrpCheckBox\" val-grpcd=\"S\">매출</label>";
+//		html += "  <label><input type=\"checkbox\" name=\"userGrpCheckBox\" val-grpcd=\"B\">매입</label>";
+//		html += "  <label><input type=\"checkbox\" name=\"userGrpCheckBox\" val-grpcd=\"E\">기타</label>";
+		for(var i=0; i < dat.GRP_LIST.length; i++){
+			// html += "  <label>
+//			<span class=\"gpNm\" val-grpcd=\""+dat.GRP_LIST[i].GRP_CD+"\" val-grpnm=\""+dat.GRP_LIST[i].GRP_NM+"\">"+dat.GRP_LIST[i].GRP_NM+"</span>
+//			<div class=\"bt_edit\"><div class=\"ly_edit_gp\" style=\"display:none;\">
+//			<ul><li><a href=\"#none\">그룹명 변경</a></li><li><a href=\"#none\">그룹 비우기</a></li><li><a href=\"#none\">그룹 삭제</a></li></ul></div></div></label>";
+			html += "<label>";
+			html += 	"<a href=\"#none\" class=\"gpChk\" val-grpcd=\""+dat.GRP_LIST[i].GRP_CD+"\" val-grpnm=\""+dat.GRP_LIST[i].GRP_NM+"\" ><img src=\"../img/btn/btn_checkbox3.gif\" alt=\"\" /></a><span class=\"gpNm\" title=\""+dat.GRP_LIST[i].GRP_NM+"\">"+dat.GRP_LIST[i].GRP_NM+"</span>";
+//			html += 	"<div class=\"ipt_gp\"><input type=\"text\" value=\""+dat.GRP_LIST[i].GRP_NM+"\" placeholder=\""+dat.GRP_LIST[i].GRP_NM+"\" style=\"width:119px;\"><a href=\"#none\" class=\"btn_addgp\"><span class=\"blind\">추가</span></a><a href=\"#none\" class=\"btn_csgp\"><span class=\"blind\">취소</span></a></div>";
+			html += 	"<div class=\"ipt_gp\"><input type=\"text\" value=\""+ dat.GRP_LIST[i].GRP_NM + "\" placeholder=\""+dat.GRP_LIST[i].GRP_NM+"\" style=\"width:119px;\"><a href=\"#none\" class=\"btn_addgp\"><span class=\"blind\">추가</span></a><a href=\"#none\" class=\"btn_csgp\"><span class=\"blind\">취소</span></a></div>";
+			html += 	"<div class=\"bt_edits_gp\">";
+			html += 		"<a href=\"#none\" class=\"bt_edit\"><span class=\"blind\">수정</span></a>";
+			html += 		"<div class=\"ly_edit_gp\" style=\"display:none;\">";
+			html += 			"<ul>"
+			html += 				"<li><a href=\"#none\"><span>그룹명 변경</span></a></li>";
+			html += 				"<li><a href=\"#none\"><span>그룹 비우기</span></a></li>";
+			html += 				"<li><a href=\"#none\"><span>그룹 삭제</span></a></li>";
+			html += 			"</ul>";
+			html += 		"</div>";
+			html += 	"</div>";
+			html += "</label>";
+		}
+		
+//		$("#group_crud_layer").html(html);
+		$("#group_layer").html(html);
+		
+		if(html == "") {
+//			$("#group_crud_layer").hide();
+			$("#group_layer").hide();
+		} else {
+//			$("#group_crud_layer").show();
+			$("#group_layer").show();
+		}
+	})
+}
+
+//그룹지정레이어의 체크박스 설정
+function drawGrpCheck(){
+	//기본그룹
+	/*
+	$("#bscGrpSetList li").each(function(){
+		$(this).find("img").attr("src", "../img/btn/btn_checkbox3.gif");
+		sf_drawGrpCheck(this);
+	});
+	*/
+	//사용자그룹 
+	$("#group_layer label").each(function(){
+		$(this).find("img").attr("src", "../img/btn/btn_checkbox3.gif");
+		sf_drawGrpCheck(this);
+	});
+
+	//그룹지정레이어의 체크박스 설정
+	function sf_drawGrpCheck(objGrp){
+		var grp_cd = "," + $(objGrp).find("a").attr("val-grpcd") + ",";
+		var grpChkCnt = 0;
+		$("input[name=trco]:checked").each(function(){
+			var grp_cd_list = ","+ $(this).parent().parent().find("input[name=GRP_CD]").val() + ",";
+
+			if(grp_cd_list.indexOf(grp_cd) > -1){
+				grpChkCnt++;
+			}
+		});
+		//해당그룹(_this)이 체크된 거래처목록에 모두 없는경우
+		if(grpChkCnt == 0){
+			$(objGrp).find("img").attr("src", "../img/btn/btn_checkbox3.gif");
+			$(objGrp).find("a").attr("val-checkstatus", "3");
+		}
+		//해당그룹(_this)이 체크된 거래처목록에 모두 있는경우
+		else if(grpChkCnt == $("input[name=trco]:checked").length){
+			$(objGrp).find("img").attr("src", "../img/btn/btn_checkbox1.gif");
+			$(objGrp).find("a").attr("val-checkstatus", "1");
+		}
+		//해당그룹(_this)이 체크된 거래처목록에 일부분만 있는경우
+		else{
+			$(objGrp).find("img").attr("src", "../img/btn/btn_checkbox2.gif");
+			$(objGrp).find("a").attr("val-checkstatus", "2");
+		}
+	}
+}
+
+
+
+//휴지통 검색
+function searchBasket(){
+	_searchList.setInqyDsnc("4");
+	_searchList.setPageNo(1);
+	_searchList.setTrcoCmnm("");
+//	parent.setSearchTextDefault();
+
+	category = "trash";
+
+	drawTrcoList();				//거래처 목록 표시
+	drawUserGrpList();			//사용자그룹 목록 표시
+
+	//leftMenuAllOff();
+	$("#leftTrcoDelBtn").addClass("on");
+
+	$(".select_map a:eq(0)").removeClass("on").addClass("on");
+	$(".select_map a:eq(1)").removeClass("on");
+	$("#div_content").show();
+	$("#ifr_content").hide();
+}
+
+
+//그룹 선택표시 on/off
+function leftMenuAllOff(){
+	//거래처조회 선택표시 off
+	$(".allTrco").removeClass("active");
+
+	//left 메뉴 휴지통 off
+	//$("#leftTrcoDelBtn").removeClass("on");
+
+	//전체, 기본그룹 선택표시 off
+	//$("#bscGrpList dd").each(function(){
+	//	$(this).removeClass("on");
+	//});
+	//사용자그룹 선택표시 off
+	$("#userGrpList li a").each(function(){
+		$(this).removeClass("active");
+	});
+
+	category = "";
+	_searchList.setPageNo(1);
+	_searchList.setTrcoCmnm("");
+	$("#addTrcoPopup").hide();
+}
+
+function malert(code,msg){
+	if(code){
+		//alert(jex.getMsg(code));
+		alert(jexjs.getCode("RSPS_CD",code));
+	}else{
+		alert(msg);
+	}
+}
+
+
+function leftcreateForm(){
+	var createForm;
+	if(document.subfrm){
+		return;
+	}else{
+		var hiddenField 	= document.createElement("input");
+		var hiddenField1	= document.createElement("input");
+		createForm = document.createElement('form');
+		createForm.method = 'post';
+		createForm.name = 'subfrm';
+		
+		hiddenField.setAttribute("type"	, "hidden");	
+		hiddenField.setAttribute("name"	, "GRP_CD");
+		hiddenField.setAttribute("id"	, "grp_cd");
+		hiddenField.setAttribute("value", "");
+			
+		hiddenField1.setAttribute("type", "hidden");	
+		hiddenField1.setAttribute("name", "CATE_GORY");
+		hiddenField1.setAttribute("id"	, "cate_gory");
+		hiddenField1.setAttribute("value", "");
+		
+		
+		createForm.appendChild(hiddenField);
+		createForm.appendChild(hiddenField1);
+			
+		document.body.appendChild(createForm);
+	}	
+	
+}
+
+//천단위마다 콤마찍기(금액포멧)
+function formatMoney(value){
+    try{
+
+		var num = value.replace(",","");
+
+		if (num < 0) {
+			num *= -1;
+			var minus = true;
+		}else{
+			var minus = false;
+		}
+
+		var dotPos = (num+"").split(".");
+		var dotU = dotPos[0];
+		var dotD = dotPos[1];
+		var commaFlag = dotU.length%3;
+
+		if(commaFlag) {
+			var out = dotU.substring(0, commaFlag);
+			if (dotU.length > 3) out += ",";
+		}
+		else var out = "";
+
+		for (var i=commaFlag; i < dotU.length; i+=3) {
+			out += dotU.substring(i, i+3);
+			if( i < dotU.length-3) out += ",";
+		}
+
+		if(minus) out = "-" + out;
+		if(dotD) return out + "." + dotD;
+		else return out;
+
+    }catch(e){
+        //alert(e);
+    }
+
+}
+
+function showPrintInfoMsg(code,msg){
+	var message = "";
+	if(code){
+		if(code.indexOf("WE") == 0 || code.indexOf("WM") == 0)
+			//message = jex.getMsg(code);
+			message = malert(code);
+		else
+			message = code;
+		alert("["+code+"]\n"+message );
+	}else{
+		message = msg;
+		alert(message.replace(/\r/gi,''));
+	}
+	//alert("["+code+"]\n"+jex.getMsg(code) );
+}
+
+
+function bankComboBox(result,bankcd) {
+
+	var xHtml ="";
+	xHtml +="<option value=''>선택</option>";
+	for(var i=0;i<result.length;i++){
+		if(result[i].BANK_CD == bankcd){
+			xHtml += "<option value='"+result[i].BANK_CD+"' selected='selected'>"+result[i].BANK_NM_SORT+"</option>";
+		}else{
+			xHtml += "<option value='"+result[i].BANK_CD+"'>"+result[i].BANK_NM_SORT+"</option>";
+			
+		}
+	}
+    return xHtml;
+}
+
+//엔터키 입력시 다음 입력창으로
+function enterKeyTab()
+{
+	document.onkeypress = function(e)
+	{
+		e = e || window.event;
+		
+		if (e.srcElement.tagName != "INPUT" && e.srcElement.tagName != "TEXTAREA") return;
+		if (e.keyCode != 13) return;		
+
+        var eles = $(document).find("input").not("input[noEnterTab]"); // noEnterTab 어트리뷰트 속성이 있으면 제한다
+		var isMatch = false;
+
+		for (var i = 0; i < eles.length; i++) 
+		{
+			if (eles[i] == e.srcElement) 
+			{
+				isMatch = true;
+				continue;
+			}
+			
+			if (isMatch == false || eles[i].style.display == "none") continue;
+			switch(eles[i].type.toUpperCase())
+			{
+				case "IMAGE":
+				case "BUTTON":
+				case "SUBMIT":
+					eles[i].click();
+					break;
+				case "HIDDEN":
+					continue;
+				default:
+					eles[i].focus();
+					break;
+			}			
+			
+			break;
+		}
+		
+		e.returnValue = false;
+	}
+}
+
+//엔터키 입력시 다음 입력창으로 (input, textarea)
+function enterKeyTab2()
+{
+	document.onkeypress = function(e)
+	{
+		e = e || window.event;
+		
+		if (e.srcElement.tagName != "INPUT" && e.srcElement.tagName != "TEXTAREA") return;
+		if (e.keyCode != 13) return;	
+		if ($(e.srcElement).attr("id") === "UPDATE_TRCO_MEMO") return;
+		if ($(e.srcElement).attr('class') === 'acvt_memo') return;
+
+        var eles = $(document).find("input, textarea").not("input[noEnterTab]"); // noEnterTab 어트리뷰트 속성이 있으면 제한다
+		var isMatch = false;
+
+		for (var i = 0; i < eles.length; i++) 
+		{
+			if (eles[i] == e.srcElement) 
+			{
+				isMatch = true;
+				continue;
+			}
+			
+			if (isMatch == false || eles[i].style.display == "none" || eles[i].disabled == true) continue;
+			switch(eles[i].type.toUpperCase())
+			{
+				case "IMAGE":
+				case "BUTTON":
+				case "SUBMIT":
+					eles[i].click();
+					break;
+				case "HIDDEN":
+					continue;
+				default:
+					eles[i].focus();
+					eles[i].select();
+					break;
+			}			
+			
+			break;
+		}
+		
+		e.returnValue = false;
+	}
+}
+
+//특정날짜의 +,-를 구한다 
+//m,-1,"20170707","" -> 20170607
+function addDate(pInterval, pAddVal, pYyyymmdd, pDelimiter) {
+    var yyyy;
+    var mm;
+    var dd;
+    var cDate;
+    var cYear, cMonth, cDay;
+    
+    if (pYyyymmdd == undefined || pYyyymmdd == "") {
+        pYyyymmdd = cf_getDate("yyyymmdd");
+    }
+
+    pYyyymmdd = pYyyymmdd.replace(/-/gi,'').replace(/\./gi,'').replace(/\//gi,'');
+    if (pDelimiter != undefined && pDelimiter != "") {
+        pYyyymmdd = pYyyymmdd.replace(eval("/\\" + pDelimiter + "/g"), "");
+    }
+
+    yyyy = pYyyymmdd.substr(0, 4);
+    mm  = pYyyymmdd.substr(4, 2);
+    dd  = pYyyymmdd.substr(6, 2);
+
+    if (pInterval == "yyyy") {
+        yyyy = (yyyy * 1) + (pAddVal * 1); 
+    } else if (pInterval == "m") {
+        mm  = (mm * 1) + (pAddVal * 1);
+    } else if (pInterval == "d") {
+        dd  = (dd * 1) + (pAddVal * 1);
+    }
+
+    cDate = new Date(yyyy, mm - 1, dd); // 12월, 31일을 초과하는 입력값에 대해 자동으로 계산된 날짜가 만들어짐.
+    cYear = cDate.getFullYear();
+    cMonth = cDate.getMonth() + 1;
+    cDay = cDate.getDate();
+
+    cMonth = cMonth < 10 ? "0" + cMonth : cMonth;
+    cDay = cDay < 10 ? "0" + cDay : cDay;
+
+    if (pDelimiter != undefined && pDelimiter != "") {
+        return cYear + pDelimiter + cMonth + pDelimiter + cDay;
+    } else {
+        return cYear + "" + cMonth + "" + cDay;
+    }
+};
+
+var targetThis;
+$.fn.memobox = function(options,fn){
+	if(options.FLAG == "N"){
+		if(!options.MEMO){ 
+			$("#memoBox").hide();return;
+		}
+	}
+	
+	if(!$("body").find("#memoBox").length){ $("body").append(createMemoBox());}
+
+	//변수 설정
+	//var settings  = $.extend({ event : 'event', data : {}, close : '#grpSetBtn' },options);	
+	var settings  = $.extend({ event : 'event', data : {}, close : '#memoSetBtn' },options);	
+	var rec_data = { UPDATE_MEMO : "", COLOR : "" };
+	targetThis = $(this);
+	
+	//text 값 셋팅
+	$("#memoBox #memo_text").empty().html(settings['MEMO'].replace(/\n/g, "<br>"));
+	$("#memoBox #memo_update").empty().val($("#memoBox #memo_text").html().replace(/<br>/g, "\n"));
+	//update 및 사용자 명 셋팅
+	$("span#memoDate").empty().text(formatter.datetime(settings['DATE'],"yyyy-mm-dd hh24:mi:ss"));
+	$("strong#memoName").empty().text(settings['NAME']);
+
+	//색상확인
+	//메모가 존재 하고 색상 값이 없으면 blue default 
+	if(settings['MEMO'] != "" && (settings['COLOR'] == "" || settings['COLOR'] == undefined)){
+		settings['COLOR'] = "blue";//default
+	}
+	$("#memoBox #memo_bg").find("li").each(function(){
+			if($(this).hasClass("color_"+settings['COLOR'])){
+				$(this).siblings().removeClass("select");
+				$(this).addClass("select");
+			}
+	});
+	//show/ hide
+	//메모 영역 외 클릭시
+	$("body").die('click').live('click',function(e){
+		if(isMemoBoxOpen()){
+			isMemoBoxClose(e);
+		}
+	});
+	
+	//위치 설정
+	var tbodyTr = targetThis.parent().parent().parent().parent().find("tr");
+	var totlLine = tbodyTr.length -2;	//마지막라인에서 -1
+	var trIdx = targetThis.parent().parent().parent().index();	//클릭한 tr
+	if(totlLine < trIdx && totlLine >= 10){//제일 마지막에서 두번째는 메모 변경
+		var  lastLine= tbodyTr.eq(totlLine).find(".ico_memo");
+		$("#memoBox").css({"top":lastLine.offset().top,"right": ($(window).width()-  (lastLine.offset().left + lastLine.outerWidth()) )+40 });
+		$("#memoBox").find(".tail").css("top","39px");
+	}else{
+		$("#memoBox").css({"top":targetThis.offset().top,"right": ($(window).width()-  (targetThis.offset().left + targetThis.outerWidth()) )+40 });
+		$("#memoBox").find(".tail").css("top","9px");
+	}
+
+	$("#memo_update").parent().hide();
+	$("#memo_text").parent().show();
+	$("#memoBox").show();
+	$("#memo_bg").removeClass().addClass("selected");
+	
+	//휴지통에서는 커서 해제
+	if (window.name == "DELTRCO") {
+		$('.select a').css('cursor', 'auto');
+	}
+	
+	//메모 내 이벤트 설정
+	
+	//메모 내용 클릭시 textarea 설정
+	$(".memo_view").live("click",function(){
+		if (window.name == "DELTRCO") { //휴지통에서는 수정 불가
+			return false;
+		}
+		if(options.MOD_YN && options.MOD_YN == 'N'){ 
+			return false;
+		}
+		$("#memo_update").empty().text($("#memo_text").html().replace(/<br>/g, "\n")).parent().show();
+		$("#memo_text").parent().hide();
+		$("#memo_bg").removeClass().addClass("select_edit");
+	});
+	
+	//색상 클릭시
+	$("#memo_bg").live("click",function(){
+		if (window.name == "DELTRCO") { //휴지통에서는 수정 불가
+			return false;
+		}
+		if(!$(this).hasClass("select_edit")){
+			$(this).removeClass().addClass("select_on");
+		}
+	});
+	
+	
+	var selectedColor = "";
+	//색상 클릭시 이벤트
+	$("#memo_bg").find("li").live("click",function(){
+		$(this).siblings().removeClass("select");
+		$(this).addClass("select");
+		settings['COLOR'] = $(this).find("a").attr('title');
+	});
+	//콜백 함수가 있는경우 데이터 리턴 
+	//UPDATE_MEM : 텍스트AREA 메모,COLOR : COLOR
+	if(fn){
+		$(settings['close']).die('click').live("click",function(){
+			
+			if(chkStrLength($("#memo_update").val()) > 200){
+				alert('메모는 200바이트 까지만 입력이 가능 합니다.');
+				return;
+			}
+			
+			rec_data = {};		//클릭시 초기화
+			rec_data["MEMO"]  = $("#memo_update").val();
+			rec_data["COLOR"] = settings['COLOR'];
+			fn(rec_data);
+			$("#memoBox").hide();
+		});
+
+		$("#memoDelBtn").die('click').live("click",function(){
+			rec_data = {};		//클릭시 초기화
+			rec_data["MEMO"]  = "";
+			rec_data["COLOR"] = "";
+			fn(rec_data);
+			$("#memoBox").hide();
+		});
+		
+	}
+	
+	if(settings['FLAG'] == "Y" && null2void(settings["MEMO"],"") == ""){
+		$("#memo_update").val("")
+		$("#memo_update").parent().show();
+		$("#memo_text").parent().hide();
+		$("#memo_bg").removeClass().addClass("select_edit");
+	}
+}
+
+function createMemoBox(){
+	
+	var xHtml = '';
+	xHtml += '<div class="tip_layerpopup memolyp" style="display: none;" id="memoBox">';
+	xHtml += '<div class="tip_layerpopup_po">';
+	xHtml += '<span class="tail"></span>';
+	xHtml += '<div class="memocolor_layer">';
+	xHtml += '<ul class="selected" id="memo_bg">';
+	xHtml += '<li class="color_blue select"><span class="bg"></span><a href="#none" title="blue"></a></li>';
+	xHtml += '<li class="color_green "><span class="bg"></span><a href="#none" title="green"></a></li>';
+	xHtml += '<li class="color_yellow "><span class="bg"></span><a href="#none" title="yellow"></a></li>';
+	xHtml += '<li class="color_orange "><span class="bg"></span><a href="#none" title="orange"></a></li>';
+	xHtml += '<li class="color_red "><span class="bg"></span><a href="#none" title="red"></a></li>';
+	xHtml += '<li class="color_white "><span class="bg"></span><a href="#none" title="white"></a></li>';
+	xHtml += '</ul>';
+	xHtml += '</div>';
+	xHtml += '<div class="memoeditarea">';
+	xHtml += '<div class="memo_view" style="display: block;">';
+	xHtml += '<p id="memo_text"></p>';
+	xHtml += '<div class="cboth"><strong>Update :<span id="memoDate"></span></strong><strong class="name" id="memoName"></strong></div>';
+	xHtml += '</div>';
+	xHtml += '<div style="display: none;">';
+	xHtml += '<textarea id="memo_update" style="resize:none;" cols="" rows=""></textarea>';
+	xHtml += '<div class="t_right"><a href="#none" class="btn_style_lys" id="memoDelBtn"><span>삭제</span></a> <a href="#none" class="btn_style_lys" id="memoSetBtn"><span>저장</span></a></div>';
+	xHtml += '</div></div></div></div>';
+	
+	return xHtml;
+}
+
+function isMemoBoxClose(e){
+	if(!$(e.target).parents("div").is("#memoBox") && !$(e.target).hasClass(targetThis.attr('class')) ){
+		$("#memoBox").hide();
+	}
+}
+
+function isMemoBoxOpen(){
+	var res = false;
+	if($("#memoBox").css("display") == "block"){
+		res = true;
+	}
+	return res;
+}
+
+//예금주 조회
+function acctnm_api(arg1,arg2,fn){
+	var tmp_cd = arg1,
+		acct_no =arg2,
+		bank_cd = "",
+		res = "",loading;
+	if(tmp_cd.length >3 ){
+		bank_cd = bank_short_cd(tmp_cd,"BANK_CD");
+	} else{
+		bank_cd = tmp_cd;
+	}
+	
+	if(_loading){
+		loading = _loading;
+	}
+	loading.start();
+	
+	var jexAjax = jex.createAjaxUtil("coocon_acctnm_api_001");
+	jexAjax.set("BANK_CD"	,bank_cd);
+	jexAjax.set("ACCT_NO"	,acct_no);
+	jexAjax.execute(function(dat) {
+		if(loading){
+			loading.stop();
+		}
+		if(dat.RSLT_CD == "604" || dat.RSLT_CD == "155"){
+			//604:총금액 상위(가상계좌) 155:이체금액 오류
+			fn(dat);
+		}else if(dat.RSLT_CD != "0000"){
+			alert(dat.RSLT_MSG);
+			fn(dat);
+		}else{
+			fn(dat);
+		}
+	});
+	
+}
+//나중에 DB로 바뀜
+var bank_group = bank_code();
+function bank_code(){
+	var res = null;
+	var jexAjax = jex.createAjaxUtil("trco_bank_info_r001");
+	
+	jexAjax.setAsync(false);
+	jexAjax.execute(function(dat) {
+		if(dat.RSLT_CD == "0000"){
+			res = dat.REC;
+		}
+	});
+	
+	return res;
+}
+
+//스크래핑 사용시 사용되는 은행코드로 변환
+function bank_short_cd(arg1,arg2){
+	var bank_short = "";
+	$.each(bank_group,function(i,k){
+		if(k.BANK_CD == arg1){
+			if(arg2 == "BANK_CD"){
+				bank_short = k.BANK_CD_REAL; 
+			}else{
+				bank_short = k.BANK_NM_SORT;
+			}
+		}
+	});
+	return bank_short;
+}
+//은행코드 변환
+function bank_long_cd(arg1){
+	var bank_long = "ERR";
+	$.each(bank_group,function(i,k){
+		if(k.BANK_CD_REAL == arg1){
+			bank_long = k.BANK_CD;
+		}
+	});
+	if (arg1 == "") bank_long = "";
+	return bank_long;
+}
+var tax_type = { "01":"일반과세", "02":"간이", "03":"면세", "04":"비영리", "05":"미등록", "06":"고유번호가 부여된 단체", "07":"간이발급", "09":"휴업", "10":"폐업", "00":"미등록"}
+
+//휴폐업 정보 조회
+function spcs_info_seach(arg1,arg2,callback){
+	var arg = arg1.replace(/-/gi,""),res = "";
+	if(arg1 == "" || arg1 == null || arg1.length != 10){
+		malert("WE0078");
+		return;
+	}
+	_loading.start();
+
+	var jexAjax = jex.createAjaxUtil("trco_0006_06_r001");
+	jexAjax.set("TRCO_BSNN_NO", arg1);
+	jexAjax.set("TRCO_KEY", arg2);
+	jexAjax.setAsync(false);
+	jexAjax.execute(function(dat) {
+		_loading.stop();
+		if(dat.RSLT_CD != "000" && dat.RSLT_CD != "00000000"){
+			alert("서비스가 원할하지 않습니다. 나중에 다시 시도해 주세요.");
+			return;
+		} 
+		if(dat.TRCO_SPCS_INFM){	
+			res = dat;
+		}
+	});
+	
+	if(callback){
+		callback(res);
+	}else{
+		return res	;
+	}
+}
+
+
+function windtPop(width,height,url){
+	var	sizeW = width;	
+	var	sizeH = height;
+	var nLeft = screen.width/2 - sizeW/2 ;
+	var nTop  = screen.height/2- sizeH/2 ;
+	var option= ",toolbar=no,menubar=no,location=no,scrollbars=no,status=no,resizable=no";
+	var winObj= window.open(url, 'win', "left=" + nLeft + ",top=" +  nTop + ",width=" + sizeW + ",height=" + sizeH  + option );
+}
+
+function getTaxbillDomain(){
+	return "";
+}
+
+
+/**
+ * 텍스빌 서버로 팝업호출
+ * @returns
+ */
+function setFormToTaxbill(url, taxgb, prm){
+	
+	getSetUp(function(){
+	
+		var return_url = location.href;
+		var taxbillUrl = getTaxbillDomain()+"/tcmc/jsp/"; 
+		var actionURL =  taxbillUrl.concat(url);
+		if(url.indexOf("http") > -1){
+			actionURL = url;
+		}
+		
+		$("#Frm").remove();
+		
+		var $frmObj = $("<form id='Frm' name='Frm'></form>");
+		$frmObj.attr("method", "post");
+		$frmObj.appendTo("body");
+		var s_taxgb = $("<input type='hidden' name='taxgb' value='"+taxgb+"'/>");
+		
+		//사용자 옵션 정보 기본적으로 들어가야함 (경리나라 세금계산서팝업 호출시에는 값 넘기지 않음)
+		if(null2void(userSetOption,"") !== "" && url.indexOf('/sale_') == -1){
+			var s_user_opt = $("<input type='hidden' name='userOption' value=''/>");
+			$(s_user_opt).val(encodeURIComponent(JSON.stringify(userSetOption)));
+			$frmObj.append(s_user_opt);
+		}
+
+		if(undefined != prm && "" != null2void(prm.ISSU_ID)){
+			var s_issu_id = $("<input type='hidden' name='ISSU_ID' value='"+prm.ISSU_ID+"'/>");
+			var s_issu_id_1 = $("<input type='hidden' name='issuId' value='"+prm.ISSU_ID+"'/>");
+			$frmObj.append(s_issu_id);
+			$frmObj.append(s_issu_id_1);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.ISSU_DATE)){
+			var s_issuDate = $("<input type='hidden' name='issuDate' value='"+prm.ISSU_DATE+"'/>");
+			$frmObj.append(s_issuDate);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.TRANS_STAT_SEQ)){
+			var s_tranSeq = $("<input type='hidden' name='tranSeq' value='"+prm.TRANS_STAT_SEQ+"'/>");
+			$frmObj.append(s_tranSeq);
+		}
+
+		if(undefined != prm && "" != null2void(prm.JSON_TRANS_STAT_SEQ)){
+			var s_jsonTransStatSeq = $("<input type='hidden' name='JSON_TRANS_STAT_SEQ' value='"+encodeURIComponent(JSON.stringify(prm.JSON_TRANS_STAT_SEQ))+"'/>");
+			$frmObj.append(s_jsonTransStatSeq);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.JSON_TRANS_STAT_SEQ_TAX)){
+			var s_jsonTransStatSeq_tax = $("<input type='hidden' name='JSON_TRANS_STAT_SEQ' value='"+prm.JSON_TRANS_STAT_SEQ_TAX+"'/>");
+			$frmObj.append(s_jsonTransStatSeq_tax);
+		}
+
+		if(undefined != prm && "" != null2void(prm.BSNN_NO)){
+			var s_corpNo = $("<input type='hidden' name='bsnnNo' value='"+prm.BSNN_NO+"'/>");
+			$frmObj.append(s_corpNo);
+		}
+	
+		//fax,email 전송시에는 상단 부분 제거
+		if(undefined != prm && "" != null2void(prm.SEND_INFO)){
+			var s_sendInfo = $("<input type='hidden' name='sendInfo' value='"+prm.SEND_INFO+"'/>");
+			$frmObj.append(s_sendInfo);
+		}
+		//fax,mail 전송시 사용
+		if(undefined != prm && "" != null2void(prm.CONNECT_KEY)){
+			var s_connectKey = $("<input type='hidden' name='CONNECT_KEY' value='"+prm.CONNECT_KEY+"'/>");
+			$frmObj.append(s_connectKey);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.CONNECT_REC)){
+			var s_connRec = $("<input type='hidden' name='CONNECT_REC' value='"+prm.CONNECT_REC+"'/>");
+			$frmObj.append(s_connRec);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.ADD_FILE_INFO)){
+			var s_addFileInfo = $("<input type='hidden' name='ADD_FILE_INFO' value=''/>");
+			$(s_addFileInfo).val(prm.ADD_FILE_INFO);
+			$frmObj.append(s_addFileInfo);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.TRCO_INFO)){
+			var s_trco_info = $("<input type='hidden' name='TRCO_INFO' value='"+prm.TRCO_INFO+"'/>");
+			$frmObj.append(s_trco_info);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.SEND_TYPE)){
+			var s_sendType = $("<input type='hidden' name='SEND_TYPE' value='"+prm.SEND_TYPE+"'/>");
+			$frmObj.append(s_sendType);
+		}
+		if(undefined != prm && "" != null2void(prm.PRI_MY_IMG)){
+			var pri_my_img = $("<input type='hidden' name='PRI_MY_IMG' value='"+prm.PRI_MY_IMG+"'/>");
+			$frmObj.append(pri_my_img);
+		}
+		// (경리나라 세금계산서팝업 호출시에는 값 넘기지 않음)
+		if(undefined != prm && "" != null2void(prm.SESSION_DATA) && url.indexOf('/sale_') == -1){
+			var s_sessionData = $("<input type='hidden' name='sessionData' value=''/>");
+			$(s_sessionData).val(prm.SESSION_DATA);
+			$frmObj.append(s_sessionData);
+		}
+		if(undefined != prm && "" != null2void(prm.CALL_URL)){
+			var s_callurl = $("<input type='hidden' name='CALL_URL' value='"+prm.CALL_URL+"'/>");
+			$frmObj.append(s_callurl);
+		}
+		//거래처 사업자 번호 
+		if(undefined != prm && "" != null2void(prm.TRCO_BSNN_NO)){
+			var s_trco_bsnnNo = $("<input type='hidden' name='CORP_NO' value='"+prm.TRCO_BSNN_NO+"'/>");
+			$frmObj.append(s_trco_bsnnNo);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.TRCO_DATA)){
+			var s_trco_data = $("<input type='hidden' name='trcoData' value='"+prm.TRCO_DATA+"'/>");
+			$frmObj.append(s_trco_data);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.IS_REISSUE)){
+			var s_reissue = $("<input type='hidden' name='IS_REISSUE' value='"+prm.IS_REISSUE+"'/>");
+			$frmObj.append(s_reissue);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.COMBINED)){
+			var s_combined = $("<input type='hidden' name='COMBINED' value='"+prm.COMBINED+"'/>");
+			$frmObj.append(s_combined);
+		}
+		
+		//매출/ 매입 보고서 팝업용
+		if(undefined != prm && "" != null2void(prm.USE_INTT_ID)){
+			var s_use_intt_id = $("<input type='hidden' name='USE_INTT_ID' value='"+prm.USE_INTT_ID+"'/>");
+			$frmObj.append(s_use_intt_id);
+		}
+		//매출/ 매입 보고서 팝업용
+	
+		if(undefined != prm && "" != null2void(prm.BILL_TYPE)){
+			var s_bill_type = $("<input type='hidden' name='BILL_TYPE' value='"+prm.BILL_TYPE+"'/>");
+			$frmObj.append(s_bill_type);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.MODY_CODE)){
+			var s_isCase = $("<input type='hidden' name='isCase' value='"+prm.MODY_CODE+"'/>");
+			$frmObj.append(s_isCase);
+		}
+	
+		// 세금계산서 대량발행 팝업용
+	    if(undefined != prm && "" != null2void(prm.TOTL_CNT)){
+	        var s_isCase = $("<input type='hidden' name='TOTL_CNT' value='"+prm.TOTL_CNT+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    if(undefined != prm && "" != null2void(prm.MULT_ISSU_ID)){
+	        var s_isCase = $("<input type='hidden' name='MULT_ISSU_ID' value='"+prm.MULT_ISSU_ID+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    //임시저장버튼 있는 팝업여부
+	    if(undefined != prm && "" != null2void(prm.IS_POPTMPBTN)){
+	        var s_isPopTmpBtn = $("<input type='hidden' name='IS_POPTMPBTN' value='"+prm.IS_POPTMPBTN+"'/>");
+	        $frmObj.append(s_isPopTmpBtn);
+	    }
+	
+	    // 세금계산서 발행용(trgm_0001_01_10.jsp) : 부가세없음만 선택되어있을 경우 'N' 그렇지 않으면 'Y'
+	    if(undefined != prm && "" != null2void(prm.TAX_YN)){
+	        var s_isCase = $("<input type='hidden' name='TAX_YN' value='"+prm.TAX_YN+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    // 대량발행 세금계산서 팝업 호출용(trgm_0001_01_20.jsp)
+	    if(undefined != prm && "" != null2void(prm.TAX_REC)){
+	        //var s_isCase = $("<input type='hidden' name='TAX_REC' value='"+prm.TAX_REC+"'/>");
+	        var s_isCase = $("<input type='hidden' name='TAX_REC'/>");
+	        s_isCase.val(prm.TAX_REC);
+	        $frmObj.append(s_isCase);
+	    }
+		if(undefined != prm && "" != null2void(prm.MULT_DATA)){
+	        var s_isCase = $("<input type='hidden' name='MULT_DATA' value='"+prm.MULT_DATA+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    if(undefined != prm && "" != null2void(prm.FLAG)){
+	        var s_isCase = $("<input type='hidden' name='FLAG' value='"+prm.FLAG+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    if(undefined != prm && "" != null2void(prm.ALL_CHANGE)){
+	        var s_isCase = $("<input type='hidden' name='ALL_CHANGE' value='"+prm.ALL_CHANGE+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    // 매출거래명세표 > 매출세계(수정세금계산서 ISSU_ID)
+	    if(undefined != prm && "" != null2void(prm.MOD_ISSU_ID)){
+	        var s_isCase = $("<input type='hidden' name='MOD_ISSU_ID' value='"+prm.MOD_ISSU_ID+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+		
+		if(undefined != prm && "" != null2void(prm.TOTL_CNT_SNS)){
+	        var s_isCase = $("<input type='hidden' name='TOTL_CNT_SNS' value='"+prm.TOTL_CNT_SNS+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+		
+		if(undefined != prm && "" != null2void(prm.MENU_AUTH)){
+	        var s_isCase = $("<input type='hidden' name='MENU_AUTH' value='"+prm.MENU_AUTH+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+
+		if(undefined != prm && "" != null2void(prm.JSON_ORDER_LIST)){
+			var s_jsonOrderList = $("<input type='hidden' name='JSON_ORDER_LIST' value='"+encodeURIComponent(JSON.stringify(prm.JSON_ORDER_LIST))+"'/>");
+			$frmObj.append(s_jsonOrderList);
+		}
+		
+		$frmObj.append(s_taxgb);
+		
+		var popupWidth = "860";
+		//var popupHeight = "785";
+		var popupHeight = "690";
+		
+		if(undefined != prm.popupW) popupWidth = prm.popupW;
+		if(undefined != prm.popupH) popupHeight = prm.popupH;
+
+		var popupTarget = window;
+		if(undefined != prm.popupTg) popupTarget = prm.popupTg;
+		
+		//var isPopClosed = !taxPopState || typeof(taxPopState.closed) == 'undefined' ||taxPopState.closed;
+		
+		//clearInterval(isClosedChecking);
+		
+		open_popup1("Frm",{sizeW : popupWidth, sizeH :popupHeight, target:popupTarget, action:actionURL});
+		
+		$frmObj.remove();
+	
+		sysPopClosedCallBack();
+	});
+}
+
+
+/**
+ * 텍스빌 서버로 팝업호출_웹표준용
+ * @returns
+ */
+function setFormToTaxbill_NEW(url, taxgb, prm){
+	
+	getSetUp(function(){
+	
+		var return_url = location.href;
+		var taxbillUrl = getTaxbillDomain()+"/tcmc/jsp/";
+		var actionURL =  taxbillUrl.concat(url);
+		if(url.indexOf("http") > -1){
+			actionURL = url;
+		}
+		
+		$("#Frm").remove();
+		
+		var $frmObj = $("<form id='Frm' name='Frm'></form>");
+		$frmObj.attr("method", "post");
+		$frmObj.appendTo("body");
+		var s_taxgb = $("<input type='hidden' name='taxgb' value='"+taxgb+"'/>");
+		
+		//사용자 옵션 정보 기본적으로 들어가야함 (경리나라 세금계산서팝업 호출시에는 값 넘기지 않음)
+		if(null2void(userSetOption,"") !== "" && url.indexOf('/sale_') == -1){
+			var s_user_opt = $("<input type='hidden' name='userOption' value=''/>");
+			$(s_user_opt).val(encodeURIComponent(JSON.stringify(userSetOption)));
+			$frmObj.append(s_user_opt);
+		}
+
+		if(undefined != prm && "" != null2void(prm.ISSU_ID)){
+			var s_issu_id = $("<input type='hidden' name='ISSU_ID' value='"+prm.ISSU_ID+"'/>");
+			var s_issu_id_1 = $("<input type='hidden' name='issuId' value='"+prm.ISSU_ID+"'/>");
+			$frmObj.append(s_issu_id);
+			$frmObj.append(s_issu_id_1);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.ISSU_DATE)){
+			var s_issuDate = $("<input type='hidden' name='issuDate' value='"+prm.ISSU_DATE+"'/>");
+			$frmObj.append(s_issuDate);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.TRANS_STAT_SEQ)){
+			var s_tranSeq = $("<input type='hidden' name='tranSeq' value='"+prm.TRANS_STAT_SEQ+"'/>");
+			$frmObj.append(s_tranSeq);
+		}
+
+		if(undefined != prm && "" != null2void(prm.JSON_TRANS_STAT_SEQ)){
+			var s_jsonTransStatSeq = $("<input type='hidden' name='JSON_TRANS_STAT_SEQ' value='"+encodeURIComponent(JSON.stringify(prm.JSON_TRANS_STAT_SEQ))+"'/>");
+			$frmObj.append(s_jsonTransStatSeq);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.JSON_TRANS_STAT_SEQ_TAX)){
+			var s_jsonTransStatSeq_tax = $("<input type='hidden' name='JSON_TRANS_STAT_SEQ' value='"+prm.JSON_TRANS_STAT_SEQ_TAX+"'/>");
+			$frmObj.append(s_jsonTransStatSeq_tax);
+		}
+
+		if(undefined != prm && "" != null2void(prm.BSNN_NO)){
+			var s_corpNo = $("<input type='hidden' name='bsnnNo' value='"+prm.BSNN_NO+"'/>");
+			$frmObj.append(s_corpNo);
+		}
+	
+		//fax,email 전송시에는 상단 부분 제거
+		if(undefined != prm && "" != null2void(prm.SEND_INFO)){
+			var s_sendInfo = $("<input type='hidden' name='sendInfo' value='"+prm.SEND_INFO+"'/>");
+			$frmObj.append(s_sendInfo);
+		}
+		//fax,mail 전송시 사용
+		if(undefined != prm && "" != null2void(prm.CONNECT_KEY)){
+			var s_connectKey = $("<input type='hidden' name='CONNECT_KEY' value='"+prm.CONNECT_KEY+"'/>");
+			$frmObj.append(s_connectKey);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.CONNECT_REC)){
+			var s_connRec = $("<input type='hidden' name='CONNECT_REC' value='"+prm.CONNECT_REC+"'/>");
+			$frmObj.append(s_connRec);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.TRCO_INFO)){
+			var s_trco_info = $("<input type='hidden' name='TRCO_INFO' value='"+prm.TRCO_INFO+"'/>");
+			$frmObj.append(s_trco_info);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.SEND_TYPE)){
+			var s_sendType = $("<input type='hidden' name='SEND_TYPE' value='"+prm.SEND_TYPE+"'/>");
+			$frmObj.append(s_sendType);
+		}
+		if(undefined != prm && "" != null2void(prm.PRI_MY_IMG)){
+			var pri_my_img = $("<input type='hidden' name='PRI_MY_IMG' value='"+prm.PRI_MY_IMG+"'/>");
+			$frmObj.append(pri_my_img);
+		}
+		// (경리나라 세금계산서팝업 호출시에는 값 넘기지 않음)
+		if(undefined != prm && "" != null2void(prm.SESSION_DATA) && url.indexOf('/sale_') == -1){
+			var s_sessionData = $("<input type='hidden' name='sessionData' value=''/>");
+			$(s_sessionData).val(prm.SESSION_DATA);
+			$frmObj.append(s_sessionData);
+		}
+		if(undefined != prm && "" != null2void(prm.CALL_URL)){
+			var s_callurl = $("<input type='hidden' name='CALL_URL' value='"+prm.CALL_URL+"'/>");
+			$frmObj.append(s_callurl);
+		}
+		//거래처 사업자 번호 
+		if(undefined != prm && "" != null2void(prm.TRCO_BSNN_NO)){
+			var s_trco_bsnnNo = $("<input type='hidden' name='CORP_NO' value='"+prm.TRCO_BSNN_NO+"'/>");
+			$frmObj.append(s_trco_bsnnNo);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.TRCO_DATA)){
+			var s_trco_data = $("<input type='hidden' name='trcoData' value='"+prm.TRCO_DATA+"'/>");
+			$frmObj.append(s_trco_data);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.IS_REISSUE)){
+			var s_reissue = $("<input type='hidden' name='IS_REISSUE' value='"+prm.IS_REISSUE+"'/>");
+			$frmObj.append(s_reissue);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.COMBINED)){
+			var s_combined = $("<input type='hidden' name='COMBINED' value='"+prm.COMBINED+"'/>");
+			$frmObj.append(s_combined);
+		}
+		
+		//매출/ 매입 보고서 팝업용
+		if(undefined != prm && "" != null2void(prm.USE_INTT_ID)){
+			var s_use_intt_id = $("<input type='hidden' name='USE_INTT_ID' value='"+prm.USE_INTT_ID+"'/>");
+			$frmObj.append(s_use_intt_id);
+		}
+		//매출/ 매입 보고서 팝업용
+	
+		if(undefined != prm && "" != null2void(prm.BILL_TYPE)){
+			var s_bill_type = $("<input type='hidden' name='BILL_TYPE' value='"+prm.BILL_TYPE+"'/>");
+			$frmObj.append(s_bill_type);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.MODY_CODE)){
+			var s_isCase = $("<input type='hidden' name='isCase' value='"+prm.MODY_CODE+"'/>");
+			$frmObj.append(s_isCase);
+		}
+	
+		// 세금계산서 대량발행 팝업용
+	    if(undefined != prm && "" != null2void(prm.TOTL_CNT)){
+	        var s_isCase = $("<input type='hidden' name='TOTL_CNT' value='"+prm.TOTL_CNT+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    if(undefined != prm && "" != null2void(prm.MULT_ISSU_ID)){
+	        var s_isCase = $("<input type='hidden' name='MULT_ISSU_ID' value='"+prm.MULT_ISSU_ID+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	
+	    // 세금계산서 발행용(trgm_0001_01_10.jsp) : 부가세없음만 선택되어있을 경우 'N' 그렇지 않으면 'Y'
+	    if(undefined != prm && "" != null2void(prm.TAX_YN)){
+	        var s_isCase = $("<input type='hidden' name='TAX_YN' value='"+prm.TAX_YN+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    // 대량발행 세금계산서 팝업 호출용(trgm_0001_01_20.jsp)
+	    if(undefined != prm && "" != null2void(prm.TAX_REC)){
+	        var s_isCase = $("<input type='hidden' name='TAX_REC' value='"+prm.TAX_REC+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+		if(undefined != prm && "" != null2void(prm.MULT_DATA)){
+	        var s_isCase = $("<input type='hidden' name='MULT_DATA' value='"+prm.MULT_DATA+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    if(undefined != prm && "" != null2void(prm.FLAG)){
+	        var s_isCase = $("<input type='hidden' name='FLAG' value='"+prm.FLAG+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    if(undefined != prm && "" != null2void(prm.ALL_CHANGE)){
+	        var s_isCase = $("<input type='hidden' name='ALL_CHANGE' value='"+prm.ALL_CHANGE+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    // 매출거래명세표 > 매출세계(수정세금계산서 ISSU_ID)
+	    if(undefined != prm && "" != null2void(prm.MOD_ISSU_ID)){
+	        var s_isCase = $("<input type='hidden' name='MOD_ISSU_ID' value='"+prm.MOD_ISSU_ID+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+		
+		if(undefined != prm && "" != null2void(prm.TOTL_CNT_SNS)){
+	        var s_isCase = $("<input type='hidden' name='TOTL_CNT_SNS' value='"+prm.TOTL_CNT_SNS+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+		
+		$frmObj.append(s_taxgb);
+		
+		var popupWidth = "860";
+		//var popupHeight = "785";
+		var popupHeight = "690";
+		
+		if(undefined != prm.popupW) popupWidth = prm.popupW;
+		if(undefined != prm.popupH) popupHeight = prm.popupH;
+
+		var popupTarget = window;
+		if(undefined != prm.popupTg) popupTarget = prm.popupTg;
+		
+		//var isPopClosed = !taxPopState || typeof(taxPopState.closed) == 'undefined' ||taxPopState.closed;
+		
+		//clearInterval(isClosedChecking);
+		
+		open_popup1("Frm",{sizeW : popupWidth, sizeH :popupHeight, target:popupTarget, action:actionURL});
+		
+		$frmObj.remove();
+	
+		sysPopClosedCallBack();
+	});
+}
+
+
+function setFormToTaxbill_pop(url, taxgb, prm){
+	
+	
+	getSetUp(function(){
+	
+		var return_url = location.href;
+		var taxbillUrl = getTaxbillDomain()+"/tcmc/jsp/";
+		var actionURL =  taxbillUrl.concat(url);
+		if(url.indexOf("http") > -1){
+			actionURL = url;
+		}
+		var $frmObj = $("<form id='Frm' name='Frm'></form>");
+		$frmObj.attr("method", "post");
+		$frmObj.appendTo("body");
+		var s_taxgb = $("<input type='hidden' name='taxgb' value='"+taxgb+"'/>");
+		
+		//사용자 옵션 정보 기본적으로 들어가야함 (경리나라 세금계산서팝업 호출시에는 값 넘기지 않음)
+		if(null2void(userSetOption,"") !== "" && url.indexOf('/sale_') == -1){
+			var s_user_opt = $("<input type='hidden' name='userOption' value=''/>");
+			$(s_user_opt).val(encodeURIComponent(JSON.stringify(userSetOption)));
+			$frmObj.append(s_user_opt);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.ISSU_ID)){
+			var s_issu_id = $("<input type='hidden' name='ISSU_ID' value='"+prm.ISSU_ID+"'/>");
+			var s_issu_id_1 = $("<input type='hidden' name='issuId' value='"+prm.ISSU_ID+"'/>");
+			$frmObj.append(s_issu_id);
+			$frmObj.append(s_issu_id_1);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.ISSU_DATE)){
+			var s_issuDate = $("<input type='hidden' name='issuDate' value='"+prm.ISSU_DATE+"'/>");
+			$frmObj.append(s_issuDate);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.TRANS_STAT_SEQ)){
+			var s_tranSeq = $("<input type='hidden' name='tranSeq' value='"+prm.TRANS_STAT_SEQ+"'/>");
+			$frmObj.append(s_tranSeq);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.JSON_TRANS_STAT_SEQ_SI)){
+			var s_jsonTransStatSeq_si = $("<input type='hidden' name='JSON_TRANS_STAT_SEQ_SI' value='"+encodeURIComponent(JSON.stringify(prm.JSON_TRANS_STAT_SEQ_SI))+"'/>");
+			$frmObj.append(s_jsonTransStatSeq_si);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.JSON_TRANS_STAT_SEQ_SUM)){
+			var s_jsonTransStatSeq_sum = $("<input type='hidden' name='JSON_TRANS_STAT_SEQ_SUM' value='"+encodeURIComponent(JSON.stringify(prm.JSON_TRANS_STAT_SEQ_SUM))+"'/>");
+			$frmObj.append(s_jsonTransStatSeq_sum);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.BSNN_NO)){
+			var s_corpNo = $("<input type='hidden' name='bsnnNo' value='"+prm.BSNN_NO+"'/>");
+			$frmObj.append(s_corpNo);
+		}
+	
+		//fax,email 전송시에는 상단 부분 제거
+		if(undefined != prm && "" != null2void(prm.SEND_INFO)){
+			var s_sendInfo = $("<input type='hidden' name='sendInfo' value='"+prm.SEND_INFO+"'/>");
+			$frmObj.append(s_sendInfo);
+		}
+		//fax,mail 전송시 사용
+		if(undefined != prm && "" != null2void(prm.CONNECT_KEY)){
+			var s_connectKey = $("<input type='hidden' name='CONNECT_KEY' value='"+prm.CONNECT_KEY+"'/>");
+			$frmObj.append(s_connectKey);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.CONNECT_REC)){
+			var s_connRec = $("<input type='hidden' name='CONNECT_REC' value='"+prm.CONNECT_REC+"'/>");
+			$frmObj.append(s_connRec);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.TRCO_INFO)){
+			var s_trco_info = $("<input type='hidden' name='TRCO_INFO' value='"+prm.TRCO_INFO+"'/>");
+			$frmObj.append(s_trco_info);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.SEND_TYPE)){
+			var s_sendType = $("<input type='hidden' name='SEND_TYPE' value='"+prm.SEND_TYPE+"'/>");
+			$frmObj.append(s_sendType);
+		}
+		if(undefined != prm && "" != null2void(prm.PRI_MY_IMG)){
+			var pri_my_img = $("<input type='hidden' name='PRI_MY_IMG' value='"+prm.PRI_MY_IMG+"'/>");
+			$frmObj.append(pri_my_img);
+		}
+		// (경리나라 세금계산서팝업 호출시에는 값 넘기지 않음)
+		if(undefined != prm && "" != null2void(prm.SESSION_DATA) && url.indexOf('/sale_') == -1){
+			var s_sessionData = $("<input type='hidden' name='sessionData' value=''/>");
+			$(s_sessionData).val(prm.SESSION_DATA);
+			$frmObj.append(s_sessionData);
+		}
+		if(undefined != prm && "" != null2void(prm.CALL_URL)){
+			var s_callurl = $("<input type='hidden' name='CALL_URL' value='"+prm.CALL_URL+"'/>");
+			$frmObj.append(s_callurl);
+		}
+		//거래처 사업자 번호 
+		if(undefined != prm && "" != null2void(prm.TRCO_BSNN_NO)){
+			var s_trco_bsnnNo = $("<input type='hidden' name='CORP_NO' value='"+prm.TRCO_BSNN_NO+"'/>");
+			$frmObj.append(s_trco_bsnnNo);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.TRCO_DATA)){
+			var s_trco_data = $("<input type='hidden' name='trcoData' value='"+prm.TRCO_DATA+"'/>");
+			$frmObj.append(s_trco_data);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.IS_REISSUE)){
+			var s_reissue = $("<input type='hidden' name='IS_REISSUE' value='"+prm.IS_REISSUE+"'/>");
+			$frmObj.append(s_reissue);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.COMBINED)){
+			var s_combined = $("<input type='hidden' name='COMBINED' value='"+prm.COMBINED+"'/>");
+			$frmObj.append(s_combined);
+		}
+		
+		//매출/ 매입 보고서 팝업용
+		if(undefined != prm && "" != null2void(prm.USE_INTT_ID)){
+			var s_use_intt_id = $("<input type='hidden' name='USE_INTT_ID' value='"+prm.USE_INTT_ID+"'/>");
+			$frmObj.append(s_use_intt_id);
+		}
+		//매출/ 매입 보고서 팝업용
+	
+		if(undefined != prm && "" != null2void(prm.BILL_TYPE)){
+			var s_bill_type = $("<input type='hidden' name='BILL_TYPE' value='"+prm.BILL_TYPE+"'/>");
+			$frmObj.append(s_bill_type);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.MODY_CODE)){
+			var s_isCase = $("<input type='hidden' name='isCase' value='"+prm.MODY_CODE+"'/>");
+			$frmObj.append(s_isCase);
+		}
+	
+		// 세금계산서 대량발행 팝업용
+	    if(undefined != prm && "" != null2void(prm.TOTL_CNT)){
+	        var s_isCase = $("<input type='hidden' name='TOTL_CNT' value='"+prm.TOTL_CNT+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    if(undefined != prm && "" != null2void(prm.MULT_ISSU_ID)){
+	        var s_isCase = $("<input type='hidden' name='MULT_ISSU_ID' value='"+prm.MULT_ISSU_ID+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	
+	    // 세금계산서 발행용(trgm_0001_01_10.jsp) : 부가세없음만 선택되어있을 경우 'N' 그렇지 않으면 'Y'
+	    if(undefined != prm && "" != null2void(prm.TAX_YN)){
+	        var s_isCase = $("<input type='hidden' name='TAX_YN' value='"+prm.TAX_YN+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    // 대량발행 세금계산서 팝업 호출용(trgm_0001_01_20.jsp)
+	    if(undefined != prm && "" != null2void(prm.TAX_REC)){
+	        var s_isCase = $("<input type='hidden' name='TAX_REC' value='"+prm.TAX_REC+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    if(undefined != prm && "" != null2void(prm.FLAG)){
+	        var s_isCase = $("<input type='hidden' name='FLAG' value='"+prm.FLAG+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    if(undefined != prm && "" != null2void(prm.ALL_CHANGE)){
+	        var s_isCase = $("<input type='hidden' name='ALL_CHANGE' value='"+prm.ALL_CHANGE+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+	    // 매출거래명세표 > 매출세계(수정세금계산서 ISSU_ID)
+	    if(undefined != prm && "" != null2void(prm.MOD_ISSU_ID)){
+	        var s_isCase = $("<input type='hidden' name='MOD_ISSU_ID' value='"+prm.MOD_ISSU_ID+"'/>");
+	        $frmObj.append(s_isCase);
+	    }
+		$frmObj.append(s_taxgb);
+		
+		var popupWidth = "410";
+		//var popupHeight = "785";
+		var popupHeight = "197";
+		
+		if(undefined != prm.popupW) popupWidth = prm.popupW;
+		if(undefined != prm.popupH) popupHeight = prm.popupH;
+		
+		var popupTarget = window;
+		if(undefined != prm.popupTg) popupTarget = prm.popupTg;
+		open_popup1("Frm",{sizeW : "410", sizeH :"183", target:popupTarget, action:actionURL});
+		
+		$frmObj.remove();
+	
+		sysPopClosedCallBack();
+	});
+}
+
+
+/**
+ * 텍스빌 서버로 팝업호출
+ * @returns
+ */
+function setFormToPrintTaxbill(url, taxgb, prm){
+	
+	getSetUp(function(){
+	
+		var return_url = location.href;
+		//var taxbillUrl = getTaxbillDomain()+"/MyBuilder/MyBSvrweb/";
+		var taxbillUrl = getTaxbillDomain()+"/tcmc/jsp/";
+		var actionURL =  taxbillUrl.concat(url);
+		if(url.indexOf("http") > -1){
+			actionURL = url;
+		}
+		
+		$("#Frm").remove();  
+
+		var $frmObj = $("<form id='Frm' name='Frm'></form>");
+		$frmObj.attr("method", "post");
+		$frmObj.appendTo("body");
+		var s_taxgb = $("<input type='hidden' name='taxgb' value='"+taxgb+"'/>");
+		
+		//사용자 옵션 정보 기본적으로 들어가야함
+		if(null2void(userSetOption,"") !== ""){
+			var s_user_opt = $("<input type='hidden' name='userOption' value=''/>");
+			$(s_user_opt).val(encodeURIComponent(JSON.stringify(userSetOption)));
+			$frmObj.append(s_user_opt);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.ISSU_ID)){
+			var s_issu_id = $("<input type='hidden' name='ISSU_ID' value='"+prm.ISSU_ID+"'/>");
+			var s_issu_id_1 = $("<input type='hidden' name='issuId' value='"+prm.ISSU_ID+"'/>");
+			$frmObj.append(s_issu_id);
+			$frmObj.append(s_issu_id_1);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.ISSU_DATE)){
+			var s_issuDate = $("<input type='hidden' name='issuDate' value='"+prm.ISSU_DATE+"'/>");
+			$frmObj.append(s_issuDate);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.TRANS_STAT_SEQ)){
+			var s_tranSeq = $("<input type='hidden' name='tranSeq' value='"+prm.TRANS_STAT_SEQ+"'/>");
+			$frmObj.append(s_tranSeq);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.JSON_TRANS_STAT_SEQ)){
+			var s_jsonTransStatSeq = $("<input type='hidden' name='JSON_TRANS_STAT_SEQ' value='"+encodeURIComponent(JSON.stringify(prm.JSON_TRANS_STAT_SEQ))+"'/>");
+			$frmObj.append(s_jsonTransStatSeq);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.BSNN_NO)){
+			var s_corpNo = $("<input type='hidden' name='bsnnNo' value='"+prm.BSNN_NO+"'/>");
+			$frmObj.append(s_corpNo);
+		}
+		//매입 거래명세표 인쇄시 사용
+		if(undefined != prm && "" != null2void(prm.buyr_yn)){
+			var s_buyr_yn = $("<input type='hidden' name='buyr_yn' value='"+prm.buyr_yn+"'/>");
+			$frmObj.append(s_buyr_yn);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.b_trsc_setup_09)){
+			var s_b_trsc_setup_09 = $("<input type='hidden' name='b_trsc_setup_09' value='"+prm.b_trsc_setup_09+"'/>");
+			$frmObj.append(s_b_trsc_setup_09);
+		}
+	
+		//fax,email 전송시에는 상단 부분 제거
+		if(undefined != prm && "" != null2void(prm.SEND_INFO)){
+			var s_sendInfo = $("<input type='hidden' name='sendInfo' value='"+prm.SEND_INFO+"'/>");
+			$frmObj.append(s_sendInfo);
+		}
+		//fax,mail 전송시 사용
+		if(undefined != prm && "" != null2void(prm.CONNECT_KEY)){
+			var s_connectKey = $("<input type='hidden' name='CONNECT_KEY' value='"+prm.CONNECT_KEY+"'/>");
+			$frmObj.append(s_connectKey);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.CONNECT_REC)){
+			var s_connRec = $("<input type='hidden' name='CONNECT_REC' value='"+prm.CONNECT_REC+"'/>");
+			$frmObj.append(s_connRec);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.TRCO_INFO)){
+			var s_trco_info = $("<input type='hidden' name='TRCO_INFO' value='"+prm.TRCO_INFO+"'/>");
+			$frmObj.append(s_trco_info);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.SEND_TYPE)){
+			var s_sendType = $("<input type='hidden' name='SEND_TYPE' value='"+prm.SEND_TYPE+"'/>");
+			$frmObj.append(s_sendType);
+		}
+		if(undefined != prm && "" != null2void(prm.PRI_MY_IMG)){
+			var pri_my_img = $("<input type='hidden' name='PRI_MY_IMG' value='"+prm.PRI_MY_IMG+"'/>");
+			$frmObj.append(pri_my_img);
+		}
+		if(undefined != prm && "" != null2void(prm.SESSION_DATA)){
+			var s_sessionData = $("<input type='hidden' name='sessionData' value='"+prm.SESSION_DATA+"'/>");
+			$frmObj.append(s_sessionData);
+		}
+		if(undefined != prm && "" != null2void(prm.CALL_URL)){
+			var s_callurl = $("<input type='hidden' name='CALL_URL' value='"+prm.CALL_URL+"'/>");
+			$frmObj.append(s_callurl);
+		}
+		//거래처 사업자 번호 
+		if(undefined != prm && "" != null2void(prm.TRCO_BSNN_NO)){
+			var s_trco_bsnnNo = $("<input type='hidden' name='CORP_NO' value='"+prm.TRCO_BSNN_NO+"'/>");
+			$frmObj.append(s_trco_bsnnNo);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.TRCO_DATA)){
+			var s_trco_data = $("<input type='hidden' name='trcoData' value='"+prm.TRCO_DATA+"'/>");
+			$frmObj.append(s_trco_data);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.IS_REISSUE)){
+			var s_reissue = $("<input type='hidden' name='IS_REISSUE' value='"+prm.IS_REISSUE+"'/>");
+			$frmObj.append(s_reissue);
+		}
+	
+		if(undefined != prm && "" != null2void(prm.COMBINED)){
+			var s_combined = $("<input type='hidden' name='COMBINED' value='"+prm.COMBINED+"'/>");
+			$frmObj.append(s_combined);
+		}
+		
+		//매출/ 매입 보고서 팝업용
+		if(undefined != prm && "" != null2void(prm.USE_INTT_ID)){
+			var s_use_intt_id = $("<input type='hidden' name='USE_INTT_ID' value='"+prm.USE_INTT_ID+"'/>");
+			$frmObj.append(s_use_intt_id);
+		}
+		//매출/ 매입 보고서 팝업용
+	
+		if(undefined != prm && "" != null2void(prm.BILL_TYPE)){
+			var s_bill_type = $("<input type='hidden' name='BILL_TYPE' value='"+prm.BILL_TYPE+"'/>");
+			$frmObj.append(s_bill_type);
+		}
+		
+		if(undefined != prm && "" != null2void(prm.MODY_CODE)){
+			var s_isCase = $("<input type='hidden' name='isCase' value='"+prm.MODY_CODE+"'/>");
+			$frmObj.append(s_isCase);
+		}
+		
+		//A:전체, S:공급자, B:공급받는자
+		if(undefined != prm && "" != null2void(prm.printgb)){
+			var s_printgb = $("<input type='hidden' name='printgb' value='"+prm.printgb+"'/>");
+			$frmObj.append(s_printgb);
+		}
+		
+		
+		$frmObj.append(s_taxgb);
+		
+		var popupWidth = "860";
+		//var popupHeight = "785";
+		var popupHeight = "650";
+		
+		if(undefined != prm.popupW) popupWidth = prm.popupW;
+		//if(undefined != prm.popupH) popupHeight = prm.popupH;
+		
+		var popupTarget = window;
+		if(undefined != prm.popupTg) popupTarget = prm.popupTg;
+		console.log(prm.popupTg + "//" + popupTarget);
+		var isPopClosed = !taxPopState || typeof(taxPopState.closed) == 'undefined' ||taxPopState.closed;
+		open_popup1("Frm",{sizeW : popupWidth, sizeH :popupHeight, target:popupTarget, action:actionURL});
+		
+		$frmObj.remove();
+		
+		//if(isPopClosed){
+			sysPopClosedCallBack();
+		//}
+	});
+}
+
+/**
+ * 팝업호출전 post 데이터셋
+ * @returns
+ */
+function setForm(url, prm){
+	
+	var $frmObj = $("<form id='Frm' name='Frm'></form>");
+	$frmObj.attr("method", "post");
+	$frmObj.appendTo("body");
+	
+	//사용자 옵션 정보 기본적으로 들어가야함
+	if(null2void(userSetOption,"") !== ""){
+		var s_user_opt = $("<input type='hidden' name='userOption' value='"+encodeURIComponent(JSON.stringify(userSetOption))+"'/>");
+		$frmObj.append(s_user_opt);
+	}
+	
+	if(undefined != prm && "" != null2void(prm.SESSION_DATA)){
+		var s_sessionData = $("<input type='hidden' name='sessionData' value='"+prm.SESSION_DATA+"'/>");
+		$frmObj.append(s_sessionData);
+	}
+
+	if(undefined != prm && "" != null2void(prm.JSON_ISSU_DATA)){
+		var s_jsonIssuData = $("<input type='hidden' name='jsonIssuData' value='"+prm.JSON_ISSU_DATA+"'/>");
+		$frmObj.append(s_jsonIssuData);
+	}
+	
+	var popupWidth = "860";
+	var popupHeight = "785";
+	
+	if(undefined != prm.popupW) popupWidth = prm.popupW;
+	if(undefined != prm.popupH) popupHeight = prm.popupH;
+	
+	var popupTarget = window;
+	if(undefined != prm.popupTg) popupTarget = prm.popupTg;
+	open_popup1("Frm",{sizeW : popupWidth, sizeH :popupHeight, target:popupTarget, action:url});
+	
+	$frmObj.remove();
+
+    sysPopClosedCallBack();
+    
+}
+function setFormToIFrame(url, prm, callbackFn){
+//	getSetUp(function(){
+		var actionURL =  url;
+		if($("#LogicHiddenFrame").length == 0){
+			$("body").append('<iframe src="" frameborder="0" id="LogicHiddenFrame" name="LogicHiddenFrame" width="0" height="0" marginwidth="0" marginheight="0" scrolling="no" allowtransparency="true"></iframe>');
+			document.getElementById('LogicHiddenFrame').onload = callbackFn;
+		}else{
+			document.getElementById('LogicHiddenFrame').onload = callbackFn;
+		}
+		
+		var $frmObj = $("<form id='Frm' name='Frm'></form>");
+		$frmObj.attr("method", "post");
+		$frmObj.attr("target", "LogicHiddenFrame");
+		$frmObj.attr("action", actionURL);
+		$frmObj.appendTo("body");
+		
+		for(var key in prm){
+			var inputData = $("<input type='hidden' name='"+key+"' value=''/>");
+			$(inputData).val(prm[key]);
+			$frmObj.append(inputData);
+		}
+		$("#Frm").submit();
+		$frmObj.remove();
+//	});
+}
+function setFormToIFrameTaxbill(url, prm, callbackFn){
+//	getSetUp(function(){
+		var return_url = location.href;
+		var taxbillUrl = getTaxbillDomain()+"/tcmc/jsp/";
+		var actionURL =  taxbillUrl.concat(url);
+		if(url.indexOf("http") > -1){
+			actionURL = url;
+		}
+		
+		if($("#LogicHiddenFrame").length == 0){
+			$("body").append('<iframe src="" frameborder="0" id="LogicHiddenFrame" name="LogicHiddenFrame" width="0" height="0" marginwidth="0" marginheight="0" scrolling="no" allowtransparency="true"></iframe>');
+			document.getElementById('LogicHiddenFrame').onload = callbackFn;
+		}
+		
+		var $frmObj = $("<form id='Frm' name='Frm'></form>");
+		$frmObj.attr("method", "post");
+		$frmObj.attr("target", "LogicHiddenFrame");
+		$frmObj.attr("action", actionURL);
+		$frmObj.appendTo("body");
+		
+		for(var key in prm){
+			var inputData = $("<input type='hidden' name='"+key+"' value=''/>");
+			$(inputData).val(prm[key]);
+			$frmObj.append(inputData);
+		}
+		$("#Frm").submit();
+		$frmObj.remove();
+//	});
+}
+
+
+/**
+ * 팝업 열기 팝업 호출시 데이터 처리가 많아 처음 로딩시 about blank가 뜬다
+ * 이를 해결 하기 위해서 window.open에 url을 넣은 뒤에 form 서브밋을 한다.
+ * 이는 IE에서 발생한다........하...겨우 찾았네 그리고 open 하는 jsp 에서는 out.flush 로 
+ * 로딩전에 이미지를 먼저 보여 준다. 
+ * @param formId
+ * @param options sizeW : 팝업넓이, sizeH: 팝업높이, target: form타켓, action : 웹서비스ID
+ * @return
+ */
+function open_popup1(formId, options){
+	var	sizeW = parseInt(options.sizeW, 10);	
+	var	sizeH = parseInt(options.sizeH, 10);
+	var nLeft = screen.width/2 - sizeW/2 ;
+	var nTop  = screen.height/2- sizeH/2 ;
+	var actionURL = options.action;
+	var act_url = "";
+	if(actionURL.indexOf("fax") > -1 || actionURL.indexOf("mail") > -1 ){
+		act_url = options.action;
+		if(act_url.indexOf("?") > -1){
+			act_url = act_url + "&t="+new Date().getTime();			
+		}else{
+			act_url = act_url + "?t="+new Date().getTime();
+		}
+	}else{
+		act_url = ""; 
+	}
+	
+	//듀얼모니터
+	nLeft += window.screenLeft;
+	nTop += window.screenTop;
+	
+	var option= ",toolbar=no,menubar=no,location=no,scrollbars=yes,status=no,resizable=no";
+	var winObj= window.open(act_url, options.target, "left=" + nLeft + ",top=" +  nTop + ",width=" + sizeW + ",height=" + sizeH  + option );
+
+    taxPopState = winObj;
+	
+	try{
+		//winObj.blur(); 	//크롭에서 focus()만 호출할경우 작동하지 않아서 blur()를 먼저 호출한후 focus()호출하도록 수정함.
+		//winObj.focus();	//팝업이 이미 열려있는경우 앞으로 나오도록 한다.
+	} catch(e){}
+	var frm = document.getElementById(formId);
+
+	if(!!frm){
+		frm.method = "post";
+		frm.target = options.target;
+		
+		if(!!options.action){
+			if(options.action.indexOf("?") > -1){
+				frm.action = options.action + "&t="+new Date().getTime();
+			}else{
+				frm.action = options.action + "?t="+new Date().getTime();
+			}
+		}
+		frm.submit();
+	}
+	frm.target = "";
+}
+function getTrcoData(arg1) {
+//거래처 자동완성 전체조회 대신 실시간조회로 변경하여 주석처리
+//	var tmpTcmcRec = [];
+//	var jexAjax = jex.createAjaxUtil("trco_9001_01_r001");
+//	jexAjax.set("BSNN_NO", null2void(arg1,""));
+//	jexAjax.setAsync(false);
+//	jexAjax.execute(function(data) {
+//		if(data.RSLT_CD == "0000"){
+//			$.each(data.TCMC_REC,function(i,v){
+//				tmpTcmcRec.push({"label":v.label, "TRCO_CMNM":v.TRCO_CMNM,"TRCO_BSNN_NO":v.TRCO_BSNN_NO,"value":v.TRCO_CMNM,"TRCO_RPPR_NM":null2void(v.TRCO_RPPR_NM,"")});
+//			});
+//			sessionStorage.setItem('TCMC_REC', JSON.stringify(tmpTcmcRec));
+//		}else{
+//			alert(data.RSLT_CD+"\n"+data.RSLT_MSG);
+//		}
+//		
+//    });
+}
+
+/**
+ *  거래처 자동완성
+ */
+function fn_biznmAutocomplete(target, tmpTcmcRec, callbackFn){
+	var xHtml = "";
+	
+	if($(target).parent().find("ui-autocomplete-wrap").length == 0){
+		
+		xHtml += '<div class="ui-autocomplete-wrap">';
+		xHtml += '<div id="APPEND_AUTO">';
+		xHtml += '</div>';
+		xHtml += '</div></div>';
+		$(target).parent().append(xHtml);
+	}
+	
+    $(target).autocomplete({
+    	appendTo : $(target).parent().find("#APPEND_AUTO"),
+    	minLength: 1,
+        //source: tmpTcmcRec,
+    	source: function(request,response){
+    		var jexAjax = jex.createAjaxUtil("trco_9001_01_r001");
+    		jexAjax.set("TRCO_CMNM", request.term);
+    		jexAjax.set("TRCO_BSNN_NM", request.term);
+    		jexAjax.execute(function(data) {
+    			response(
+                    $.map(data.TCMC_REC, function(item) {
+                        return {
+                            label: item.LABEL,
+                            TRCO_CMNM: item.TRCO_CMNM,
+                            TRCO_BSNN_NM: item.TRCO_BSNN_NM,
+                            TRCO_BSNN_NO: item.TRCO_BSNN_NO,
+                            TRCO_CMNM: item.TRCO_CMNM,
+                            TRCO_RPPR_NM: null2void(item.TRCO_RPPR_NM,""),
+                            TRCO_KEY: item.TRCO_KEY
+                        }
+                    })
+                );
+    	    });
+		},
+        focus: function(event, ui) {
+            //$(event.target).val(ui.item.label);
+            return false;
+        },
+        select: function(event, ui) {
+	    	$(target).blur();
+            if( jQuery.isFunction( callbackFn ) ){
+                callbackFn(event,ui.item);
+                return false;
+            }
+            return false;
+        }
+    }).keyup(function(e){
+        if (e.keyCode == 13){ return;}
+	}).data('ui-autocomplete')._renderItem = function(ul, item) {
+    	
+		$(ul).addClass("full2");
+		var value = $(target).val();
+		var tmpLabel = item.label;
+		var start_pos = item.label.toUpperCase().indexOf(value.toUpperCase());
+		if(start_pos > -1){
+			tmpLabel = item.label.substring(0, start_pos);
+			tmpLabel += "<strong style=\"color:#fe1a1a;\">" + item.label.substring(start_pos, start_pos + value.length) + "</strong>";
+			tmpLabel += item.label.substring(start_pos + value.length);
+		}
+    	
+		var tmpTrcoBsnnNm = item.TRCO_BSNN_NM;
+		var start_pos = item.TRCO_BSNN_NM.toUpperCase().indexOf(value.toUpperCase());
+		if(start_pos > -1){
+			tmpTrcoBsnnNm = item.TRCO_BSNN_NM.substring(0, start_pos);
+			tmpTrcoBsnnNm += "<strong style=\"color:#fe1a1a;\">" + item.TRCO_BSNN_NM.substring(start_pos, start_pos + value.length) + "</strong>";
+			tmpTrcoBsnnNm += item.TRCO_BSNN_NM.substring(start_pos + value.length);
+		}
+		
+		if(item.label == item.TRCO_BSNN_NM){
+			tmpTrcoBsnnNm = "";
+		}
+		
+		return $("<li></li>").data("ui-autocomplete-item",item).append(
+				"<div class=\"combo_postAdd_item\">"
+				+ "<span class=\"tx_name\" style=\"width:150px !important\">" + tmpLabel +"</span>"
+				+ "<span class=\"tx_name row2\">"+ tmpTrcoBsnnNm+"</span>"
+				+ "<span class=\"tx_exponent\">" + item.TRCO_RPPR_NM + "</span>"
+				+ "</span>"
+				+ "<span class=\"tx_no\">" + item.TRCO_BSNN_NO + "</span></div>").appendTo(ul);
+	};
+}
+
+/**
+ *  거래처 자동완성(거래처추가 버튼)
+ */
+function fn_biznmAutocomplete_new(target, tmpTcmcRec, callbackFn){
+	var xHtml = "";
+	
+	if($(target).parent().find("ui-autocomplete-wrap").length == 0){
+		
+		xHtml += '<div class="ui-autocomplete-wrap" style="min-width:441px;">';
+		xHtml += '<div id="APPEND_AUTO">';
+		xHtml += '</div>';
+		xHtml += '</div></div>';
+		$(target).parent().append(xHtml);
+	}
+	
+    $(target).autocomplete({
+    	appendTo : $(target).parent().find("#APPEND_AUTO"),
+    	minLength: 1,
+        //source: tmpTcmcRec,
+    	source: function(request,response){
+    		var jexAjax = jex.createAjaxUtil("trco_9001_01_r001");
+    		jexAjax.set("TRCO_CMNM", request.term);
+    		jexAjax.set("TRCO_BSNN_NM", request.term);
+    		jexAjax.set("MENU_DV", "CMS");
+    		jexAjax.execute(function(data) {
+				data.TCMC_REC.push({"BUTTON":"Y"}); //20190717
+				response(data.TCMC_REC);
+    			/*response(
+                    $.map(data.TCMC_REC, function(item) {
+                        return {
+                            label: item.LABEL,
+                            TRCO_CMNM: item.TRCO_CMNM,
+                            TRCO_BSNN_NO: item.TRCO_BSNN_NO,
+                            TRCO_CMNM: item.TRCO_CMNM,
+                            TRCO_RPPR_NM: null2void(item.TRCO_RPPR_NM,"")
+                        }
+                    })
+                );*/
+    	    });
+		},
+        focus: function(event, ui) {
+            //$(event.target).val(ui.item.label);
+            return false;
+        },
+        select: function(event, ui) {
+	    	$(target).blur();
+	    	
+	    	if(ui.item.BUTTON){ //20190717
+				trco_simple_append(); //거래처추가 팝업호출
+				return false;
+			}
+	    	
+            if( jQuery.isFunction( callbackFn ) ){
+                callbackFn(event,ui.item);
+                return false;
+            }
+            return false;
+        }
+    }).keyup(function(e){
+    	if($(e.target).val() == " ") $(e.target).val("");
+		if($(e.target).val() == ""){
+			$(e.target).attr("mapping","");
+			return;
+		}
+    	
+    	if (e.keyCode == 13){ return;}
+	}).data('ui-autocomplete')._renderItem = function(ul, item) {
+		$(ul).addClass("full2");
+    	if(item.BUTTON){ //20190717
+			return $("<li></li>").data("ui-autocomplete-item",item).append('<a style="color:#3598db;">[거래처추가]</a>').appendTo(ul);
+		}
+		if(item.TRCO_BSNN_NO.length != 10) item.TRCO_BSNN_NO = "";
+    	
+		var value = $(target).val();
+		var tmpLabel = item.LABEL;
+		var start_pos = item.LABEL.toUpperCase().indexOf(value.toUpperCase());
+		if(start_pos > -1){
+			tmpLabel = item.LABEL.substring(0, start_pos);
+			tmpLabel += "<strong style=\"color:#fe1a1a;\">" + item.LABEL.substring(start_pos, start_pos + value.length) + "</strong>";
+			tmpLabel += item.LABEL.substring(start_pos + value.length);
+		}
+    	
+		var tmpTrcoBsnnNm = item.TRCO_BSNN_NM;
+		var start_pos = item.TRCO_BSNN_NM.toUpperCase().indexOf(value.toUpperCase());
+		if(start_pos > -1){
+			tmpTrcoBsnnNm = item.TRCO_BSNN_NM.substring(0, start_pos);
+			tmpTrcoBsnnNm += "<strong style=\"color:#fe1a1a;\">" + item.TRCO_BSNN_NM.substring(start_pos, start_pos + value.length) + "</strong>";
+			tmpTrcoBsnnNm += item.TRCO_BSNN_NM.substring(start_pos + value.length);
+		}
+		
+		if(item.LABEL == item.TRCO_BSNN_NM){
+			tmpTrcoBsnnNm = "";
+		}
+		
+		return $("<li></li>").data("ui-autocomplete-item",item).append(
+				"<div class=\"combo_postAdd_item\">"
+				+ "<span class=\"tx_name\" style=\"width:150px !important\">" + tmpLabel +"</span>"
+				+ "<span class=\"tx_name row2\">"+ tmpTrcoBsnnNm+"</span>"
+				+ "<span class=\"tx_exponent\">" + item.TRCO_RPPR_NM + "</span>"
+				+ "</span>"
+				+ "<span class=\"tx_no\">" + item.TRCO_BSNN_NO + "</span></div>").appendTo(ul);
+	};
+}
+
+// setDatePicker(단일 날짜 세팅)
+function setDatePicker(dateObj){
+    var today	  = new Date();
+    var startYear = today.getFullYear();
+    $(dateObj).datepicker({
+        dateFormat: 'yy-mm-dd', // 데이터는 yyyy-MM-dd로 나옴
+        prevText: '이전달',
+        nextText: '다음달',
+        monthNames: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+        monthNamesShort: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+        dayNames: ['일', '월', '화', '수', '목', '금', '토'],
+        dayNamesShort: ['일', '월', '화', '수', '목', '금', '토'],
+        dayNamesMin: ['일', '월', '화', '수', '목', '금', '토'],
+        weekHeader: 'Wk',
+        firstDay: 0,
+        isRTL: false,
+        duration: 200,
+        showAnim: 'show',   // 애니메이션
+        changeMonth: true,
+        changeYear: true,
+        //yearRange: 'c-10:c',
+        showMonthAfterYear: true,
+        //yearSuffix: '년',
+        showOtherMonths: true, // 나머지 날짜도 화면에 표시
+        selectOtherMonths: true, // 나머지 날짜에도 선택을 하려면 true
+        showOn: "both", // 버튼과 텍스트 필드 모두 캘린더를 보여준다.
+        buttonImage: "../../img/serp/ico/ico_calendar.png", // 버튼 이미지
+        maxDate		: $.datepicker.formatDate('yy-mm-dd', new Date()),
+
+        onChangeMonthYear: function (year, month, inst) {
+            // 년 또는 월이 변경시 이벤트 발생
+        },
+        beforeShow: function (input, inst) {
+            // 일자 선택되기전 이벤트 발생
+        },
+        onSelect: function (dateText, inst) {
+            // 일자 선택된 후 이벤트 발생
+        },
+        yearRange: (startYear-70)+':'+(startYear+10)
+    });
+}
+
+//setDatePicker(단일 날짜 세팅) -오늘버튼포함
+function setDatePicker2(dateObj){
+    $(dateObj).datepicker({
+        changeMonth 	: true
+        , dateFormat  	: 'yy-mm-dd'
+//        , maxDate	: moment().format("YYYY-MM-DD")
+        ,showButtonPanel: true
+        ,currentText: '오늘'
+        , beforeShow	: function(){
+            var today	  = new Date();
+            var startYear = today.getFullYear();
+            //var suffix    = "년";
+
+            $.datepicker.regional['ko'] = {
+                closeText: '닫기',
+                prevText: '이전달',
+                nextText: '다음달',
+                currentText: '오늘',
+                monthNames: ['1월','2월','3월','4월','5월','6월',
+                    '7월','8월','9월','10월','11월','12월'],
+                monthNamesShort: ['1월','2월','3월','4월','5월','6월',
+                    '7월','8월','9월','10월','11월','12월'],
+                dayNames: ['일','월','화','수','목','금','토'],
+                dayNamesShort: ['일','월','화','수','목','금','토'],
+                dayNamesMin: ['일','월','화','수','목','금','토'],
+                weekHeader: 'Wk',
+                dateFormat: 'yy-mm-dd',
+                firstDay: 0,
+                isRTL: false,
+                showMonthAfterYear: true,
+                //yearSuffix: suffix,
+                changeYear: true,
+                changeMonth: true,
+                yearRange: (startYear-10)+':'+(startYear)
+            };
+            $.datepicker.setDefaults($.datepicker.regional['ko']);
+            $.datepicker._gotoToday = function(id) { 
+            	this._setDate(this._getInst($(id)[0]), new Date());
+            	this._hideDatepicker();
+            	this._getInst($(id)[0]).input.trigger("change");
+            }
+        }
+    });
+    $(dateObj).mask("9999-99-99");
+}
+
+// datepicker 날짜 셋팅
+function setDateRangePicker(targetStart, targetEnd, limit) {
+    $(targetEnd).val(moment().format("YYYY-MM-DD"));
+    $(targetStart).val(month_minus(moment().format("YYYYMMDD"), 1)); //기본값 : 전월
+    $(targetStart).datepicker({
+        changeMonth 	: true
+        , dateFormat  	: 'yy-mm-dd'
+//        , maxDate	: moment().format("YYYY-MM-DD")
+        ,showButtonPanel: true
+        ,currentText: '오늘'
+        , beforeShow	: function(){
+            var today	  = new Date();
+            var startYear = today.getFullYear();
+            //var suffix    = "년";
+
+            $.datepicker.regional['ko'] = {
+                closeText: '닫기',
+                prevText: '이전달',
+                nextText: '다음달',
+                currentText: '오늘',
+                monthNames: ['1월','2월','3월','4월','5월','6월',
+                    '7월','8월','9월','10월','11월','12월'],
+                monthNamesShort: ['1월','2월','3월','4월','5월','6월',
+                    '7월','8월','9월','10월','11월','12월'],
+                dayNames: ['일','월','화','수','목','금','토'],
+                dayNamesShort: ['일','월','화','수','목','금','토'],
+                dayNamesMin: ['일','월','화','수','목','금','토'],
+                weekHeader: 'Wk',
+                dateFormat: 'yy-mm-dd',
+                firstDay: 0,
+                isRTL: false,
+                showMonthAfterYear: true,
+                //yearSuffix: suffix,
+                changeYear: true,
+                changeMonth: true,
+                yearRange: (startYear-10)+':'+(startYear+1) //[2024.12.18] cwb 1년 연장 
+            };
+            $.datepicker.setDefaults($.datepicker.regional['ko']);
+            $.datepicker._gotoToday = function(id) { 
+            	this._setDate(this._getInst($(id)[0]), new Date());
+            	this._hideDatepicker();
+            	this._getInst($(id)[0]).input.trigger("change");
+            }
+        }
+    });
+    $(targetEnd).datepicker({
+//        maxDate:  moment().format("YYYY-MM-DD"),
+        changeMonth: true
+        , dateFormat: 'yy-mm-dd'
+        ,showButtonPanel: true
+        ,currentText: '오늘'
+        , beforeShow	: function(){
+            var today	  = new Date();
+            var startYear = today.getFullYear();
+            //var suffix    = "년";
+            $.datepicker.regional['ko'] = {
+                closeText: '닫기',
+                prevText: '이전달',
+                nextText: '다음달',
+                currentText: '오늘',
+                monthNames: ['1월','2월','3월','4월','5월','6월',
+                    '7월','8월','9월','10월','11월','12월'],
+                monthNamesShort: ['1월','2월','3월','4월','5월','6월',
+                    '7월','8월','9월','10월','11월','12월'],
+                dayNames: ['일','월','화','수','목','금','토'],
+                dayNamesShort: ['일','월','화','수','목','금','토'],
+                dayNamesMin: ['일','월','화','수','목','금','토'],
+                weekHeader: 'Wk',
+                dateFormat: 'yy-mm-dd',
+                firstDay: 0,
+                isRTL: false,
+                showMonthAfterYear: true,
+                //yearSuffix: suffix,
+                changeYear: true,
+                changeMonth: true,
+                yearRange: (startYear-10)+':'+(startYear+1) //[2024.12.18] cwb 1년 연장 
+            };
+            $.datepicker.setDefaults($.datepicker.regional['ko']);
+            $.datepicker._gotoToday = function(id) { 
+                this._setDate(this._getInst($(id)[0]), new Date());
+                this._hideDatepicker();
+            }
+        }
+        , onClose: function (selectedDate, instance) {
+            if (selectedDate != '') {
+                var date = $.datepicker.parseDate(instance.settings.dateFormat, selectedDate, instance.settings);
+                date.setMonth(date.getMonth() - limit);
+//                $(targetStart).datepicker("option", "minDate", date);
+                $(targetStart).datepicker("option", "maxDate", selectedDate);
+            }
+        }
+    });
+    $(targetStart).mask("9999-99-99");
+    $(targetEnd).mask("9999-99-99");
+};
+
+/**
+ *  시작일자, 종료일자 날자 설정
+ */
+function setSelectDate(startId, endId, gb) {
+    $("#"+endId).val(moment().format('YYYY-MM-DD'));
+    switch(gb) {
+        case "1":  // 1주일
+            setCalendarBetween(startId,endId,"w", -1);
+            break;
+        case "2":  // 1개월
+            setCalendarBetween(startId,endId,"m", -1);
+            break;
+        case "3":  // 3개월
+            setCalendarBetween(startId,endId,"m", -3);
+            break;
+        case "4":  // 당월
+            $("#"+startId).val(getDate("yyyy-mm-01"));
+            $("#"+endId  ).val(getDate("yyyy-mm-dd"));
+            break;
+        case "5":  // 전월
+            $("#"+startId).val(moment(moment()).subtract(1, 'months').startOf('month').format('YYYY-MM-DD'));
+            $("#"+endId  ).val(moment(moment()).subtract(1, 'months').endOf('month').format('YYYY-MM-DD'));
+            break;
+    }
+};
+
+function makeDateMenu(callback, div, option, strId, endId){
+			if(isEmptyStr(strId)){
+				strId = 'START_DT'
+			}			
+			if(isEmptyStr(endId)){
+				endId = 'END_DT'
+			}
+			
+			//to_do 기존의 날짜 받지 않는 방향으로..
+			var html = '';
+				html +=		'	<!-- 날짜선택/입력 -->'
+				html +=		'	<div class="date_ui_cn" >'
+				if(option === '1'){
+					html +=		'	<div class="dt_dft">당일</div><!-- 디폴트 -->'
+				}
+				else{
+					html +=		'	<div class="dt_dft">최근 1개월</div><!-- 디폴트 -->'
+				}
+				html +=		'		<!-- 직접입력 -->'
+				html +=		'		<div class="dt_ipt" style="display:none">'
+				html +=		'			<input type="text" name="STR_DT" value="2022-12-01"> ~ <input type="text" name="END_DT" value="2022-12-31">'
+				html +=		'		</div>'
+				html +=		'		<!-- //직접입력 -->'
+				html +=		'		<a href="#none" class="btn_combo"><span class="blind">선택</span></a>'
+				html +=		'		<a href="#none" class="btn_cal"><span class="blind">달력</span></a>'
+				html +=		'	</div>'
+				html +=		'	<!-- //날짜선택/입력 -->'
+				html +=		'	<!-- 레이어 -->'
+				if(option === '1'){
+					html +=		'	<div class="date_ui_ly" style="display:none;">'
+					html +=		'		<ul>'
+					html +=		'			<li data-dt="today" class="on"><a href="#none">당일</a></li>'
+					html +=		'			<li data-dt="1week"><a href="#none">최근 7일</a></li>'
+					html +=		'			<li data-dt="1month"><a href="#none">최근 1개월</a></li>'
+					html +=		'			<li data-dt="write"><a href="#none">직접입력</a></li>'
+					html +=		'		</ul>'
+					html +=		'	</div>'
+					html +=		'<!-- //레이어 -->'
+				}
+				else{
+					html +=		'	<div class="date_ui_ly" style="display:none;">'
+					html +=		'		<ul>'
+					html +=		'			<li data-dt="1month" class="on"><a href="#none">최근 1개월</a></li>'
+					html +=		'			<li data-dt="3month"><a href="#none">최근 3개월</a></li>'
+					html +=		'			<li data-dt="6month"><a href="#none">최근 6개월</a></li>'
+					html +=		'			<li data-dt="write"><a href="#none">직접입력</a></li>'
+					html +=		'		</ul>'
+					html +=		'	</div>'
+					html +=		'<!-- //레이어 -->'					
+				}
+				
+				
+				$(div).append(html);		
+
+				$(div).find('.dt_ipt > input[name="STR_DT"]').attr('id',strId);
+				$(div).find('.dt_ipt > input[name="END_DT"]').attr('id',endId);
+				
+				console.log($(div).find('.dt_ipt > input[name="END_DT"]').attr('id'));
+				
+				setDateRangePicker("#"+strId, "#" + endId, 6);
+
+				makeSearchData(strId, endId, $(div).find('.date_ui_ly').find('ul > li:first').data('dt'));
+				
+				$( document ).on("click", "html", function(e){
+					var _target = $(e.target);
+					
+					if (!_target.is($(div).find('.btn_combo, .dt_dft, .dt_ipt'))) {
+						$(div).find('.date_ui_ly').hide();
+					}
+
+				})
+				
+			    $(div).find('#'+strId).on("change", function (e) {
+		            var startDate = $(div).find('#'+strId).val().replace(/[^0-9]/g,''); 
+		            var endDate = $(div).find('#'+endId).val().replace(/[^0-9]/g,'');
+					if( startDate > endDate ){
+						$(div).find('#'+endId).val($(div).find('#'+strId).val());
+					}
+					//다시 검색하게 해야함.. 날짜 변경과 같은 기능하게
+					if($.isFunction(callback)){
+						callback();
+					}
+					else{
+						
+					}
+			    });
+
+			   $(div).find('#'+endId).on("change", function (e) {
+		            var startDate = $(div).find('#'+strId).val().replace(/[^0-9]/g,''); 
+		            var endDate = $(div).find('#'+endId).val().replace(/[^0-9]/g,'');
+					if( startDate > endDate ){
+						$(div).find('#'+strId).val($(div).find('#'+endId).val());
+					}
+					//다시 검색하게 해야함.. 날짜 변경과 같은 기능하게
+					if($.isFunction(callback)){
+						callback();
+					}
+					else{
+						
+					}
+			    });
+				
+				$(div).find('.btn_combo, .dt_dft, .dt_ipt').on("click", function (e) {
+			        if( $(div).find(".date_ui_ly").is(":visible") ){
+			            $(div).find(".date_ui_ly").css("display","none");
+			        }else{
+			            $(div).find(".date_ui_ly").css("display","block");
+			        }
+				})	
+				
+				$(div).find('.date_ui_ly').find('ul > li').on("click", function (e) {
+					$(div).find('.date_ui_ly').find('ul > li').removeClass('on');
+					$(this).addClass('on');
+					$(div).find('.dt_dft').text($(this).find('a').text());
+					makeSearchData(strId, endId, $(this).data('dt'), callback, div);
+				})
+				
+				$(div).find('.btn_cal').on("click", function (e) {
+					//to_do 콜백처리로(변수에 함수 받자)
+					trgm.comm.calendarPop($("#" + strId).val(), $("#" + endId).val(), function(data){
+						$("#" + strId).val(data.STR_DATE);
+						$("#" + endId).val(data.END_DATE);
+						callback();
+					});
+					$(div).find('.date_ui_ly').find('ul > li').removeClass('on');
+					$(div).find('.date_ui_ly').find('ul > li:last()').addClass('on');
+					$(div).find('.dt_ipt').show();	
+					$(div).find('.dt_dft').hide();
+				})
+}
+
+function makeSearchData(startId, endId, gb, callback, div, type){
+			$(div).find('.dt_ipt').hide();
+			$(div).find('.dt_dft').show();
+			
+			if(gb == 'today'){
+				$(div).find("#"+startId).val(moment().format('YYYY-MM-DD'));
+				$(div).find("#"+endId).val(moment().format('YYYY-MM-DD'));
+			}
+			else if(gb == '1week'){
+				$(div).find("#"+startId).val(moment().format('YYYY-MM-DD'));
+				$(div).find("#"+endId).val(moment().format('YYYY-MM-DD'));
+				setCalendarBetween(startId,endId,"w", -1);
+			}			
+			else if (gb == '1month') {
+				$(div).find("#"+startId).val(moment().format('YYYY-MM-DD'));
+				$(div).find("#"+endId).val(moment().format('YYYY-MM-DD'));
+				setCalendarBetween(startId,endId,"m", -1);
+			} else if (gb == '3month') {
+				$(div).find("#"+startId).val(moment().format('YYYY-MM-DD'));
+				$(div).find("#"+endId).val(moment().format('YYYY-MM-DD'));
+				setCalendarBetween(startId,endId,"m", -3);
+			} else if (gb == '6month') {
+				$(div).find("#"+startId).val(moment().format('YYYY-MM-DD'));
+				$(div).find("#"+endId).val(moment().format('YYYY-MM-DD'));
+				setCalendarBetween(startId,endId,"m", -6);
+			} else if (gb == 'write') {
+				$('.dt_ipt').show();	
+				$('.dt_dft').hide();
+				//$('.date_combo').show();								
+			} else{
+				$(div).find("#"+startId).val(moment().format('YYYY-MM-DD'));
+				$(div).find("#"+endId).val(moment().format('YYYY-MM-DD'));
+				setCalendarBetween(startId,endId,"m", -1);
+			}
+			
+			//다시 검색하게 해야함.. 날짜 변경과 같은 기능하게
+			if($.isFunction(callback)){
+				callback();
+			}
+			else{
+				
+			}
+}
+
+/**
+ * 날자 간 사이 셋팅
+ */
+function setCalendarBetween(startId, endId, betweenDv, num){
+    if(isNaN(new Number(num)))	return false;
+
+    var $start = $("#"+startId);
+    var $end = $("#"+endId);
+    var _endDate = $end.val().replace(/-/g, "");
+
+    //당일이 아닌경우 조회종료일자 조건에 선택되어있는 값을 기준으로 조회시작일자 날짜를 계산한다.
+    if( betweenDv!="d" || num>0 ){
+        $start.val(getDate("yyyy-mm-dd", betweenDv, num, _endDate));
+    }else if(betweenDv=="d" || num>0 ){
+        $start.val(getDate("yyyy-mm-dd", betweenDv, num, _endDate));
+    }
+    //당일일경우 현재날짜로.
+    else{
+        $start.val(getDate("yyyy-mm-dd"));
+        $end.val(getDate("yyyy-mm-dd"));
+    }
+};
+/**
+ * @param format 	조합 가능한 Format..
+ * 						yy,yyyy : 년도
+ * 						mm      : 월
+ * 						dd      : 일
+ * 						hh      : 시
+ * 						hh24    : 0시~23시
+ * 						mi      : 분
+ * 						ss      : 초
+ * 						EEE      : 요일(화)
+ * @param c     기준 Flag('Y':년,'M':월,'W':주,'D'일)
+ * @param i     가감 계산값
+ * @param sdate	yyyymmdd를 가진 날짜 문자열
+ *
+ * 예) 현재날짜 : tmsComm.getDate("yyyy-mm-dd")
+ *     현재날짜시분초까지 구하기 : tmsComm.getDate("yyyy-mm-dd hh24:mi:ss")
+ *     현재날짜,요일가져오기 : tmsComm.getDate("yyyy-mm-dd EEE")
+ *     현재에서 한달전 날짜 구하기 : tmsComm.getDate("yyyy-mm-dd", "M", -1)
+ */
+function getDate(format,  c, i, sdate){
+    var currentDate;
+    if(sdate){
+        currentDate = new Date(formatter.datetime(sdate, "yyyy"), parseInt(formatter.datetime(sdate, "mm"), 10)-1, formatter.datetime(sdate, "dd"), formatter.datetime(sdate, "hh24"), formatter.datetime(sdate, "mi"), formatter.datetime(sdate, "ss"));
+    }else{
+        currentDate = new Date();
+    }
+
+    var _tmpDate;
+    if(jex.null2Void(c)!="")
+    {
+        switch( c.toUpperCase() ){
+            case "Y":
+                _tmpDate = new Date(currentDate.getFullYear()+i, currentDate.getMonth(), currentDate.getDate());
+                break;
+
+            case "M":
+                _tmpDate = new Date(currentDate.getFullYear(), currentDate.getMonth()+i,  1);
+
+                //beforeDate의 마지막 날짜가, 조회종료일자조건의 선택되어있는값보다 작으면
+                //beforeDate의 마지막 날짜로 설정한다.
+                //var lastDate = tmsComm.getLastDate(_tmpDate.getFullYear(), _tmpDate.getMonth()+1);
+                var lastDate = moment(_tmpDate.getFullYear()+(_tmpDate.getMonth()+1<10?"0":"")+(_tmpDate.getMonth()+1),"YYYYMMDD").add(-1,'days').format('YYYY-MM-DD');
+                if( lastDate < currentDate.getDate() )
+                {
+                    _tmpDate.setDate(lastDate);
+                }
+                else
+                {
+                    _tmpDate.setDate(currentDate.getDate());
+                }
+
+                break;
+
+            case "W":
+                _tmpDate = new Date(currentDate.getFullYear(), currentDate.getMonth(),  currentDate.getDate()+(i*7));
+                break;
+
+            case "D":
+                //_tmpDate = new Date(currentDate.getFullYear(), currentDate.getMonth(),  currentDate.getDate()-i);
+                _tmpDate = new Date(currentDate.getFullYear(), currentDate.getMonth()-1,  currentDate.getDate()-i);
+                break;
+
+            default :
+                alert("없는 기준 Flag입니다.("+c+")");
+                return false;
+                break;
+        }
+        currentDate = _tmpDate;
+    }
+    var year = String(currentDate.getFullYear());
+
+    var month = currentDate.getMonth();
+    month = month+1<10?"0"+String(month+1):String(month+1);
+
+    var date = currentDate.getDate();
+    date = date<10?"0"+String(date):String(date);
+
+    var weekstr='일월화수목금토'; // 요일 스트링
+
+    var day = weekstr.substr(currentDate.getDay() , 1);
+
+    var hours = currentDate.getHours();
+    hours = hours<10?"0"+String(hours):String(hours);
+
+    var minutes =  currentDate.getMinutes();
+    minutes = minutes<10?"0"+String(minutes):String(minutes);
+
+    var seconds = currentDate.getSeconds();
+    seconds = seconds<10?"0"+String(seconds):String(seconds);
+
+    return formatter.datetime(year+month+date+hours+minutes+seconds, format);
+};
+
+/**
+ * 날자 계산 ( 마이너스 월 )
+ */
+function month_minus(sDate, nMon) {
+    var yy = parseInt(sDate.substr(0, 4), 10);
+    var mm = parseInt(sDate.substr(4, 2), 10);
+    var dd = parseInt(sDate.substr(6, 2), 10);
+    d = new Date(yy, (mm - 1) - nMon, dd);
+    yy = d.getFullYear();
+    mm = d.getMonth() + 1; mm = (mm < 10) ? '0' + mm : mm;
+    dd = d.getDate(); dd = (dd < 10) ? '0' + dd : dd;
+    return '' + yy + '' +  mm  + '' + dd;
+};
+/**
+ * 시스템 팝업이 닫혔나 확인하는 함수
+ */
+//var isClosedChecking;
+function sysPopClosedCallBack() {
+    var isClosedChecking = setInterval(function () {
+        if (!taxPopState || typeof(taxPopState.closed) == 'undefined' ||taxPopState.closed) {
+        	if (typeof(getSQL) !== "undefined") {
+        		if ("trgm_m001_01" ==  null2void(_thisConst.PAGE_NAME, "")) { 
+					fn_bggrayModalPopupClose();
+				} // 전자세금계산서에서 사용 (메일재전송시.)
+				else if ("trgm_m002_01" == null2void(_thisConst.PAGE_NAME, "") ||
+					 	 "trgm_m003_01" == null2void(_thisConst.PAGE_NAME, "") ||
+					 	 "trgm_m004_01" == null2void(_thisConst.PAGE_NAME, "") ||
+						 "trgm_m005_01" == null2void(_thisConst.PAGE_NAME, "") ||
+						 "trgm_m006_01" == null2void(_thisConst.PAGE_NAME, "")) {
+				} // 거래관리, 주문관리 리로드 X
+	        	else { 
+					getSQL(1, {});
+				}
+			} else if(typeof(trco_acvt_hstr) !== "undefined") {			
+				if(document.URL.indexOf("trco_m006_01.act") > -1){
+					//활동내역통합조회팝업에서는 재조회필요없음.
+				}else{
+					//거래처 상세에서 사용
+					trco_acvt_hstr(_searchList.getPageNo(),"7");
+				}
+        		if($("#send_pop").css("display")  == "block"){
+        			_sendInfo.moreView = "1";
+    				//$("tbody#SEND_TYPE_REC").empty();
+    				//$("#send_pop").hide();
+        		}
+        	} else {
+        		
+        	}
+			if(document.URL.indexOf("trco_m012_01.act") > -1){
+				//거래처 대시보드에서 사용
+				drawTrcoList();
+			}
+            clearInterval(isClosedChecking);
+		}
+    },500);
+}
+
+
+//발행 리스트 조회
+function getSetUp(callback){ 
+	 
+	var jexAjax = jex.createAjaxUtil("trco_0023_02_r001");
+	
+	jexAjax.setAsync(false);
+	jexAjax.setErrTrx(false); //throw new JexBIZException 경우도 execute로 넘어오게 설정	
+	//_loding.start();
+	jexAjax.execute(function(dat) {
+		if(dat.COMMON_HEAD.ERROR){
+			//_loding.stop();
+			alert('error : ' + JSON.stringify(dat.COMMON_HEAD.MESSAGE) );
+			return;
+		}else{
+			//설정된 클래스 박스값에서 클래스를 찾은 후 그 클래스에 해당 값에 따라 삭제
+			//roop 안돌린 이유는 느려
+			/*
+			$(".lnb_myset_box , .layer_icobilling , .layertype1").children().each(function(){
+				var $this = $(this);
+				if($this.find(".TRSC_SETUP_01").length > 0 ){
+					dat["TRSC_SETUP_01"] == "N"?$this.find(".TRSC_SETUP_01").remove():"";
+				}if($this.find(".TRSC_SETUP_02").length > 0 ){
+					dat["TRSC_SETUP_02"] == "N"?$this.find(".TRSC_SETUP_02").remove():"";
+				}if($this.find(".TRSC_SETUP_03").length > 0 ){
+					dat["TRSC_SETUP_03"] == "N"?$this.find(".TRSC_SETUP_03").remove():"";
+				}if($this.find(".TRSC_SETUP_04").length > 0 ){
+					dat["TRSC_SETUP_04"] == "N"?$this.find(".TRSC_SETUP_04").remove():"";
+				}if($this.find(".TRSC_SETUP_05").length > 0 ){
+					dat["TRSC_SETUP_05"] == "N"?$this.find(".TRSC_SETUP_05").remove():"";
+				}if($this.find(".TRSC_SETUP_06").length > 0 ){
+					dat["TRSC_SETUP_06"] == "N"?$this.find(".TRSC_SETUP_06").remove():"";
+				}
+			});
+			*/
+			
+			try{
+				//거래처 공통left메뉴, 거래처조회화면의 자료등록레이어화면 메뉴 노출여부 설정 
+				if(_TRGM_MENU.indexOf("m1100") == -1) $('.trco_menu_active_yn').remove();
+				if(_TRGM_MENU.indexOf("m1120") == -1) $(".allTrco").hide(); //거래처 > 거래처조회
+				if(_TRGM_MENU.indexOf("m1110") == -1) $(".trco_m012_01").closest('li').remove(); //거래처 > 거래처 대시보드
+				if(_TRGM_MENU.indexOf("m1130") == -1) $(".trco_m013_01").closest('li').remove(); //거래처 > 거래처 초기이월
+				
+				if(_TRGM_MENU.indexOf("m1800") == -1) $("#trgm_menu").closest('li').remove(); //거래처 > 판매관리
+				if(_TRGM_MENU.indexOf("m1810") == -1) $(".TRSC_SETUP_02").remove(); //거래처 > 매출거래명세표
+				if(_TRGM_MENU.indexOf("m1830") == -1) $(".TRSC_SETUP_04").remove(); //거래처 > 견적서
+				if(_TRGM_MENU.indexOf("m1840") == -1) $(".TRSC_SETUP_05").remove(); //거래처 > 수주서
+				
+				if(_TRGM_MENU.indexOf("m1300") == -1) $("#ordr_menu").closest('li').remove(); //거래처 > 구매관리
+				if(_TRGM_MENU.indexOf("m1340") == -1) $(".TRSC_SETUP_03").remove(); //거래처 > 매입거래명세표
+				if(_TRGM_MENU.indexOf("m1330") == -1) $(".TRSC_SETUP_06").remove(); //거래처 > 발주서
+				
+				
+				if(_TRGM_MENU.indexOf("m1200") == -1) $("#hometax_menu").remove(); //거래처 > 국세청홈택스서비스
+				if(_TRGM_MENU.indexOf("m1210") == -1) $(".TRSC_SETUP_01").remove(); //거래처 > 전자세금계산서발행
+				if(_TRGM_MENU.indexOf("m1220") == -1) $(".CASH_MENU_YN").remove(); //거래처 > 현금영수증발행
+				// if(_TRGM_MENU.indexOf("m1230") == -1) $(".CPPR_MENU_YN").remove(); //거래처 > 민원증명서발급
+				
+				if(_TRGM_MENU.indexOf("m1900") == -1) $("#cafe_menu").closest('li').remove(); //거래처 > 카페24 주문관리
+				if(_TRGM_MENU.indexOf("m1910") == -1) $(".cafe_0001_01").remove(); //카페24 주문내역조회
+				if(_TRGM_MENU.indexOf("m1920") == -1) $(".cafe_0002_01").remove(); //카페24 품목코드연결
+				/*if(	   _TRGM_MENU.indexOf("m1810") == -1 
+					&& _TRGM_MENU.indexOf("m1820") == -1 
+					&& _TRGM_MENU.indexOf("m1310") == -1
+					&& _TRGM_MENU.indexOf("m1320") == -1 
+					&& _TRGM_MENU.indexOf("m1330") == -1){
+					$(".lnb_myset").hide(); //거래관리메뉴 영역 숨기기
+				}*/
+				
+			}catch(e){}
+			
+			userSetOption = dat;
+
+            /**
+             * 세금계산서 대량발행 사용 여부 세팅
+             */
+            if(userSetOption.TRSC_SETUP_24=="Y")
+                $(".btn_taxbilling a").attr("href","trgm_m001_01.act");
+		}
+		//_loding.stop();
+		data = dat;
+		if(typeof callback !== "undefined"){
+			callback(dat);
+		}
+	});
+}
+
+function setKeyInputNumberOnly(event)
+{
+    event = getEvent(event);
+    var keycode = getKeycode(event);
+    var elem = getEventElement(event);
+
+    if ( keycode < 48 || keycode > 57 )//숫자 키코드값
+    {
+        // enter, tab, backspace 방향키(앞,뒤)는 예외처리
+        if(keycode == 0 || keycode == 8 || keycode == 9 || keycode == 45)
+        {
+            return true;
+        }
+        if(IS_IE){
+            event.returnValue = false;
+        }else{
+            event.preventDefault();
+        }
+    }
+}
+
+function setKeyInputNumberOnlyExceptHyphen(event)
+{
+	event = getEvent(event);
+	var keycode = getKeycode(event);
+	var elem = getEventElement(event);
+
+	if ( keycode < 48 || keycode > 57 )//숫자 키코드값
+	{
+		// enter, tab, backspace 방향키(앞,뒤)는 예외처리
+		// 2024-02-07 '-':45 제외
+		if(keycode == 0 || keycode == 8 || keycode == 9)
+		{
+			return true;
+		}
+		if(IS_IE){
+			event.returnValue = false;
+		}else{
+			event.preventDefault();
+		}
+	}
+}
+
+//IE여부
+var IS_IE = false;
+if(navigator.appName == 'Microsoft Internet Explorer'){
+    IS_IE = true;
+}
+
+
+
+/**
+ * 이벤트객체 리턴
+ * ex) getEvent(event);
+ * @param event : 이벤트 객체
+ * @return : 멀티브라우저용 evnet 객체
+ */
+function getEvent(event){
+    event = IS_IE ? window.event : event;
+
+    return event;
+}
+/**
+ * keycode값 리턴
+ * ex) getKeycode(event);
+ * @param event : 이벤트 객체
+ * @return : 멀티브라우저용 keycode값
+ */
+function getKeycode(event){
+    var keycode = IS_IE ? event.keyCode : event.which;
+
+    return keycode;
+}
+
+
+/**
+ * 이벤트가 발생한 객체 리턴
+ * ex) getEventElement(event);
+ * @param event : 이벤트 객체
+ * @return : 멀티브라우저용 이벤트가 발생한 객체
+ */
+function getEventElement(event){
+    var elem = IS_IE ? event.srcElement : event.target;
+
+    return elem;
+}
+
+//한글 입력 방지 
+function eventHan(obj){
+	var keycode = getKeycode(event);
+	var hangle = /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/;
+	if(keycode != 37 && keycode != 39){
+		if(hangle.test($(obj).val()) ){
+			$(obj).val( $(obj).val().replace( /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/g, '' ) );
+		}else{
+			return;
+		}
+	}
+}
+
+
+//jsp 호출이 아닌 액션 호출하는 이유 : jsp나 액션이나 같은 jsp 어차피 서버 통신을 해야 하는 jsp에서는 
+//액션 호출이 가장 편할꺼 같다.느리면 변경 즉시실행 후 1000분 간격으로 계속 호출 한다. 
+/*(function session_delay(){
+	setInterval(function() {
+		var jexAjax = jex.createAjaxUtil("trco_session_empty");
+		jexAjax.setErrTrx(false);	
+		//_loding.start();
+		jexAjax.execute(function(dat) {
+			if(dat.COMMON_HEAD.ERROR){
+				alert('error : ' + JSON.stringify(dat.COMMON_HEAD.MESSAGE) );
+			}  
+		});
+		}, 10*60*1000);	
+}());*/
+
+$(function () {
+	/* 가로 스크롤 바 존재 여부 */
+    $.fn.hasHorizontalScrollBar = function(){
+        return this.get(0) ? this.get(0).scrollWidth > this.innerWidth() : false;
+    };
+
+	/* 세로 스크롤 바 존재 여부 */
+    $.fn.hasScrollBar = function() {
+        return (this.prop("scrollHeight") == 0 && this.prop("clientHeight") == 0)
+            || (this.prop("scrollHeight") > this.prop("clientHeight"));
+    };
+});
+
+
+/** 
+팝업창 물어보지 않고 팝업닫기.
+*/
+function uf_PopupClose(){
+	window.open('about:blank', '_self').close();
+}
+
+/*공백 채우기
+ * 10,4,0 -> 0010
+ * 10,4,''->   10
+ * */
+
+function pad(n, digits,reple) {
+  var space = '';
+  n = n.toString();
+
+  if (n.length < digits) {
+    for (var i = 0; i < digits - n.length; i++)
+      space += reple;
+  }
+  return space + n;
+}
+
+//serp source copy
+//tms={};
+//tms.ui={};
+/* 매입 종이세금계산서 팝업 */
+/*tms.ui.PaperTaxPopUp = function(jsonValue){
+    common.app.jexNewWin2("/prch_p001_02.act?TCMC_REG_YN=Y","PAPER_TAX",900, 633, jsonValue);
+};
+tms.ui.removeFormObj = function(formId) {
+    $("form#"+formId).remove();
+};
+tms.ui.createFormObj = function(formId, formMethod, jsonValue, target) {
+    var targetStr = "";
+    if(typeof(target) != "undefined") {
+        targetStr = " target='"+target+"' ";
+    }
+    $("body").append("<form id='"+formId+"' method='"+formMethod+"' "+targetStr+"></form>");
+    if(typeof(jsonValue) !== "undefined") {
+        $.each(jsonValue, function(i, v) {
+            tms.ui.createHiddenFormObj(formId, i, v);
+        });
+    }
+};
+tms.ui.createHiddenFormObj = function(formId, objId, objValue) {
+    $("<textarea class='"+formId+"GeneratedObj' id='"+objId+"' name='"+objId+"' style='display: none;'>"+objValue+"</textarea>").appendTo($("#" + formId));
+};*/
+//common={};
+//common.app={};
+//새창 여는 함수(팝업 창 크기 고정) - 결재선 요청 팝업일 경우 팝업창 크기를 고정시킨다.
+/*common.app.jexNewWin2 =  function( url, winName, sizeW, sizeH, jsonValue) {
+    var winObj;
+    var nLeft  = screen.width/2 - sizeW/2 ;
+    var nTop  = screen.height/2 - sizeH/2 ;
+
+	//듀얼모니터
+	nLeft += window.screenLeft;
+	nTop += window.screenTop;
+
+    tms.ui.createFormObj("generatedSubmitForm", "post", jsonValue);
+    var opt = ",toolbar=no,menubar=no,location=no,scrollbars=yes,status=no, resizable=no, left=" + nLeft+ ",top=" + nTop;
+
+    try {
+        winObj = window.open("", winName, "width=" + sizeW + ",height=" + sizeH  + opt );
+        common.app.win = winObj;
+    }
+    catch(e) {
+    }
+
+    if (winObj == null) {
+        alert("팝업차단 기능을 해지 하시기 바랍니다..\n\n[ 도구->인터넷옵션->개인 정보->팝업차단] 체크해지");
+        return;
+    }
+
+    var userFrm = document.getElementById("generatedSubmitForm");
+    userFrm.target = winName;
+    var parameter="";
+    try {
+        if(jexjs.null2Void(parent.CNTS_ID)!="")	parameter="?CNTS_ID="+parent.CNTS_ID;
+    }
+    catch(e) {
+    }
+
+    userFrm.action = url+parameter;
+    userFrm.submit();
+
+    tms.ui.removeFormObj("generatedSubmitForm");
+    sysPopClosedCallBack();
+};
+
+//새창 여는 함수
+common.app.jexNewWin3 =  function( url, winName, sizeW, sizeH, frm) {
+	var nLeft  = screen.width/2 - sizeW/2 ;
+	var nTop  = screen.height/2 - sizeH/2 ;
+	var pos = 0;
+	var winObj;
+	
+	//듀얼모니터
+	nLeft += window.screenLeft;
+	nTop += window.screenTop;
+	
+	opt = ",toolbar=no,menubar=no,location=no,scrollbars=yes,status=no,resizable=no, left=" + nLeft+ ",top=" + nTop;
+	winObj = window.open("", winName, "width=" + sizeW + ",height=" + sizeH  + opt ); 
+	
+	if (winObj == null) {
+		alert("팝업차단 기능을 해지하십시오.\n\n[ 도구->인터넷옵션->개인 정보->팝업차단] 체크해지"); 
+		return; 
+	}
+	
+	frm.target = winName;
+	frm.action = url;
+	frm.submit();//임시로 주석처리....
+};*/
+
+
+
+function isEmptyStr(str){
+	
+	if(typeof str == "undefined" || str == null || str == "")
+		return true;
+	else
+		return false ;
+}
+
+// 거래처 그룹 불러오기
+function callTrcoGrp() {
+	var jexAjax = jex.createAjaxUtil("trco_0005_02_l001");
+
+	// jexAjax.set("GRP_LIST", sendGrpTrcoList);
+
+	jexAjax.execute(function(dat) {
+//		console.log(dat);
+		
+		let html = ``;
+		html += '<li><strong class="filter_tit">거래처 그룹</strong></li>';
+		html += '<li><label><input type="radio" name="order_group" val-grpcd="" val-grpnm="전체 그룹" style="margin-top:-2px;" checked>&nbsp;전체</label></li>';
+		html += '<li><label><input type="radio" name="order_group" val-grpcd="S" val-grpnm="매출" style="margin-top:-2px;">&nbsp;매출</label></li>';
+		html += '<li><label><input type="radio" name="order_group" val-grpcd="B" val-grpnm="매입" style="margin-top:-2px;">&nbsp;매입</label></li>';
+		html += '<li><label><input type="radio" name="order_group" val-grpcd="E" val-grpnm="기타" style="margin-top:-2px;">&nbsp;기타</label></li>';
+		$.each(dat.GRP_LIST, function(i, v) {
+			html += `<li><label><input type="radio" name="order_group" val-grpcd="${v.GRP_CD}" val-grpnm="${v.GRP_NM}" style="margin-top:-2px;">&nbsp;${v.GRP_NM}</label></li>`;
+		})
+		$("#order_group_li").empty().append(html);
+	});
+}

@@ -1,0 +1,109 @@
+//import favorite_menu_import
+const _FavoriteMenu = {
+	data: {
+		MENU_ID: ""
+		,MENU_TITLE: ""
+		,APP_ID: "SERP"
+	}
+	,user_id: ""
+	,isWeb: true
+	,$item: {}
+	,init: (data, $item, user_id, isWeb)=>{
+		$.extend(_FavoriteMenu.data, data);
+		_FavoriteMenu.$item = $item;
+		_FavoriteMenu.user_id = user_id;
+		_FavoriteMenu.isWeb = isWeb;
+		
+		const $target = _FavoriteMenu.$item.parent();
+		const $target_div = _FavoriteMenu.$item.parent().find('div');
+		$target.empty();
+		if(_FavoriteMenu.isWeb){
+			$target.append(_FavoriteMenu.data.MENU_TITLE);
+		}else{
+			$target.append('<a class="myfabr" title="현재 메뉴를 즐겨찾기에 추가"><span class="blind">즐겨찾기추가</span></a>'+_FavoriteMenu.data.MENU_TITLE + ' ');
+			$target.append($target_div);
+			$target.find("a").data("menu_id", _FavoriteMenu.data.MENU_ID);
+			_FavoriteMenu.$item = $target.find("a");
+			_FavoriteMenu.fetchMenu();
+			
+			_FavoriteMenu.$item.on("click", function (e) {
+				if($(this).hasClass("on")){ // 즐겨찾기 해제
+					_FavoriteMenu.removeMenu();
+				}else{
+					_FavoriteMenu.addMenu();
+				}
+			});
+		}
+	}
+	,fetchMenu: ()=>{
+		let input = {};
+		input.TRAN_NO = "SERP30_SVC_P003";
+		input.USER_ID = _FavoriteMenu.user_id;
+		input.DATETIME = moment().format('YYYYMMDDHHmmSS');
+		input.REQ_DATA = [];
+		input.REQ_DATA.push(_FavoriteMenu.data);
+		
+		let JSonInp = JSON.stringify(input);
+		if(typeof(window.external) != "undefined" ) {
+			let Ret;
+			try{
+				Ret = window.external.RequestEmWebApi(JSonInp);
+				//응답받은 JSON형태의 결과값을 파싱하여 저장 처리
+				let resData = JSON.parse(Ret);
+				if(resData.NODE_RESP_DATA[0].EXIST_QUICK_MENU_YN == 'Y'){
+					_FavoriteMenu.$item.addClass("on");
+				}else{
+					_FavoriteMenu.$item.removeClass("on");
+				}
+			}catch(e) {
+				return false;
+			}
+		}
+	}
+	,addMenu: ()=>{
+		let input = {};
+		input.TRAN_NO = "SERP30_SVC_P001";
+		input.USER_ID = _FavoriteMenu.user_id;
+		input.DATETIME = moment().format('YYYYMMDDHHmmSS');
+		input.REQ_DATA = [];
+		input.REQ_DATA.push(_FavoriteMenu.data);
+		
+		const JSonInp = JSON.stringify(input);
+		if( typeof(window.external) != "undefined" ) {
+			let Ret;
+			try{
+				Ret = window.external.RequestEmWebApi(JSonInp);
+				//응답받은 JSON형태의 결과값을 파싱하여 저장 처리
+				const resData = JSON.parse(Ret);
+				if(resData.RSLT_CD == '0000'){
+					$(".myfabr").addClass("on");
+				}
+			}catch(e) {
+				return false;
+			}
+		}
+	}
+	,removeMenu: ()=>{
+		let input = {};
+		input.TRAN_NO = "SERP30_SVC_P002";
+		input.USER_ID = _FavoriteMenu.user_id;
+		input.DATETIME = moment().format('YYYYMMDDHHmmSS');
+		input.REQ_DATA = [];
+		input.REQ_DATA.push(_FavoriteMenu.data);
+		
+		const JSonInp = JSON.stringify(input);
+		if( typeof(window.external) != "undefined" ) {
+			let Ret;
+			try{
+				Ret = window.external.RequestEmWebApi(JSonInp);
+				//응답받은 JSON형태의 결과값을 파싱하여 저장 처리
+				const resData = JSON.parse(Ret);
+				if(resData.RSLT_CD == '0000'){
+					$(".myfabr").removeClass("on");
+				}
+			}catch(e) {
+				return false;
+			}
+		}
+	}
+}

@@ -1,0 +1,19 @@
+﻿﻿﻿@charset "utf-8";
+/* CSS Document */
+
+
+/* Guide Platform */
+/*html.hResize{height:100%;}*/
+body.hResize{height:100%;}
+
+.guide_platform_view{display:inline-block;width:16px;height: 15px;margin:0 0 -1px 5px;padding:0;line-height:0;vertical-align:0;background-color:#fff;background-image:url("../img/g.img/ic_guide_normal.png");background-repeat:no-repeat;background-position:50%;cursor:default;overflow:hidden;}
+.guide_platform_view:hover{background-image:url("../img/g.img/ic_guide_over.png");}
+
+.before_platform{display:none;position:fixed;top:0;right:0;bottom:0;left:210px;background-color:rgba(0,0,0,0.75);z-index:2000000;}
+.guide_platform{display:none;position:absolute;top:0;right:0;bottom:0;left:210px;min-width:990px !important;z-index:2000001;}
+/*.guide_platform{display:none;position:absolute;top:0;right:0;bottom:0;left:0;min-width:990px !important;z-index:2000001;}*/
+	.guide_platform > .guide_title{display:none;position:absolute;top:29px;left:25px;width:250px;height:25px;font-size:18px;font-weight:bold;color:#333 !important;line-height:18px;letter-spacing:-1px;z-index:2000003;}
+	.guide_platform > .guide_contents{position:absolute;top:40px;font-size:0;line-height:0;overflow:hidden;z-index:2000002;}
+	.guide_platform > .guide_contents.left{left:0;}
+	.guide_platform > .guide_contents.right{right:0;}
+	.guide_platform > .bt_guide_platform_close{position:absolute;top:25px;right:25px;width:27px;height:25px;font-size:0;line-height:0;overflow:hidden;border:1px solid #000;border-radius:3px;-webkit-border-radius:3px;-moz-border-radius:3px;-o-border-radius:3px;-ms-border-radius:3px;background-color:#fff;z-index:2000003;}

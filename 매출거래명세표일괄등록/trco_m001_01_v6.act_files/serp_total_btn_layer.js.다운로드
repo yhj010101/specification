@@ -1,0 +1,1431 @@
+var prjt_yn = 'Y'; //프로젝트컬럼 변경여부
+var default_header = {};
+$(function () {
+    _thisBtnLayer.onload();
+    _thisRptrLayer.onload();
+    _thisCommLayer.viewOption.setEvent();
+
+    $('#btn_total').click(function () {
+        if ($('.ly_total').is(':visible')) {
+            $('.ly_total').hide();
+
+            $('.ly_depth2').hide();
+            $('.ly_depth3').hide();
+        } else {
+            $('.ly_total').show();
+        }
+    });
+
+    $('#btn_rptr').click(function () {
+//        $('.ly_depth2').hide();
+//        $('.ly_depth3').hide();
+        $('#layer_rptr').show();
+        $('#layer_print').hide();
+        $('#layer_excel').hide();
+        $('#layer_send').hide();
+        $('#layer_usage').hide();
+        $('#layer_set').hide();
+
+//        if ($('#layer_rptr').is(':visible')) {
+//            $('#layer_rptr').hide();
+//        } else {
+//            $('#layer_rptr').show();
+//        }
+    });
+
+    // 보기설정 보기
+    $('#btn_option').on('click', function (event) {
+        if ($('#option_menu').is(':visible')) {
+            $('#option_menu').hide();
+        } else {
+            //$('.ly_total').hide();
+            $('#option_menu').show();
+        }
+    });
+
+    $(document).click(function (e) {
+        var _target = $(e.target);
+
+        if (!_target.is($('#btn_total > img'))
+            && !_target.is($('.depth2'))
+            && !_target.is($('.depth2 > span'))
+            && !_target.is($('[name=btn_sub]'))
+            && !_target.is($('[name=btn_sub] > a'))) {
+            $('.ly_total').hide();
+            //$('#layer_rptr').hide();
+            $('.ly_depth2').hide();
+            $('.ly_depth3').hide();
+        }
+
+        if (!_target.is('.ly2_pop_wrap')
+            && !_target.parents().is('.ly2_pop_wrap')
+            && !_target.is($('#btn_option'))
+            && !_target.is($('#btn_option > span'))) {
+
+            $("#option_menu").hide();
+        }
+    });
+
+    $('#layer_rptr li').click(function () {
+        _thisRptrLayer.openPop($(this).attr("id"), "/" + $(this).attr("id") + ".act");
+    });
+
+    //활동내역통합조회
+    $('#btn_actv').click(function () {
+        var sizeW = 1000;
+        var sizeH = 705;
+        var nLeft = sizeW / 2;
+        var nTop = sizeH / 2;
+        var option = ",toolbar=no,menubar=no,location=no,scrollbars=no,status=no,resizable=no";
+        var url = "/trco_m006_01.act";
+
+        //듀얼모니터
+        var nLeft = screen.width / 2 - sizeW / 2;
+        var nTop = screen.height / 2 - sizeH / 2;
+        nLeft += window.screenLeft;
+        nTop += window.screenTop;
+
+        var winObj = window.open(url, 'win', "left=" + nLeft + ",top=" + nTop + ",width=" + sizeW + ",height=" + sizeH + option);
+        winObj.focus();
+    });
+    
+    //활동내역통합조회(회원관리)
+    $('#btn_memb').click(function () {
+        var sizeW = 1000;
+        var sizeH = 705;
+        var nLeft = sizeW / 2;
+        var nTop = sizeH / 2;
+        var option = ",toolbar=no,menubar=no,location=no,scrollbars=no,status=no,resizable=no";
+        var url = "/memb_m001_03.act";
+
+        //듀얼모니터
+        var nLeft = screen.width / 2 - sizeW / 2;
+        var nTop = screen.height / 2 - sizeH / 2;
+        nLeft += window.screenLeft;
+        nTop += window.screenTop;
+
+        var winObj = window.open(url, 'win', "left=" + nLeft + ",top=" + nTop + ",width=" + sizeW + ",height=" + sizeH + option);
+        winObj.focus();
+    });
+
+});
+
+var _thisBtnLayer = {
+    onload: function () {
+        /*if(location.href.indexOf('sale_m001_01') > -1){
+            $('#btn_print').parent().hide();
+            $('#btn_print2').parent().show();
+        }*/
+    },
+
+
+    setButtonOption: function (options) {
+        var _this = this;
+        var settings;
+        var defauleOpt = {
+            report: {
+                use: false
+            },
+            excel: {
+                use: true,
+                call_back: undefined
+            },
+            print: {
+                use: true,
+                call_back: undefined,
+                sub_menu: []
+            },
+            send: {
+                use: false,
+                call_back: undefined,
+                sub_menu: []
+            },
+            //카드관리
+            card: {
+                use: false,
+                title: undefined,
+                call_back: undefined,
+                sub_menu: []
+            },
+            //보고서설정 이동 화면
+            reportSet: {
+                use: false,
+                call_back: undefined,
+                sub_menu: [],
+                param : undefined
+            },
+            //용도설정 이동 화면
+            usage: {
+                use: false,
+                title: undefined,
+                call_back: undefined,
+                sub_menu: []
+            },
+            //환경설정 이동하면
+            set: {
+                use: false,
+                title: undefined,
+                call_back: undefined,
+                sub_menu: []
+            },
+            //등록방식 재설정
+            reset: {
+                use: false
+            },
+            item_option: {
+                use: false
+            },
+            guide: {
+                use: false
+            },
+            rcbl: {
+                use: false
+            },
+            upay: {
+                use: false
+            },
+            //온라인 스크래핑 버튼
+            onlineScraping: {
+                use: false,
+                call_back: undefined,
+                param : undefined
+            },
+        };
+		
+        totLayer = {
+            makeSettings: function (options) {
+                settings = $.extend(defauleOpt, options);
+
+                this.setLayer(settings);
+            },
+
+            setLayer: function () {
+                if (settings.report.use) {
+                    $('#btn_rptr').parent().show();      
+                    //비영리 경리나라
+                    if('Y' === _WEB_NONPROFIT){
+                    	$('.nonNp').remove();
+                    }
+                    else{
+                    	$('.Np').remove();                   	
+                    }
+
+                    $('[name=' + settings.report.type + ']').show();
+
+                    if (settings.report.type === 'prch_2') {
+                        $('[name=prch_1]').show();
+                        $('[name=card]').show();
+                    }
+                    /*
+                    // 매출/매입 매출
+                    if(settings.report.type === 'sale_1') {
+                        $('[name=sale]').show();
+                    }
+                    // 매출/매입 매입
+                    else if(settings.report.type === 'prch_1') {
+                        $('[name=prch').show();
+                    }
+                    // 매출/매입 카드매입
+                    else if(settings.report.type === 'prch_2') {
+                        $('[name=prch').show();
+                        $('[name=card]').show();
+                    }
+                    //거래처 거래처조회
+                    else if(settings.report.type === 'trco_1'){
+                        $('[name=trco_1]').show();
+                    }
+                    // 거래처 매출거래명세표
+                    else if(settings.report.type === 'trco_2'){
+                        $('[name=trco_2]').show();
+                    }
+                    // 거래처 매입거래명세표
+                    else if(settings.report.type === 'trco_3'){
+                        $('[name=trco_3]').show();
+                    }
+                    // 거래처 견적서, 수주서, 발주서
+                    else if(settings.report.type === 'trco_4'){
+                        $('[name=trco_4]').show();
+                    }
+                    // 금융 계좌조회, 입출내역조회
+                    else if(settings.report.type === 'fnsh_1'){
+                        $('[name=fnsh_1]').show();
+                    }
+                    // 금융 입금내역 수납확인, 출금내역 지급확인
+                    else if(settings.report.type === 'fnsh_2'){
+                        $('[name=fnsh_2]').show();
+                    }
+                    // 금융 정기예적금, 대출금
+                    else if(settings.report.type === 'fnsh_3'){
+                        $('[name=fnsh_3]').show();
+                    }
+                    // 금융 어음대장, 현금출납장, 전도금원장
+                    else if(settings.report.type === 'fnsh_4'){
+                        $('[name=fnsh_4]').show();
+                    }
+                    // 급여 급여대장
+                    else if(settings.report.type === 'saly'){
+                        $('[name=saly]').show();
+                    }
+                    */
+                }else {
+					$('#btn_rptr').parent().hide();
+				}
+				
+                if (settings.excel.use) {
+                    $('#btn_excel').parent().show();
+
+                    if (typeof settings.excel.sub_menu !== 'undefined') {
+                        $('#btn_excel').addClass('depth2');
+
+                        var $div = $('<div />', {
+                            class: 'ly_depth2',
+                            id: 'layer_excel',
+                            style: 'display: none;',
+                            html: '<div class="print_dp"><ul></ul></div>'
+                        });
+
+                        settings.excel.sub_menu.forEach(function (v, i) {
+                            var $li = $('<li />', {html: '<a href="#none">' + v.label + '</a>'});
+                            
+                            if (typeof v.sub_menu !== 'undefined') {
+                                $li.attr('name', 'btn_sub');
+                                $li.find('a').addClass('depth3');
+                                var $div2 = $('<div />', {
+                                    class: 'ly_depth3',
+                                    id: 'layer_excel' + i,
+                                    style: 'display: none;',
+                                    html: '<ul class="ly_list"></ul>'
+                                });
+
+                                v.sub_menu.forEach(function (v2, i2) {
+                                    var $li2 = $('<li />', {html: '<a href="#none">' + v2.label + '</a>'});
+                                    $div2.find('ul').append($li2);
+                                    $li2.click(function () {
+                                        if (typeof v2.call_back !== 'function') {
+                                            alert('callback 함수를 정의해 주세요.');
+                                        } else {
+                                            v2.call_back(v2.param);
+                                        }
+
+                                    });
+
+                                    $li.append($div2);
+                                });
+
+                                $li.click(function () {
+                                    $div2.show();
+                                });
+                            } else {
+                                $li.click(function () {
+                                    if (typeof v.call_back !== 'function') {
+                                        alert('callback 함수를 정의해 주세요.');
+                                    } else {
+                                        v.call_back(v.param);
+                                    }
+                                });
+                            }
+
+                            $div.find('ul').append($li);
+                        });
+
+                        $('#btn_excel').parent().append($div);
+                        $('#btn_excel').click(function () {
+                            $('#layer_rptr').hide();
+                            $('#layer_excel').show();
+                            $('#layer_print').hide();
+                            $('#layer_send').show();
+                            $('#layer_reportSet').hide();
+                            $('#layer_usage').hide();
+                            $('#layer_set').hide();
+                        });
+                    } else {
+						$('#btn_excel').off().on("click", function(){
+						  //click 시 수행할 동작
+						});
+                        $('#btn_excel').click(function () {
+                            if (typeof settings.excel.call_back !== 'function') {
+                                alert('callback 함수를 정의해 주세요.');
+                            } else {
+                                settings.excel.call_back(settings.excel.param);
+                            }
+
+                        });
+                    }
+
+                }else {
+					$('#btn_excel').parent().hide();
+				}
+				
+                if (settings.print.use) {
+                    $('#btn_print').parent().show();
+
+                    if (typeof settings.print.sub_menu !== 'undefined') {
+                        $('#btn_print').addClass('depth2');
+
+                        var $div = $('<div />', {
+                            class: 'ly_depth2',
+                            id: 'layer_print',
+                            style: 'display: none;',
+                            html: '<div class="print_dp"><ul></ul></div>'
+                        });
+
+                        settings.print.sub_menu.forEach(function (v, i) {
+	
+                            var $li = $('<li />', {html: '<a href="#none">' + v.label + '</a>'});
+
+                            if (typeof v.sub_menu !== 'undefined') {
+                                $li.attr('name', 'btn_sub');
+                                $li.find('a').addClass('depth3');
+                                var $div2 = $('<div />', {
+                                    class: 'ly_depth3',
+                                    id: 'layer_print_' + i,
+                                    style: 'display: none;',
+                                    html: '<ul class="ly_list"></ul>'
+                                });
+
+                                v.sub_menu.forEach(function (v2, i2) {
+                                    var $li2 = $('<li />', {html: '<a href="#none">' + v2.label + '</a>'});
+                                    $div2.find('ul').append($li2);
+                                    $li2.click(function () {
+                                        if (typeof v2.call_back !== 'function') {
+                                            alert('callback 함수를 정의해 주세요.');
+                                        } else {
+                                            v2.call_back(v2.param);
+                                        }
+
+                                    });
+                                    // $li.click(function () {
+                                    // 	if (typeof v.call_back === 'function') {
+                                    // 		v.call_back(v.param);
+                                    // 	}
+                                    // });
+
+
+                                    $li.append($div2);
+                                });
+                                $li.click(function () {
+                                    $('.ly_depth3').hide();
+                                    $div2.show();
+                                });
+
+                                // $li.click(function () {
+                                // 	$div2.show();
+                                // });
+                            }
+							
+                            $li.click(function () {
+                                if (typeof v.call_back === 'function') {
+                                    v.call_back(v.param);
+                                }
+                            });
+                            $div.find('ul:eq(0)').append($li);
+                        });
+
+                        $('#btn_print').parent().append($div);
+
+                        $('#btn_print').click(function () {
+                            $('#layer_rptr').hide();
+                            $('#layer_print').show();
+                            $('#layer_excel').hide();
+                            $('#layer_send').hide();
+                            $('#layer_reportSet').hide();
+                            $('#layer_usage').hide();
+                            $('#layer_set').hide();
+                        });
+                    } else {
+						$('#btn_print').off().on("click", function(){
+						  //click 시 수행할 동작
+						});
+                        $('#btn_print').click(function () {
+                            if (typeof settings.print.call_back !== 'function') {
+                                alert('callback 함수를 정의해 주세요.');
+                            } else {
+                                settings.print.call_back(settings.print.param);
+                            }
+
+                        });
+                    }
+
+                }else {
+					$('#btn_print').parent().hide();
+				}
+
+                if (settings.send.use) {
+                    $('#btn_send').parent().show();
+
+                    if (typeof settings.send.sub_menu !== 'undefined') {
+                        $('#btn_send').addClass('depth2');
+
+                        var $div = $('<div />', {
+                            class: 'ly_depth2',
+                            id: 'layer_send',
+                            style: 'display: none;',
+                            html: '<ul class="slcon_bx"></ul>'
+                        });
+
+                        settings.send.sub_menu.forEach(function (v, i) {
+                            var $li = $('<li />', {html: '<a href="#none"><span class="slcon ' + v.icon + '"></span>' + v.label + '</a>'});
+
+                            $li.click(function () {
+                                if (typeof v.call_back !== 'function') {
+                                    alert('callback 함수를 정의해 주세요.');
+                                } else {
+                                    v.call_back(v.param);
+                                }
+                            });
+
+                            $div.find('ul').append($li);
+                        });
+
+                        $('#btn_send').parent().append($div);
+
+                        $('#btn_send').click(function () {
+                            $('#layer_rptr').hide();
+                            $('#layer_send').show();
+                            $('#layer_excel').hide();
+                            $('#layer_print').hide();
+                            $('#layer_reportSet').hide();                            
+                            $('#layer_usage').hide();
+                            $('#layer_set').hide();
+                        });
+                    } else {
+                        $('#btn_send').click(function () {
+                            if (typeof settings.send.call_back !== 'function') {
+                                alert('callback 함수를 정의해 주세요.');
+                            } else {
+                                settings.send.call_back(settings.send.param);
+                            }
+
+                        });
+                    }
+
+                } else {
+					$('#btn_send').parent().hide();
+				}
+
+				//[2023.05.09] cwb 카드관리 추가 
+                if (settings.card.use) {
+                    $('#btn_card').html('<span class="tlcon ic11"></span>' + settings.card.title);
+                    $('#btn_card').parent().show();
+
+                    $('#btn_card').click(function () {
+                        if (_USER_DV != 'A') {
+                            alert('관리자만 가능합니다.');
+                            return;
+                        }
+
+                        if (typeof settings.card.call_back !== 'function') {
+                            alert('callback 함수를 정의해 주세요.');
+                        } else {
+                            settings.card.call_back(settings.card.param);
+                        }
+                    });
+
+                } else {
+					$('#btn_card').parent().hide();
+				}
+                
+                //[2023..09.08] cwb 보고서설정 (혹시 몰라서 sub도 만들어 놓음..)
+                if (settings.reportSet.use) {
+                    $('#btn_reportSet').parent().show();
+
+                    if (typeof settings.reportSet.sub_menu !== 'undefined') {
+                        $('#btn_reportSet').addClass('depth2');
+
+                        var $div = $('<div />', {
+                            class: 'ly_depth2',
+                            id: 'layer_reportSet',
+                            style: 'top: -9px; display: none;',
+                            html: '<div class="reportSet_dp"><ul></ul></div>'
+                        });
+
+                        settings.reportSet.sub_menu.forEach(function (v, i) {
+                            var $li = $('<li />', {html: '<a href="#none">' + v.title + '</a>'});
+                            $li.click(function () {
+                            	v.call_back(v.param);
+                            });
+
+                            $div.find('ul').append($li);
+                        });
+
+                        $('#btn_reportSet').parent().append($div);
+                        $('#btn_reportSet').click(function () {
+                            $('#layer_rptr').hide();
+                            $('#layer_print').hide();
+                            $('#layer_excel').hide();
+                            $('#layer_send').hide();
+                            $('#layer_reportSet').show();
+                            $('#layer_usage').hide();
+                            $('#layer_set').hide();
+                        });
+
+                    } else {
+						$('#btn_reportSet').off().on("click", function(){
+						  //click 시 수행할 동작
+						});
+
+                        $('#btn_reportSet').click(function () {
+                            if (typeof settings.reportSet.call_back !== 'function') {
+                                alert('callback 함수를 정의해 주세요.');
+                            } else {
+                                settings.reportSet.call_back(settings.reportSet.param);
+                            }
+                        });
+                    }
+                } else {
+					$('#btn_reportSet').parent().hide();
+				}                
+
+                if (settings.usage.use) {
+                    $('#btn_usage').html('<span class="tlcon ic07"></span>' + settings.usage.title);
+                    $('#btn_usage').parent().show();
+
+                    if (typeof settings.usage.sub_menu !== 'undefined') {
+                        $('#btn_usage').addClass('depth2');
+
+                        var $div = $('<div />', {
+                            class: 'ly_depth2',
+                            id: 'layer_usage',
+                            style: 'top: -9px; display: none;',
+                            html: '<div class="usage_dp"><ul></ul></div>'
+                        });
+
+                        settings.usage.sub_menu.forEach(function (v, i) {
+                            var $li = $('<li />', {html: '<a href="#none">' + v.title + '</a>'});
+                            $li.click(function () {
+                                if (_USER_DV != 'A') {
+                                    if (v.title.indexOf('환경') != -1) {
+                                        alert('관리자만 가능합니다.');
+                                        return;
+                                    }
+                                }
+
+                                if (typeof v.call_back !== 'function') {
+                                    alert('callback 함수를 정의해 주세요.');
+                                } else {
+                                    v.call_back(v.param);
+                                }
+                            });
+
+                            $div.find('ul').append($li);
+                        });
+
+                        $('#btn_usage').parent().append($div);
+                        $('#btn_usage').click(function () {
+                            $('#layer_rptr').hide();
+                            $('#layer_print').hide();
+                            $('#layer_excel').hide();
+                            $('#layer_send').hide();
+                            $('#layer_usage').show();
+                            $('#layer_set').hide();
+                        });
+
+                    } else {
+						$('#btn_usage').off().on("click", function(){
+						  //click 시 수행할 동작
+						});
+
+                        $('#btn_usage').click(function () {
+                            if (_USER_DV != 'A') {
+                                alert('관리자만 가능합니다.');
+                                return;
+                            }
+
+                            if (typeof settings.usage.call_back !== 'function') {
+                                alert('callback 함수를 정의해 주세요.');
+                            } else {
+                                settings.usage.call_back(settings.usage.param);
+                            }
+                        });
+                    }
+                } else {
+					$('#btn_usage').parent().hide();
+				}
+				
+                if (settings.set.use) {
+                    $('#btn_set').html('<span class="tlcon ic07"></span>' + settings.set.title);
+                    $('#btn_set').parent().show();
+
+                    if (typeof settings.set.sub_menu !== 'undefined') {
+                        $('#btn_set').addClass('depth2');
+
+                        var $div = $('<div />', {
+                            class: 'ly_depth2',
+                            id: 'layer_set',
+                            style: 'top: -9px; display: none;',
+                            html: '<div class="set_dp"><ul></ul></div>'
+                        });
+
+                        settings.set.sub_menu.forEach(function (v, i) {
+                            var $li = $('<li />', {html: '<a href="#none">' + v.title + '</a>'});
+                            $li.click(function () {
+                                if (_USER_DV != 'A') {
+                                    if (v.title.indexOf('환경') != -1) {
+                                        alert('관리자만 가능합니다.');
+                                        return;
+                                    }
+                                }
+
+                                if (typeof v.call_back !== 'function') {
+                                    alert('callback 함수를 정의해 주세요.');
+                                } else {
+                                    v.call_back(v.param);
+                                }
+                            });
+
+                            $div.find('ul').append($li);
+                        });
+
+                        $('#btn_set').parent().append($div);
+                        $('#btn_set').click(function () {
+                            $('#layer_rptr').hide();
+                            $('#layer_print').hide();
+                            $('#layer_excel').hide();
+                            $('#layer_send').hide();
+                            $('#layer_usage').hide();
+                            $('#layer_set').show();
+                        });
+                    } else {
+						$('#btn_set').off().on("click", function(){
+						  //click 시 수행할 동작
+						});
+                        $('#btn_set').click(function () {
+                            if (_USER_DV != 'A') {
+                                alert('관리자만 가능합니다.');
+                                return;
+                            }
+
+                            if (typeof settings.set.call_back !== 'function') {
+                                alert('callback 함수를 정의해 주세요.');
+                            } else {
+                                settings.set.call_back(settings.set.param);
+                            }
+                        });
+                    }
+                }else {
+					 $('#btn_set').parent().hide();
+				}
+				
+                if (settings.reset.use) {
+                    $('#btn_reset').parent().show();
+
+                    //간편형, 상세형 선택 div 보이게
+                    $('#btn_reset').click(function () {
+                        $('.content_wrap').children().hide();
+                        $('.right').hide();
+                        $($('.title_wrap')[0]).show();
+                        $('.resistration_wrap').show();
+                    });
+
+                } else{
+					$('#btn_reset').parent().hide();
+				}
+
+                if (settings.item_option.use) {
+                    $('#btn_option').parent().show();
+                } else{
+					$('#btn_option').parent().hide();
+				}
+                //[2023.04.10] 화면도움말 숨김처리
+                /*					if(settings.guide.use){
+                                        $('#btn_guide').parent().show();
+                                    }*/
+
+                if (settings.rcbl.use) {
+                    $('#btn_rcbl').parent().show();
+
+					$('#btn_rcbl').off().on("click", function(){
+						  //click 시 수행할 동작
+					});
+					
+                    $('#btn_rcbl').click(function () {
+						fn_layerBupySeup("form1", "btn_reg", "1");
+                    });
+
+                }else {
+					 $('#btn_rcbl').parent().hide();
+				}
+				
+                if (settings.upay.use) {
+                    $('#btn_upay').parent().show();
+
+					$('#btn_upay').off().on("click", function(){
+						  //click 시 수행할 동작
+					});
+					
+                    $('#btn_upay').click(function () {
+						fn_layerBupySeup("form1", "btn_reg", "2");
+                    });
+
+                }else {
+					 $('#btn_upay').parent().hide();
+				}
+
+                if (settings.onlineScraping.use) {
+                    $('#btn_onlineScraping').parent().show();
+
+                    $('#btn_onlineScraping').off().click(function () {
+                        if (typeof settings.onlineScraping.call_back !== 'function') {
+                            alert('callback 함수를 정의해 주세요.');
+                        } else {
+                            settings.onlineScraping.call_back(settings.onlineScraping.param);
+                        }
+                    });
+
+                } else {
+					$('#btn_onlineScraping').parent().hide();
+				}                
+                
+                //쇼츠 로직 추가
+                //팝업에서는 뜨면 안됨
+                if(!shortsUrl || 'main_iframe' !== $(window.frameElement).attr('name')){
+                	$('#tl_youtube').hide();
+                }
+                else{
+                	$('#tl_youtube a').attr('href',shortsUrl);
+                }
+
+				if(!settings.report.use && !settings.print.use && !settings.excel.use){
+					$('#tl_report').hide();
+				} 
+				else {
+					$('#tl_report').show();
+				}
+                
+				if (!settings.usage.use && !settings.set.use && !settings.item_option.use && !settings.guide.use && !settings.reset.use) {
+                    $('#tl_card').hide();
+                }
+                else{
+                	$('#tl_card').show();
+                }
+				
+                if (!settings.rcbl.use && !settings.upay.use) {
+                    $('#tl_rcbl').hide();
+                }
+                else{
+					$('#tl_rcbl').show();
+				}
+                
+                //[2024.05.21] cwb 보이는 첫번째 css수정
+                var visibleBox = $(".tlcon_bx").filter(function() {
+                    return $(this).css('display') !== 'none';
+                });
+                
+               
+                // 첫 번째 요소에 스타일 적용
+                visibleBox.first().css('border-top', '0');
+
+                // 첫 번째 요소를 제외한 나머지 요소들에 스타일 적용
+                visibleBox.not(':first').css('border-top', '1px solid #ccc'); 
+            }
+        }
+
+        totLayer.makeSettings(options);
+
+
+        /*	$('#btn_excel').click(function(){
+                if(typeof settings.excel.call_back !== 'function') {
+                    alert('callback 함수를 정의해 주세요.');
+                } else {
+                    settings.excel.call_back(settings.excel.param);
+                }
+
+            });*/
+    }
+}
+
+var _thisRptrLayer = {
+    onload: function () {
+        /*
+        // 매출/매입 매출
+        if(location.href.indexOf('sale') > -1) {
+            $('[name=sale]').show();
+        }
+        // 매출/매입 매입
+        else if(location.href.indexOf('prch') > -1 || location.href.indexOf('eusr') > -1) {
+            $('[name=prch').show();
+
+            if(location.href.indexOf('eusr_0001_01') > -1){
+                $('[name=card]').show();
+            }
+        }
+        //거래처 거래처조회
+        else if(location.href.indexOf('trco_m001_01') > -1){
+            $('[name=trco_1]').show();
+        }
+        // 거래처 매출거래명세표
+        else if(location.href.indexOf('trgm_m002_01') > -1){
+            $('[name=trco_2]').show();
+        }
+        // 거래처 매입거래명세표
+        else if(location.href.indexOf('trgm_m003_01') > -1){
+            $('[name=trco_3]').show();
+        }
+        // 거래처 견적서, 수주서, 발주서
+        else if(location.href.indexOf('trgm_m004_01') > -1
+                || location.href.indexOf('trgm_m005_01') > -1
+                || location.href.indexOf('trgm_m006_01') > -1){
+            $('[name=trco_4]').show();
+        }
+        // 금융 계좌조회, 입출내역조회
+        else if(location.href.indexOf('fnsh_0003_01') > -1
+                || location.href.indexOf('fnsh_0004_01') > -1){
+            $('[name=fnsh_1]').show();
+        }
+        // 금융 입금내역 수납확인, 출금내역 지급확인
+        else if(location.href.indexOf('rcpt_0001_01') > -1
+                || location.href.indexOf('purc_0001_01') > -1){
+            $('[name=fnsh_2]').show();
+        }
+        // 금융 정기예적금, 대출금
+        else if(location.href.indexOf('fnsh_0005_01') > -1
+                || location.href.indexOf('fnsh_0006_01') > -1){
+            $('[name=fnsh_3]').show();
+        }
+        // 금융 어음대장, 현금출납장, 전도금원장
+        else if(location.href.indexOf('fnsh_0002_01') > -1
+                || location.href.indexOf('cash_0001_01') > -1
+                || location.href.indexOf('advc_0001_01') > -1){
+            $('[name=fnsh_4]').show();
+        }*/
+    },
+
+    openPop: function (id, url) {
+        var sizeW = 1070;
+        if (id == 'rptr_s017_01' || id == 'rptr_0019_01') {
+            sizeW = 1400;
+        }
+        var sizeH = 611;
+        var nLeft = Math.round(window.screenX + (window.outerWidth / 2) - (sizeW / 2));
+        var nTop = Math.round(window.screenY + (window.outerHeight / 2) - (sizeH / 2));
+        var option = ",toolbar=no,menubar=no,location=no,scrollbars=yes,status=no,resizable=yes";
+        if (id == 'rptr_e001_02') {
+            url = 'rptr_e001_01.act?USE_YN=T'
+        }
+        var winObj = window.open(url, id, "left=" + nLeft + ",top=" + nTop + ",width=" + sizeW + ",height=" + sizeH + option);
+        winObj.focus();
+    }
+}
+
+
+var _thisCommLayer = {
+    viewOption: {
+        inputData: {},
+
+        setInputData: function (input) {
+            this.inputData = input;
+        },
+
+        getInputData: function () {
+            return this.inputData;
+        },
+        callBack: function () {
+
+        },
+
+        setCallBack: function (input) {
+            this.callBack = input;
+        },
+
+        getCallBack: function () {
+            return this.callBack;
+        },
+
+        excelGridData: [],
+
+        setViewColumnSetting: function (callBack, input) {
+            var _this = this;
+            this.setCallBack(callBack);
+            this.setInputData(input);
+            this.excelGridData = []
+            
+			var $rowTemplate = $('<tr />');
+			var $fix_rowTemplate = $('<tr />');
+			
+            var jexAjax = jexjs.plugin('ajax', 'serp_coll_setting_r001');
+            jexAjax.set('MENU_CD', input.menu_cd);
+            jexAjax.set('PAGE_NM', input.page_nm);
+            jexAjax.set('VIEW_SEUP', input.view_seup);
+            jexAjax.set('JSON_FILE_NM', input.json_file_nm);
+            jexAjax.set('PRJT_YN', prjt_yn);
+
+            jexAjax.execute(function (data) {
+                var jsonObj = JSON.parse(data[input.view_seup]);
+                var optRowTemplate = '<li class=${CLASS}><label><input type="checkbox" ${CHECK} name="tblView" viewid="${COLNAME}" color="${COLOR}" viewSize="${SIZE}" value="${COLNAME}">${TITLE}</label></li>';
+                var $colGroup = $('<colgroup />');					
+				var $fix_colGroup = $('<colgroup />');	
+				
+                var $tr = $('<tr />');
+				var $fix_tr = $('<tr />');
+				
+                var $ul = $('<ul />');
+                var excelGridData = [];
+                var prevColor = '';
+                $.each(jsonObj.COL, function (i, v) {
+                    var liClassName = ''
+                    var colorClassName = (v.COLOR === 'Y' ? 'bg_v_r' : v.COLOR === 'P' ? 'bg_v_r2' : v.COLOR === 'B' ? 'bg_v_r3' : '');
+                    liClassName = (v.COLOR === 'Y' ? 'bg' : v.COLOR === 'P' ? 'bg_red' : v.COLOR === 'B' ? 'bg_blue' : '');
+					
+					//v.COLOR = 'H'항목설정에는 안보이지만, 조회에선 무조건 나와야 함
+                    if (v.USE_YN === 'Y' || v.COLOR === 'H') {
+                        $.each(input.rec, function (j, item) {
+							//view_id 설정 안하거나 json에 없는 view_id는 넣지 않음
+                            if (v.VIEW_ID === item.view_id) {
+                                var alignClassName = (item.align === 'RIGHT' ? 'tar' : item.align === 'CENTER' ? 'tac' : '');
+                                var $col = $('<col />', {style: 'width:' + v.SIZE + 'px;'});								
+								
+								if((item.title)){
+									$th = $('<th />', {html: '<div class="' + alignClassName + '">' + item.title + '</div>'});
+								}
+								else{
+									var $th = $('<th />', {html: '<div class="' + alignClassName + '">' + v.COLNAME + '</div>'});
+								}
+								
+								//헤더부분에 이벤트 추가 (정렬 가능)
+								var header_name = $th.find('div').text();
+								if('Y' == item.header_click){
+									$th.attr('sort', v.VIEW_ID);					
+									if('DESC' == item.header_main){
+									   _thisCommLayer.viewOption.setHeaderColumnEvent({'NAME':v.VIEW_ID,'ORDER':'DESC'});
+										$th.find('div').html('<a class="bt_tsrt"><span class="bg_w">'+header_name +'</span></a>');
+									}
+									else if('ASC' == item.header_main){
+									   _thisCommLayer.viewOption.setHeaderColumnEvent({'NAME':v.VIEW_ID,'ORDER':'ASC'});
+										$th.find('div').html('<a class="bt_tsrt on"><span class="bg_w">'+header_name +'</span></a>');
+									}
+									else if('NONE' == item.header_main){
+										$th.find('div').html('<a><span class="bg_w">'+header_name +'</span></a>');
+										_thisCommLayer.viewOption.setHeaderColumnEvent({});
+									}
+									else{
+										/*_thisCommLayer.viewOption.setHeaderColumnEvent({});*/
+										$th.find('div').html('<a><span class="bg_w">'+header_name +'</span></a>');
+									}
+								}			                     
+
+                                if (!item.html) {
+                                    //색깔구분
+                                    var tdOpt = {html: '<div title="${' + item.view_id + '}">${' + item.view_id + '}</div>', class: colorClassName};
+
+                                    //6.0퍼블 tr에 tar class가 들어가지 않음(div에 들어가있음)
+                                    if (alignClassName !== '') tdOpt.html = '<div class="tar" title="${' + item.view_id + '}">${' + item.view_id + '}</div>';
+
+                                    //var $tempTd = $('<td class="'+ colorClassName +'"/>', tdOpt);
+                                    var $tempTd = $('<td />', tdOpt);
+                                    item.html = $tempTd;
+                                } else {
+                                    $(item.html).addClass(colorClassName);
+                                    item.html = $(item.html);
+                                }
+
+
+                                if (item.prop instanceof Array) {
+                                    item.prop.forEach(function (v) {
+                                        if (v.target === undefined) {
+                                            item.html.children('div').attr(v.name, v.val);
+
+                                        } else {
+                                            var targetArr = v.target.split(',');
+                                            targetArr.forEach(function (target) {											
+                                                switch (target) {													
+                                                    case 'col':
+                                                        $col.attr(v.name, v.val);
+                                                        break;
+                                                    case 'th':
+                                                        $th.attr(v.name, v.val);
+
+                                                        break;
+                                                    case 'td':
+                                                        item.html.attr(v.name, v.val);
+
+                                                        break;
+                                                    case 'div':
+                                                        item.html.children('div').attr(v.name, v.val);
+
+                                                        break;
+                                                }
+                                            });
+                                        }
+                                    });
+
+                                } else if (item.prop instanceof Object) {
+                                    item.html.children('div').attr(item.prop.name, item.prop.val);
+                                }
+
+                                $colGroup.append($col);
+                                $tr.append($th);
+
+                                $rowTemplate.append(item.html);
+
+                                excelGridData.push(_this.makeExcelGridData($.extend(v, item)));
+
+                                return true;
+                            }
+                        });
+                    }
+
+                    if (!jexjs.isNull(v.COLNAME)) {
+                        var $optRowli = $.tmpl(optRowTemplate, {
+                            'CLASS': liClassName,
+                            'COLNAME': v.VIEW_ID,
+                            'TITLE': v.COLNAME,
+                            'CHECK': (v.USE_YN === 'Y' ? 'checked' : ''),
+                            'SIZE': v.SIZE,
+                            'COLOR': v.COLOR
+                        });
+
+						//가변적 처리(프로젝트, 사용유무)
+                        if (v.USE_YN === 'C' || v.COLOR === 'H'){
+                            $optRowli.hide();
+                        }
+                        //[2023.03.14] cwb 색깔구분 표시 class 추가
+                        if ((prevColor != v.COLOR && v.COLOR != 'null')){
+                            $optRowli.addClass('bdt');
+                        }
+
+						//무조건 체크
+						if(v.DISABLE == 'Y'){
+							$optRowli.find('input').attr("disabled",true)
+							
+						}
+						
+                        $ul.append($optRowli);
+                    }
+
+                    prevColor = v.COLOR;
+                });
+				
+                $('#setUi').empty().append($ul.children());
+
+                if (input.front_input) {
+                    var $col = $('<col />', {style: 'width:' + input.front_input.size + 'px;'});
+                    var $th = $('<th />', {
+                        html: '<div>' + (input.front_input.type === 'checkbox' ? '<input type="checkbox" id="chk_all">' : '') + '</div>',
+                        scope: 'col'
+                    });
+
+                    var $input = $('<input />', {
+                        type: input.front_input.type
+                    });
+
+                    if (input.front_input.prop instanceof Array) {
+                        input.front_input.prop.forEach(function (item) {
+                            var targetArr = item.target.split(',');
+
+                            targetArr.forEach(function (target) {
+                                if (target.trim() === 'col') {
+                                    $col.attr(item.name, item.val);
+                                } else if (target.trim() === 'th') {
+                                    $th.attr(item.name, item.val);
+                                } else if (target.trim() === 'checkbox' || target.trim() === 'radio') {
+                                    $input.attr(item.name, item.val);
+                                }
+                            });
+                        });
+
+                    } else if (input.front_input.prop instanceof Object) {
+                        $input.attr(input.front_input.prop.name, input.front_input.prop.val);
+                    }
+
+                    var $tempDiv = $('<div />', {html: $input});
+                    $rowTemplate.prepend('<td><div>' + $tempDiv.html() + '</div></td>');
+
+                    $colGroup.prepend($col);
+                    $tr.prepend($th);
+                }
+
+                if (input.icon) {
+                    input.icon.forEach(function (v) {
+                        var $col = $('<col />', {style: 'width:' + v.size + 'px;'});
+                        var $th = $('<th />', {
+                            html: '<div>' + jexjs.null2Void(v.text) + '</div>',
+                            scope: 'col'
+                        });
+
+                        if (v.prop) {
+                            v.prop.forEach(function (item) {
+                                var targetArr = item.target.split(',');
+
+                                targetArr.forEach(function (target) {
+                                    if (target.trim() === 'col') {
+                                        $col.attr(item.name, item.val);
+                                    } else if (target.trim() === 'th') {
+                                        $th.attr(item.name, item.val);
+                                    }
+                                });
+                            });
+                        }
+
+                        $rowTemplate.append(v.html);
+                        $colGroup.append($col);
+                        $tr.append($th);
+                    });
+                }
+
+                if (input.fix_icon) {
+                    input.fix_icon.forEach(function (v) {
+                        var $col = $('<col />', {style: 'width:' + v.size + 'px;'});
+                        var $th = $('<th />', {
+                            html: '<div>' + jexjs.null2Void(v.text) + '</div>',
+                            scope: 'col'
+                        });
+
+                        if (v.prop) {
+                            v.prop.forEach(function (item) {
+                                var targetArr = item.target.split(',');
+
+                                targetArr.forEach(function (target) {
+                                    if (target.trim() === 'col') {
+                                        $col.attr(item.name, item.val);
+                                    } else if (target.trim() === 'th') {
+                                        $th.attr(item.name, item.val);
+                                    }
+                                });
+                            });
+                        }
+
+                        $fix_rowTemplate.append(v.html);
+                        $fix_colGroup.append($col);
+                        $fix_tr.append($th);
+                    });
+                }
+				
+				//헤더 이벤트
+				if(input.header_event){
+					 $tr.find('a').on("click", function(){
+						 //id를 가지고 있어야 실행
+						 if($(this).parents('th').attr('sort')){
+							 //처음 헤더 클릭은 내림차순
+							 if (!$(this).hasClass('bt_tsrt')) {
+								$(this).parents('tr').find('a').removeClass();
+								$(this).addClass('bt_tsrt');
+								$(this).addClass('on');
+								_thisCommLayer.viewOption.setHeaderColumnEvent({'NAME':$(this).parents('th').attr('sort'),'ORDER':'ASC'});
+							  }
+							  //오름차순
+							  else if(!$(this).hasClass('on')){
+								$(this).parents('tr').find('a').removeClass();
+							    $(this).addClass('bt_tsrt');
+			 					$(this).addClass('on');
+								_thisCommLayer.viewOption.setHeaderColumnEvent({'NAME':$(this).parents('th').attr('sort'),'ORDER':'ASC'});
+							  }
+							  //내림차순
+							  else{
+								$(this).parents('tr').find('a').removeClass();
+								$(this).addClass('bt_tsrt');
+								_thisCommLayer.viewOption.setHeaderColumnEvent({'NAME':$(this).parents('th').attr('sort'),'ORDER':'DESC'});								
+							   }
+	
+							if($.isFunction(input.header_event)){
+								input.header_event();
+							}
+							else{
+								input.header_event;
+							}
+							return;				
+						};
+					});
+
+				}
+				
+                if (typeof callBack === 'function') {
+                    callBack({'COL_GROUP': $colGroup, 'ROW_TEMPLATE': $rowTemplate, 'TABLE_HEADER': $tr, 'EXCEL_GRID': excelGridData,
+							  'FIX_COL_GROUP': $fix_colGroup, 'FIX_ROW_TEMPLATE': $fix_rowTemplate, 'FIX_TABLE_HEADER': $fix_tr});
+                }
+
+            });
+        },
+		
+		
+		header_option : default_header,
+		
+		//헤더 이벤트 
+		setHeaderColumnEvent: function (input) {
+			 this.header_option = input;
+		
+		},
+		
+		getHeaderColumnEvent: function (){
+			return this.header_option;			
+		},
+
+        setEvent: function () {
+            var _this = this;
+
+            // 보기설정 초기화
+            $('#viewStgDefault').on('click', function () {
+                if (jexjs.confirm('초기화 하시겠습니까?')) {
+                    _this.setDefaultColOpt(_this.getCallBack(), _this.getInputData());
+                }
+            });
+
+            // 보기설정 저장
+            $('#viewStgSave').on('click', function () {
+                _this.saveColOpt(_this.getCallBack(), _this.getInputData());
+                $('#option_menu').hide();
+            });
+
+            // 보기설정 취소
+            $('#viewStgCancle').on('click', function (event) {
+                $('#option_menu').hide();
+            });
+
+            // Button Move Category Up, Down, Top, Bottom
+            $('#last, #next, #prev, #first').click(function () {
+                var row = $('.view_setting_lst li.on');
+                if (row.hasClass('noMove')) {
+                    common.app.warning('행입력으로 순서변경 안됨!');
+                    return;
+                }
+                if ($(this).is('#first')) {
+                    if (row.find('input').attr('color') !== $('.view_setting_lst li:first').find('input').attr('color')) {
+                        common.app.warning('해당 영역으로 갈 수 없습니다.');
+                        return;
+                    }
+
+                    if (row.index() == 0) {
+                        common.app.warning('이미 첫번째 행입니다.');
+                        return;
+                    }
+                    row.insertBefore('.view_setting_lst li:first');
+                } else if ($(this).is('#next')) {
+                    if (row.find('input').attr('color') !== row.next().find('input').attr('color')) {
+                        common.app.warning('해당 영역으로 갈 수 없습니다.');
+                        return;
+                    }
+
+                    if (row.next().hasClass('noMove')) {
+                        common.app.warning('이미 마지막 행입니다.');
+
+                    } else {
+                        row.insertAfter(row.next());
+                    }
+                } else if ($(this).is('#prev')) {
+                    if (row.find('input').attr('color') !== row.prev().find('input').attr('color')) {
+                        common.app.warning('해당 영역으로 갈 수 없습니다.');
+                        return;
+                    }
+
+                    if (row.prev().hasClass('noMove')) {
+                        row.insertBefore($('.view_setting_lst li.noMove:first'));
+                    } else {
+                        row.insertBefore(row.prev());
+                    }
+                } else {
+
+                    if (row.find('input').attr('color') !== $('.view_setting_lst li:last').find('input').attr('color')) {
+                        common.app.warning('해당 영역으로 갈 수 없습니다.');
+                        return;
+                    }
+
+                    if (row.index() == $('.view_setting_lst li').filter(':visible').length - 1) {
+                        common.app.warning('이미 마지막 행입니다.');
+                        return;
+                    }
+
+                    if (row.index() >= $('.view_setting_lst li').filter(':visible').length - 1) {
+                        common.app.warning('이미 마지막 행입니다.');
+                        return;
+                    }
+                    row.insertAfter('.view_setting_lst li:not(.noMove) :last');
+                }
+            });
+
+            // 보기설정 CSS 컨트롤
+            $('.view_setting_lst').on('click', 'li', function () {
+                if ($(this).parent().parent().attr('id') == "group_layer3" || $(this).parent().parent().attr('id') == "group_layer2") { // 거래처 그룹설정 제외
+                    return;
+                }
+                $(this).closest('li').addClass('on').siblings().removeClass('on');
+            });
+        },
+
+        saveColOpt: function (callBack, input) {
+            var _this = this;
+
+            var jexAjax = jexjs.plugin('ajax', 'serp_coll_setting_c001');
+            var arr = [];
+
+            $.each($('#setUi input'), function (i) {
+				
+				if($(this).attr("disabled") == 'disabled'){
+					var disable = "Y";	
+				}
+				
+                arr.push({
+                    SORT: i + 1,
+                    USE_YN: ($(this).is(':visible') ? ($(this).is(':checked') ? 'Y' : 'N') : 'C'),
+                    VIEW_ID: $(this).attr('viewId'),
+                    COLNAME: $(this).parent().text(),
+                    SIZE: $(this).attr('viewSize'),
+                    COLOR: $(this).attr('color'),
+					DISABLE: disable
+                });
+            });
+
+            jexAjax.set('REC', arr);
+            jexAjax.set('VIEW_SEUP', input.view_seup);
+            jexAjax.set('MENU_CD', input.menu_cd);
+
+            jexAjax.execute(function (data) {
+                prjt_yn = 'N';
+                _this.setViewColumnSetting(callBack, input);
+            });
+
+        },
+
+        setDefaultColOpt: function (callBack, input) {
+            var _this = this;
+            var jexAjax = jexjs.plugin('ajax', 'serp_coll_setting_u001');
+
+            jexAjax.set('PAGE_NM', input.page_nm);
+            jexAjax.set('VIEW_SEUP', input.view_seup);
+            jexAjax.set('MENU_CD', input.menu_cd);
+            jexAjax.set('JSON_FILE_NM', input.json_file_nm);
+            jexAjax.execute(function (data) {
+                prjt_yn = 'Y'
+                _this.setViewColumnSetting(callBack, input);
+            });
+        },
+
+        makeExcelGridData: function (input) {
+			if(input.title){
+				input.COLNAME = input.title;
+			};
+
+            return {
+                key: input.VIEW_ID,
+                name: input.COLNAME,
+                width: Number(input.SIZE.replace(/[^0-9]/gi, '')),
+                colClass: '',
+                excelFormat: (input.align === 'RIGHT' ? 'int' : 'string')
+            }
+        }
+    }
+}
+
+
+function fn_layerBupySeup(form, id, txCd) {	
+	
+	var url = "";
+	var width ="";
+	
+	if(txCd == '1' || txCd == '2'){
+    	url      = "tkst_0001_03.act";
+    	width	 = "700";
+    }
+    else if(txCd == '3' || txCd == '4'){
+    	url      = "tkst_0001_08.act";
+    	width	 = "1000";
+    }
+    var $form = $("<form method='post'></form>");
+    $form.append("<input name='tx_cd'  value='" + txCd + "'>");
+    smartOpenPop({
+        href : url,
+        width : width,
+        height : "595",
+        scrolling : false,
+        target : window,
+        frm : $form
+    });
+};

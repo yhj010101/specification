@@ -1,0 +1,1332 @@
+
+// cs함수 없을 경우.
+
+if(typeof window.external == "undefined"){
+	window.external = {};
+}
+
+if (typeof window.external.RequestEmWebApi == "undefined") {
+    $.extend(window, {
+        external: {
+            RequestEmWebApi: function (data) {
+                const input = JSON.parse(data);
+                console.log(input);
+                // 단말기 메뉴 이동
+                if ("SERP30_SVC_P010" === input.TRAN_NO) {
+                    const menuId = input.REQ_DATA[0].MENU_ID;
+                    let menuParam = input.REQ_DATA[0].MENU_PARAM;
+
+                    if (menuId == null || "" === menuId) {
+                        return JSON.stringify({RSLT_CD: "9999", RSLT_MSG: "필수 입력값이 누락되었습니다."});
+                    }
+                    
+                    let response = { RSLT_CD: "0000", RSLT_MSG: "정상처리되었습니다." }; // 기본값 설정
+                    
+                    //scrn_id값으로 MENU_ID 넣은 화면에 대한 처리
+                    var jexAjax = jexjs.plugin("ajax", "wserp_comm_04");
+                    jexAjax.setting('async', false);
+                    jexAjax.set("MENU_CD", menuId);
+                    jexAjax.execute(function (data) {
+                    	
+                        var menuCd = data.MENU_CD;
+
+                        if (menuCd == null || "" === menuCd) {
+                        	response = {RSLT_CD: "8888", RSLT_MSG: "해당 메뉴를 찾을 수 없습니다."}
+                            //return JSON.stringify({RSLT_CD: "9999", RSLT_MSG: "해당 메뉴를 찾을 수 없습니다."});
+                        	return;
+                        }
+
+                        try {
+                        	var webAction = 'Y';
+                            // 메뉴 함수 적용 (param여부 확인)
+                            if (menuParam == null || "" === menuParam) {
+                                window.top.wserp.comm.goMenu(menuCd, null, webAction);
+                            } else {
+                                window.top.wserp.comm.goMenu(menuCd, menuParam, webAction);
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            response = { RSLT_CD: "9999", RSLT_MSG: "처리 중 오류가 발생하였습니다." };
+                            return;
+                        }
+                    })
+
+                    return JSON.stringify(response);
+                }
+                // 로그인 화면 이동
+                else if ("SERP30_SVC_P013" === input.TRAN_NO) {
+                	var urlName = window.location.pathname;
+                	//[2023-10-18] cwb 입출고관리
+                	if(urlName.indexOf('wrfm') > -1){
+                		 window.top.location.href = "wrfm_0002_01.act";
+                	}
+                	else{
+                		window.top.location.href = "wserp_0002_01.act";
+                	}
+                    return JSON.stringify({RSLT_CD: "0000", RSLT_MSG: "정상처리되었습니다."});
+                }
+                // 웹에서 MENU_CD가 없는 메뉴 이동
+                else if ("SERP30_SVC_P032" === input.TRAN_NO) {
+                    let tMenuCd = input.REQ_DATA[0].T_MENU_CD;
+                    let menuUrl = input.REQ_DATA[0].MENU_URL;
+
+                    // 공지사항
+                    if ("mXXX4" === tMenuCd) {
+                        var jexAjax = jexjs.plugin("ajax", "wserp_comm_05");
+                        jexAjax.setting('async', false);
+                        jexAjax.set("LINK_URL", 'quick_szone');
+                        jexAjax.execute(function (data) {
+                            var appCode = data.APP_SEQ_NO;
+                            if (appCode == null || "" === appCode) {
+                                return JSON.stringify({RSLT_CD: "9999", RSLT_MSG: "해당 앱 코드가 존재하지 않습니다."});
+                            }
+
+                        	window.top.wserp.comm.goBizApp(appCode, {"LINK_URL": menuUrl});
+						})
+
+                        return JSON.stringify({RSLT_CD: "0000", RSLT_MSG: "정상처리되었습니다."});
+                    }
+                    //비플 식권
+                    else if ("mXXX3" === tMenuCd) {
+                        window.open("comm_zpay_0001.act", "comm_zpay");
+                        return JSON.stringify({RSLT_CD: "0000", RSLT_MSG: "정상처리되었습니다."});
+                    }
+                    //웹에서 MENU_CD 외부메뉴(스토어 등)
+                    else if ("mXXX1" === tMenuCd) {
+                        var jexAjax = jexjs.plugin("ajax", "wserp_comm_05");
+                        jexAjax.setting('async', false);
+                        jexAjax.set("LINK_URL", 'quick_szone');
+                        jexAjax.execute(function (data) {
+                            var appCode = data.APP_SEQ_NO;
+                            if (appCode == null || "" === appCode) {
+                                return JSON.stringify({RSLT_CD: "9999", RSLT_MSG: "해당 앱 코드가 존재하지 않습니다."});
+                            }
+
+                        	window.top.wserp.comm.goBizApp(appCode, {"LINK_URL": menuUrl});
+						})
+
+                        return JSON.stringify({RSLT_CD: "0000", RSLT_MSG: "정상처리되었습니다."});
+                    }
+                    //선물하기
+                    else if ("mXXX5" === tMenuCd) {
+                        try {
+                            var jexAjax = jexjs.plugin("ajax", "wserp_comm_05");
+                            jexAjax.setting('async', false);
+                            jexAjax.set("LINK_URL", 'quick_gift');
+                            jexAjax.execute(function (data) {
+                                var appCode = data.APP_SEQ_NO;
+                                if (appCode == null || "" === appCode) {
+                                    return JSON.stringify({RSLT_CD: "9999", RSLT_MSG: "해당 앱 코드가 존재하지 않습니다."});
+                                }
+
+                                window.top.wserp.comm.goBizApp(appCode);
+                            })
+
+                        } catch (e) {
+                            console.error(e);
+                            return JSON.stringify({RSLT_CD: "9999", RSLT_MSG: "처리 중 오류가 발생하였습니다."});
+                        }
+
+                        return JSON.stringify({RSLT_CD: "0000", RSLT_MSG: "정상처리되었습니다."});
+                    }
+                    //tMenuCd = bizapp코드 (dash_import.jsp movePage3)
+                    else {
+                        try {
+                            window.top.wserp.comm.goBizApp(String(tMenuCd)); //형 변환 해야 먹힘
+                        } catch (e) {
+                            console.error(e);
+                            return JSON.stringify({RSLT_CD: "9999", RSLT_MSG: "처리 중 오류가 발생하였습니다."});
+                        }
+
+                        return JSON.stringify({RSLT_CD: "0000", RSLT_MSG: "정상처리되었습니다."});
+                    }
+
+                }
+                // 웹에서 단말 팝업창
+                else if ("SERP30_SVC_P033" === input.TRAN_NO) {
+                    let popupKind = input.REQ_DATA[0].POPUP_KIND;
+
+                    // 비즈 메모
+                    if ("BIZMEMO" === popupKind) {
+                        var jexAjax = jexjs.plugin("ajax", "wserp_comm_05");
+                        jexAjax.setting('async', false);
+                        jexAjax.set("LINK_URL", 'quick_memo');
+                        jexAjax.execute(function (data) {
+                            var appCode = data.APP_SEQ_NO;
+                            if (appCode == null || "" === appCode) {
+                                return JSON.stringify({RSLT_CD: "9999", RSLT_MSG: "해당 앱 코드가 존재하지 않습니다."});
+                            }
+                            window.top.wserp.comm.goBizApp(appCode, {"IS_WIN_POP": "Y", "TARGET": "bizmemo"});
+                        })
+
+                        return JSON.stringify({RSLT_CD: "0000", RSLT_MSG: "정상처리되었습니다."});
+                    }
+                    // 캘린더
+                    else if ("BIZCALENDAR" === popupKind) {
+                        var jexAjax = jexjs.plugin("ajax", "wserp_comm_05");
+                        jexAjax.setting('async', false);
+                        jexAjax.set("LINK_URL", 'quick_calendar');
+                        jexAjax.execute(function (data) {
+                            var appCode = data.APP_SEQ_NO;
+                            if (appCode == null || "" === appCode) {
+                                return JSON.stringify({RSLT_CD: "9999", RSLT_MSG: "해당 앱 코드가 존재하지 않습니다."});
+                            }
+                            window.top.wserp.comm.goBizApp(appCode, {"IS_WIN_POP": "Y", "TARGET": "bizcalendar"});
+                        })
+
+                        return JSON.stringify({RSLT_CD: "0000", RSLT_MSG: "정상처리되었습니다."});
+                    }
+                }
+
+                // 전체 새로고침
+                else if ("SERP30_SVC_P068" === input.TRAN_NO) {
+				   var curMenu =  window.top.$('#leftMenu').find('a.active').closest("li").attr("data-menu-cd");
+				   window.top._thisPage.menu.searchMenuList(curMenu);
+				   window.top.loginPop();
+
+                }
+
+                //자동증빙센터 팝업
+                else if ("SERP30_SVC_P031" === input.TRAN_NO) {
+        			var sizeW = 945;
+        		    var sizeH = 730;
+        		    var nLeft = Math.round(window.screenX + (window.outerWidth/2) - (sizeW/2));
+        		    var nTop = Math.round(window.screenY + (window.outerHeight/2) - (sizeH/2));
+        			var url = "colt_0001_01.act"
+        			var options = "toolbar=no,scrollbars=no,resizable=no,status=no,menubar=no,width="+sizeW+", height="+sizeH+", top="+nTop+",left="+nLeft;
+        			parent.window.open(url, "colt", options);
+
+                }
+
+                //모달 닫기
+                else if("SERP30_SVC_P029" === input.TRAN_NO) {
+                	close_smartPop();
+                }
+
+                //스마트인증센터 팝업 호출함수
+                else if ("SERP30_SVC_P011" === input.TRAN_NO) {
+                	const CERT_CALL_MODE = input.REQ_DATA[0].CERT_CALL_MODE;
+                	const CERT_TYPE = input.REQ_DATA[0].CERT_TYPE;
+
+                	if('2' === CERT_CALL_MODE){
+                		const BANK_CD = input.REQ_DATA[0].AGENCY_CODE;
+                		const IB_TYPE = input.REQ_DATA[0].CERT_SSM_TYPE;
+
+                		var $form = $("<form method='post'></form>");
+                		$form.append("<input name='BANK_CD' value='" + BANK_CD + "'>");
+                		$form.append("<input name='IB_TYPE' value='" + IB_TYPE + "'>");
+                		$form.append("<input name='CERT_TYPE' value='" + CERT_TYPE + "'>");
+
+                		//홈택스
+                		if('1' === CERT_TYPE){
+                			open_smartPop({
+                				href: "scrp_p001_02.act",
+                				width: 535,
+                				height: 660,
+                				target : window,
+                				frm: $form
+                			})
+                		}
+                		//여신
+                		else if('2' === CERT_TYPE){
+                			open_smartPop({
+                				href: "scrp_p004_02.act",
+                				width: 535,
+                				height: 660,
+                				target : window,
+                				frm: $form
+                			})
+                		}
+                		//카드
+                		else if('3' === CERT_TYPE){
+                			open_smartPop({
+                				href: "scrp_p003_02.act",
+                				width: 535,
+                				height: 660,
+                				target : window,
+                				frm: $form
+                			})
+                		}
+                		//은행
+                		else if('4' === CERT_TYPE){
+                			open_smartPop({
+                				href: "scrp_p002_02.act",
+                				width: 535,
+                				height: 660,
+                				target : window,
+                				frm: $form
+                			})
+                		}
+                		//제로페이
+                		else if('16' === CERT_TYPE){
+                			open_smartPop({
+                				href: "scrp_p005_02.act",
+                				width: 535,
+                				height: 660,
+                				target : window,
+                				frm: $form
+                			})
+                		}
+                		// 쇼핑몰
+                        else if('5' === CERT_TYPE){
+                            open_smartPop({
+                                href: "scrp_p006_04.act",
+                                width: 535,
+                                height: 660,
+                                target : window,
+                                frm: $form
+                            })
+                        }
+                        // 배달
+			            else if('6' === CERT_TYPE){
+			                open_smartPop({
+			                    href: "scrp_p006_04.act",
+			                    width: 535,
+			                    height: 660,
+			                    target : window,
+			                    frm: $form
+			                })
+			            }
+                        // 숙박
+			            else if('7' === CERT_TYPE){
+			                open_smartPop({
+			                    href: "scrp_p006_04.act",
+			                    width: 535,
+			                    height: 660,
+			                    target : window,
+			                    frm: $form
+			                })
+			            }
+                		//준비 중입니다...
+                        else if('11' === CERT_TYPE){
+                        	alert('서비스 준비 중 입니다.');
+                        }                        		
+                		else{
+                			open_smartPop({
+                				href: "scrp_p002_02.act",
+                				width: 535,
+                				height: 660,
+                				target : window,
+                				frm: $form
+                			})
+                		}
+
+                	}
+                	else{
+						const ETC_YN = input.REQ_DATA[0].ETC_YN;
+
+						var $form = $("<form method='post'></form>");
+						$form.append("<input name='ETC_YN' value='" + ETC_YN + "'>");
+						$form.append("<input name='CERT_TYPE' value='" + CERT_TYPE + "'>");
+
+                		//홈택스
+                		if('1' === CERT_TYPE){
+                			open_smartPop({
+                				href: "scrp_p001_01.act",
+                				width: 535,
+                				height: 660,
+                				target : window
+                			})
+                		}
+                		//여신
+                		else if('2' === CERT_TYPE){
+                			open_smartPop({
+                				href: "scrp_p004_01.act",
+                				width: 535,
+                				height: 660,
+                				target : window
+                			})
+                		}
+                		//카드
+                		else if('3' === CERT_TYPE){
+                			open_smartPop({
+                				href: "scrp_p003_01.act",
+                				width: 535,
+                				height: 660,
+                				target : window
+                			})
+                		}
+                		//은행
+                		else if('4' === CERT_TYPE){
+                			open_smartPop({
+                				href: "scrp_p002_01.act",
+                				width: 535,
+                				height: 660,
+                				target : window,
+                				frm: $form
+                			})
+
+							return JSON.stringify({RSLT_CD: "0000", RSLT_MSG: "정상처리되었습니다."});
+                		}
+                		//제로페이
+                		else if('16' === CERT_TYPE){
+                			open_smartPop({
+                				href: "scrp_p005_01.act",
+                				width: 535,
+                				height: 660,
+                				target : window
+                			})
+                		}
+                		// 쇼핑몰 
+                        else if('5' === CERT_TYPE){
+                            open_smartPop({
+                                href: "scrp_p006_03.act",
+                                width: 535,
+                                height: 660,
+                                target : window,
+								frm: $form
+                            })
+                        }
+                        // 배달
+			            else if('6' === CERT_TYPE){
+			                open_smartPop({
+			                    href: "scrp_p006_03.act",
+			                    width: 535,
+			                    height: 660,
+			                    target : window,
+								frm: $form
+			                })
+			            }
+                        // 숙박
+			            else if('7' === CERT_TYPE){
+			                open_smartPop({
+			                    href: "scrp_p006_03.act",
+			                    width: 535,
+			                    height: 660,
+			                    target : window,
+								frm: $form
+			                })
+			            }
+						//위택스
+						else if('8' === CERT_TYPE){
+							open_smartPop({
+								href: "scrp_p001_03.act",
+								width: 535,
+								height: 660,
+								target : window
+							})
+						}
+                		//준비 중입니다...
+                        else if('11' === CERT_TYPE){
+                        	alert('서비스 준비 중 입니다.');
+                        }
+                		else{
+                			open_smartPop({
+                				href: "scrp_p002_01.act",
+                				width: 535,
+                				height: 660,
+                				target : window
+                			})
+
+                		}
+                	}
+                	//return JSON.stringify({RSLT_CD: "0000", RSLT_MSG: "정상처리되었습니다."});
+                }
+
+				//인증서 여부
+				else if ("SERP30_SVC_P014" === input.TRAN_NO) {					
+					const bankCdList = [
+									  {BANK_CD: "50000001",  SERVICE_NM: "HOMETAX"},
+									  {BANK_CD: "50000003",  SERVICE_NM: "WETAX"},
+								      {BANK_CD: "50000002",  SERVICE_NM: "CREFIA"},
+								      {BANK_CD: "60000001",  SERVICE_NM: "ZEROPAY"},
+								      {BANK_CD: "60000007",  SERVICE_NM: "CARDNO"},
+								      {BANK_CD: "60000006",  SERVICE_NM: "ZEROPAYSALE"},
+								      {BANK_CD: "60000004",  SERVICE_NM: "EGOV"},
+								      {BANK_CD: "60000003",  SERVICE_NM: "NHIC"},
+								      {BANK_CD: "60000024",  SERVICE_NM: "HIRA"}]
+					
+					const RESP_DATA = [
+									 {CERT_YN: "N", SERVICE_NM: "HOMETAX"},
+									 {CERT_YN: "N", SERVICE_NM: "WETAX"},
+									 {CERT_YN: "N", SERVICE_NM: "CREFIA"},
+									 {CERT_YN: "N", SERVICE_NM: "CARDNO"},
+									 {CERT_YN: "N", SERVICE_NM: "ACCTNO"},
+									 {CERT_YN: "N", SERVICE_NM: "SHOPPING"},
+									 {CERT_YN: "N", SERVICE_NM: "DELIVERY"},
+									 {CERT_YN: "N", SERVICE_NM: "BOOKING"},
+									 {CERT_YN: "N", SERVICE_NM: "TRAVEL"},
+									 {CERT_YN: "N", SERVICE_NM: "PAYMENTGATEWAY"},
+									 {CERT_YN: "N", SERVICE_NM: "NHIC"},
+									 {CERT_YN: "N", SERVICE_NM: "SECACCTNO"},
+									 {CERT_YN: "N", SERVICE_NM: "INSACCTNO"},
+									 {CERT_YN: "N", SERVICE_NM: "HIRA"},
+									 {CERT_YN: "N", SERVICE_NM: "EGOV"},
+									 {CERT_YN: "N", SERVICE_NM: "ZEROPAYSALE"},
+									 {CERT_YN: "N", SERVICE_NM: "ZEROPAY"},
+									 {CERT_YN: "N", SERVICE_NM: "SHOPPINGMBUYER"}];
+					
+					return scrapping014(input, bankCdList, RESP_DATA);
+				}
+                
+                
+				//비즈플레이 인증서
+				else if ("SERP30_SVC_P067" === input.TRAN_NO) {					
+					const CARDNO_BIZPLAY = [{BANK_CD: "60000007",  SERVICE_NM: "CARDNO_BIZPLAY"}]
+					
+					const RESP_DATA = [{CERT_YN: "N", SERVICE_NM: "CARDNO_BIZPLAY"}];
+					
+					return scrapping067(input, CARDNO_BIZPLAY, RESP_DATA);
+				}
+                //[2023.10.25] cwb 누락된 코드 확인 필요
+                else{
+                	alert(input.TRAN_NO +" 누락된 web_func -> RequesEemWebApi.js 확인필요");
+                	return JSON.stringify({RSLT_CD: "9999", RSLT_MSG: input.TRAN_NO + " 누락된 web_func -> requestemwebapi.js 확인필요 "});
+                }
+
+            },
+
+            RequestEmWebApi2: function (data, callbackFn) {
+				debugger
+                const input = JSON.parse(data);
+                console.log(input);
+
+                const cpprScraping = ["SERP30_SVC_P045","SERP30_SVC_P046","SERP30_SVC_P047","SERP30_SVC_P048","SERP30_SVC_P049","SERP30_SVC_P050","SERP30_SVC_P051","SERP30_SVC_P053"];
+                // 웹 상품 경리나라 스크래핑 호출 방식 처리
+                if ("SERP30_SVC_P004" === input.TRAN_NO) {
+                	var imsi = [];
+                	var imsi_1 = []; //홈택스
+                	var imsi_2 = []; //여신
+                	var imsi_3 = []; //카드
+                	var imsi_4 = []; //제로페이
+                	var imsi_5 = []; //이커머스
+                	var imsi_6 = []; //쇼핑몰
+					var imsi_7 = []; //위택스
+                	
+                	var homeTaxCnt = 0;
+                	var bankingCnt = 0;
+                	var crefiaCnt = 0;
+                	var cardCnt = 0;
+                	var zeroCnt = 0;
+                	var onlineCnt = 0;
+                	var shopCnt = 0;
+					var wetaxCnt = 0;
+                	
+                	var responseData = '';
+
+                	
+                	//홈택스 스크래핑
+                	const homeTaxScraping = ["SCRAP27", "SCRAP28", "SCRAP49_TAXSALE" , "SCRAP49_SALE", "SCRAP49_PCHS", "SCRAP49_TAXPCHS",
+                							 "SCRAPESEROLIST_BUSINESSNUMBER", "SCRAP50_SALE", "SCRAP150", "SCRAP151", "SCRAP167_EXPORTPERFORMNCE"]
+
+					const wetaxScraping = ["WETAX_LOCALTAX"]
+
+                	//은행 스크래핑
+                	const bankingScraping = ["SCRAPLOANEDDEALING", "SCRAPLOANEDBALANCE" , "SCRAPACCTDEALING", "SCRAPEXCHANGEBALANCE",
+                							 "SCRAPINVESTMENTDEALING", "SCRAPINVESTMENTBALANCE", "SCRAPINVESTMENT", "SCRAPEXCHANGEACCTALL", "SCRAPEXCHANGEDEALING",
+                							"SCRAPCOLLECTCASH", "SCRAPSAVINGSDEALING", "SCRAPACCTBALANCE", "SCRAPSAVINGSBALANCE"]
+
+                	//여신금융 스크래핑
+                	const crefiaScraping = ["SCRAP46_APPR", "SCRAP46_SALE", "SCRAP46_INAMT", "SCRAP46_COMPANY", "SCRAP59"]
+
+                	//카드 스크래핑
+                	const cardScraping = ["SCRAPAPPROVAL_CORPCARD", "SCRAPREQUEST_CORPCARD", "SCRAPLIMIT_CORPCARD", "ZEROPAY", "SCRAP_BIZPLAYCARDAPPR",
+                						  "SCRAP_MEALTICKETLMT", "SCRAP_BIZPLAYCARDLMT", "SCRAPREQUEST_BILL", "SCRAPREQUEST_FOREIGNBILL"] //[2024.05.22] cwb 청구 추가
+                	
+                	//제로페이 스크래핑
+                	const zeroScraping = ["SCRAPZPAY_COMPANY", "SCRAPZPAY_APPR", "SCRAPZPAY_INAMT"]
+                	
+                	//온라인 스크래핑
+                	const onlineScraping = ["SCRAP143_SHOPPING", "SCRAP143_DELIVERY", "SCRAP143_BOOKING", "SCRAP143_TRAVEL", "SCRAP143_PAYMENTGATEWAY", "SCRAP144_SHOPPING"] // 건별부가세신고내역 쇼핑만 있음
+                	
+                	//쇼핑몰 스크래핑
+                	const shopScraping = ["SCRAPPURCH_SHOPPING"]
+                	
+                	
+                	//최초
+    				const str_dt = dateUtil.day_minus(dateUtil.month_minus(moment().format("YYYYMMDD"), 1), 1);	//한달전
+    				const end_dt = moment().format("YYYYMMDD");	//오늘
+    				
+    				
+    				//3개월
+                	//은행, 홈택스 수집, 조회
+                	//ACCT_LIST 데이터가 없을경우
+					debugger
+                	input.REQ_DATA.forEach(function(data){
+						debugger;
+                		if(bankingScraping.indexOf(data.SCRAP_NM) > -1){
+                			const empty_acct = {"ACCT_NO": ""};
+							// 외화, 기타
+							if(data.SCRAP_NM === "SCRAPEXCHANGEBALANCE" || data.SCRAP_NM === "SCRAPEXCHANGEDEALING"
+								|| (data.OTHER == "1" && (data.SCRAP_NM === "SCRAPACCTBALANCE" || data.SCRAP_NM === "SCRAPACCTDEALING"))) {
+								if (data.ACCT_LIST) {
+									var temp = data.ACCT_LIST;
+									data.ACCT_LIST= [];
+									data.ACCT_LIST.push(temp);
+								} else {
+									data.ACCT_LIST= [];
+									data.ACCT_LIST.push(empty_acct);
+								}
+
+								// 날짜
+								if (data.REC) {
+									data.REC.forEach(function (acct_list) {
+										if (acct_list.REGS_DATE_S && !data.REQUEST_DATE_S) {
+											data.REQUEST_DATE_S = acct_list.REGS_DATE_S;
+											data.REQUEST_DATE_E = acct_list.REGS_DATE_E;
+										}
+									})
+								}
+							} else {
+								debugger
+								data.ACCT_LIST= [];
+								if (data.REC) {
+									//data.SCRAP_SEARCH_TYPE='CHK';
+									data.REC.forEach(function (acct_list) {
+										if (!acct_list.ACCOUNT) {
+											data.ACCT_LIST.push(empty_acct);
+										} else {
+											data.ACCT_LIST.push({"ACCT_NO": acct_list.ACCOUNT});
+										}
+
+										//날짜를 이쪽으로 넘기는 경우가 있음
+										if (acct_list.REGS_DATE_S && !data.REQUEST_DATE_S) {
+											data.REQUEST_DATE_S = acct_list.REGS_DATE_S;
+											data.REQUEST_DATE_E = acct_list.REGS_DATE_E;
+										}
+									})
+								} else {
+									//data.SCRAP_SEARCH_TYPE='ALL';
+									data.ACCT_LIST.push(empty_acct);
+								}
+							}
+
+                			bankingCnt ++;
+                			imsi.push(data);
+                		}
+						//위택스 추가
+						else if(wetaxScraping.indexOf(data.SCRAP_NM) > -1){
+							if(!data.REQUEST_DATE_S){
+								//지방세(위택스)
+								const EVDC_84 = ["WETAX_LOCALTAX"];
+
+								if(EVDC_84.indexOf(data.SCRAP_NM) > -1){
+									data.REQUEST_DATE_S = scrapping004_lastDt('84');
+								}
+								else{
+									data.REQUEST_DATE_S = str_dt;
+								}
+
+								data.REQUEST_DATE_E = end_dt;
+							}
+
+							wetaxCnt ++;
+							console.log("위택스 데이터: ", data);
+							console.log("위택스 개수: ", wetaxCnt);
+							imsi_7.push(data);
+						}
+						else if(homeTaxScraping.indexOf(data.SCRAP_NM) > -1){
+                			if(!data.REQUEST_DATE_S){   				
+                				//세금계산서 매입
+                				const EVDC_10 = ["SCRAP49_PCHS","SCRAP49_TAXPCHS"];
+                				//세금계산서 매출
+                				const EVDC_11 = ["SCRAP49_SALE","SCRAP49_TAXSALE"];
+                				//현금영수증 매입
+                				const EVDC_20 = ["SCRAP27"];
+                				//현금영수증 매출
+                				const EVDC_21 = ["SCRAP28"];
+                				//해외매출
+                				const EVDC_81 = ["SCRAP167_EXPORTPERFORMNCE"];
+                				//국세
+                				const EVDC_83 = ["SCRAP150"];
+                				
+                				if(EVDC_10.indexOf(data.SCRAP_NM) > -1){
+                					data.REQUEST_DATE_S = scrapping004_lastDt('10');
+                				}
+                				else if(EVDC_11.indexOf(data.SCRAP_NM) > -1){
+                					data.REQUEST_DATE_S = scrapping004_lastDt('11');                					
+                				}
+                				else if(EVDC_20.indexOf(data.SCRAP_NM) > -1){
+                					data.REQUEST_DATE_S = scrapping004_lastDt('20');
+                				}
+                				else if(EVDC_21.indexOf(data.SCRAP_NM) > -1){
+                					data.REQUEST_DATE_S = scrapping004_lastDt('21');
+                				}
+                				else if(EVDC_81.indexOf(data.SCRAP_NM) > -1){
+                					data.REQUEST_DATE_S = scrapping004_lastDt('81');
+                				}
+                				else if(EVDC_83.indexOf(data.SCRAP_NM) > -1){
+                					data.REQUEST_DATE_S = scrapping004_lastDt('83');
+                				}
+                				else{
+                					data.REQUEST_DATE_S = str_dt;
+                				}
+                				
+                				data.REQUEST_DATE_E = end_dt;
+                			}
+                			
+                   			homeTaxCnt ++;
+							console.log("홈택스 데이터: ", data);
+							console.log("홈택스 갯수: ", homeTaxCnt);
+                			imsi_1.push(data);
+                		}else if(crefiaScraping.indexOf(data.SCRAP_NM) > -1){
+                			if(!data.REQUEST_DATE_S){
+                				data.REQUEST_DATE_S = scrapping004_lastDt('30');
+                				data.REQUEST_DATE_E = end_dt;
+                			}
+                			
+                			crefiaCnt ++;
+                			imsi_2.push(data);                			
+                		}else if(cardScraping.indexOf(data.SCRAP_NM) > -1){
+                			
+                   			const empty_card = {"CARD_NO": ""};
+                			data.CARD_LIST = [];
+                			if(data.REC){
+								//data.SCRAP_SEARCH_TYPE='CHK';
+	                			data.REC.forEach(function(card_list){
+		                			if(!card_list.ACCOUNT){
+		                				data.CARD_LIST.push(empty_card);
+		                			}
+		                			else{
+		                				data.CARD_LIST.push({"CARD_NO" : card_list.ACCOUNT});
+		                			}
+	                			})
+                			}
+                			else{
+								//data.SCRAP_SEARCH_TYPE='ALL';
+                				data.CARD_LIST.push(empty_card);
+                			}
+                			
+                			if(!data.REQUEST_DATE_S){
+                				//[2024.05.23] cwb 청구 최종수집일 계산
+                				const EVDC_CLM = ["SCRAPREQUEST_BILL", "SCRAPREQUEST_FOREIGNBILL"];
+                				
+                				//청구는 청구최종수집일 바라보게
+                				if(EVDC_CLM.indexOf(data.SCRAP_NM) > -1){
+                					data.REQUEST_DATE_S = scrapping004_lastDt('clm');
+                					data.REQUEST_DATE_E = moment(end_dt, 'YYYYMMDD').format('YYYYMM');
+                				}
+                				else{
+                					data.REQUEST_DATE_S = scrapping004_lastDt('card');
+                					data.REQUEST_DATE_E = end_dt;
+                				}
+                				
+                			}
+                			 
+                			cardCnt ++;
+                			console.log('resData: ', data);
+                			imsi_3.push(data);                			
+                		}else if(zeroScraping.indexOf(data.SCRAP_NM) > -1){
+                			
+                			if(!data.REQUEST_DATE_S){
+                				const saleZero = ["SCRAPZPAY_APPR", "SCRAPZPAY_INAMT"]         				
+                				
+                				if(saleZero.indexOf(data.SCRAP_NM) > -1){
+                					//제로페이(매출) 최종일자
+                					data.REQUEST_DATE_S = scrapping004_lastDt('43');
+                				}else{
+                					data.REQUEST_DATE_S = str_dt;
+                				}
+                				
+                				data.REQUEST_DATE_E = end_dt;
+                			}
+                			 
+                			zeroCnt ++;
+                			imsi_4.push(data);  
+                			
+                		}else if(onlineScraping.indexOf(data.SCRAP_NM) > -1){                			
+                			
+            				const EVDC_49 = ["SCRAP143_SHOPPING"];
+            				const EVDC_50 = ["SCRAP143_DELIVERY"];
+            				const EVDC_51 = ["SCRAP143_BOOKING"];
+            				const EVDC_52 = ["SCRAP143_TRAVEL"];
+            				const EVDC_53 = ["SCRAP143_PAYMENTGATEWAY"];
+            				
+            				let result = '';
+            				if(EVDC_49.indexOf(data.SCRAP_NM) > -1){
+            					result = scrapping004_lastDt_Online('49');
+            				}
+            				else if(EVDC_50.indexOf(data.SCRAP_NM) > -1){
+            					result = scrapping004_lastDt_Online('50');
+            				}
+            				else if(EVDC_51.indexOf(data.SCRAP_NM) > -1){
+            					result = scrapping004_lastDt_Online('51');
+            				}
+            				else if(EVDC_52.indexOf(data.SCRAP_NM) > -1){
+            					result = scrapping004_lastDt_Online('52');
+            				}
+            				else if(EVDC_53.indexOf(data.SCRAP_NM) > -1){
+            					result = scrapping004_lastDt_Online('53');
+            				}
+            				
+            				//[2024.07.31] cwb 자동수집
+                			if(!data.REQUEST_DATE_S){
+                				data.REQUEST_DATE_S = dateUtil.month_minus(result.endDt, 3);	//세달전
+                				data.REQUEST_DATE_E = result.endDt;
+                			}
+                			
+                			else{
+                				//[2024.08.08] cwb 화면 단에서 처리하는걸로 수정 (1~10일 -> 직직전월, 11~ -> 직전월)
+                				//직전월로 계산할 경우, 자동수집 endDt로 계산 (이커머스 별로, 월이 다를수 있기때문에) 
+/*                				const oneMonthAgo = moment().subtract(1, 'months').format("YYYYMM");
+                				
+                				//받아온 종료일이 직전월 이상인경우는, 자료수집 endDt로
+                				if(oneMonthAgo <= data.REQUEST_DATE_E.substring(0,6)){
+                					data.REQUEST_DATE_E = result.endDt;
+                				} */
+                				
+                				//월 데이터로 받았을 경우
+                				if(data.REQUEST_DATE_S.length == 6){
+                					data.REQUEST_DATE_S = data.REQUEST_DATE_S + '01';
+                				}
+                				
+                				if(data.REQUEST_DATE_E.length == 6){
+                					data.REQUEST_DATE_E = data.REQUEST_DATE_E + '01';
+                				}
+                			}
+                			
+                			data.SHOP_LIST = [{WEB_ID: ""}];
+                			
+                			onlineCnt ++;
+                			imsi_5.push(data);  
+                			
+                		}else if(shopScraping.indexOf(data.SCRAP_NM) > -1){
+                			//일단 자동수집 현재날짜로... (정의된거 없음)
+                			if(!data.REQUEST_DATE_S){
+                				data.REQUEST_DATE_S = end_dt;
+                				data.REQUEST_DATE_E = end_dt;
+                			}
+                			shopCnt ++;
+                			imsi_6.push(data);
+                		}
+                		else{
+                			alert(data.SCRAP_NM+' 매핑안된 스크래핑명 존재 확인 필요');
+                		}
+                	})
+					debugger;
+
+					if(homeTaxCnt>0 && wetaxCnt>0){
+						//은행, 홈택스 수집, 조회
+
+						scrapping004(imsi_1, 'hometax', function(homeTaxResult) {
+							scrapping004(imsi_7, 'wetax', function(wetaxResult) {
+								var finalResult = {
+									RSLT_CD: '0000',
+									RSLT_MSG: '홈택스, 위택스 조회 성공',
+									RESP_DATA: []
+								};
+
+								if (homeTaxResult.RSLT_CD !== '0000') {
+									finalResult.RSLT_CD = homeTaxResult.RSLT_CD;
+									finalResult.RSLT_MSG = '홈택스 조회 오류';
+								}
+
+								if (wetaxResult.RSLT_CD !== '0000') {
+									if (finalResult.RSLT_CD !== '0000') {
+										finalResult.RSLT_CD = '9999';
+										finalResult.RSLT_MSG = '홈택스, 위택스 조회 실패';
+									} else {
+										finalResult.RSLT_CD = wetaxResult.RSLT_CD;
+										finalResult.RSLT_MSG = '위택스 조회 오류';
+									}
+								}
+
+								var homeData = Array.isArray(homeTaxResult.RESP_DATA) ? homeTaxResult.RESP_DATA : [];
+								var wetaxData = Array.isArray(wetaxResult.RESP_DATA) ? wetaxResult.RESP_DATA : [];
+
+								finalResult.RESP_DATA = wetaxData.concat(homeData);
+
+								callbackFn(finalResult);
+							});
+						});
+					}else{
+						//홈택스
+						if(homeTaxCnt > 0){
+							scrapping004(imsi_1, 'hometax', callbackFn)
+						}
+
+						//위택스
+						if(wetaxCnt > 0){
+							scrapping004(imsi_7, 'wetax', callbackFn)
+						}
+					}
+
+                	//은행
+                	if(bankingCnt > 0){
+                		scrapping004(imsi, 'banking', callbackFn)
+                	}
+
+                	//여신금융
+                	if(crefiaCnt > 0){
+                		if(zeroCnt > 0){
+                			scrapping004ZeroPay(imsi_2, 'crefia', callbackFn, imsi_4);
+                		}
+                		else{
+                			scrapping004(imsi_2, 'crefia', callbackFn);
+                		}
+                	}                	
+                	
+                   	//카드
+                	if(cardCnt > 0){
+                		if(zeroCnt > 0){
+                			scrapping004ZeroPay(imsi_3, 'card', callbackFn, imsi_4)
+                		}
+                		else{
+                			scrapping004(imsi_3, 'card', callbackFn)
+                		}
+                	}
+                	if(cardCnt == 0 && crefiaCnt == 0){
+	                   	//순수 제로페이
+	                	if(zeroCnt > 0){
+	                		scrapping004(imsi_4, 'zeropay', callbackFn)
+	                	}
+                	}
+                	
+                	//온라인
+                	if(onlineCnt > 0){
+                		scrapping004(imsi_5, 'snss', callbackFn)
+                	}
+                	//쇼핑몰
+                	if(shopCnt > 0){
+                		scrapping004(imsi_6, 'shop', callbackFn)
+                	}
+
+                }
+				// 민원증명신청 로직
+                else if(cpprScraping.includes(input.TRAN_NO)) {
+					let reqs = [];
+					$.map(input.REQ_DATA, function(v, i) {
+						const req = {
+							SCRAP_NM: v.TRAN_NO,
+							INPUT: {
+								BUSS_NO: v.BUSS_NO,
+								RRN_OPEN_YN: v.RRN_OPEN_YN,
+								SUBMISSION_DOC: v.SUBMISSION_DOC,
+								PURPOSE: v.PURPOSE,
+								YEAR_MONTH_S: v.YEAR_MONTH_S,
+								YEAR_MONTH_E: v.YEAR_MONTH_E,
+								YEAR_S: v.YEAR_S,
+								YEAR_E: v.YEAR_E,
+								TAX_LIST: v.TAX_LIST,
+								SOLE_CORP: v.SOLE_CORP,
+								YEAR_INCOM_S: v.YEAR_INCOM_S,
+								CLASSIFICATION: v.CLASSIFICATION,
+								REASON_ISSUE: v.REASON_ISSUE
+							}
+						}
+						reqs.push(req)
+
+					});
+
+					/*const imsi7 = [
+						{
+							SCRAP_NM: "SERP30_SVC_P045",
+							INPUT: {
+								BUSS_NO: "1078527739",
+								RRN_OPEN_YN: "N",
+								SUBMISSION_DOC: "5",
+							},
+						},
+						{
+							SCRAP_NM: "SERP30_SVC_P046",
+							INPUT: {
+								RRN_OPEN_YN: "Y",
+							},
+						},
+						{
+							SCRAP_NM: "SERP30_SVC_P050",
+							INPUT: {
+								BUSS_NO: "1078527739",
+								RRN_OPEN_YN: "N",
+								SUBMISSION_DOC: "5",
+								YEAR_INCOM_S: "202310",
+							},
+						},
+					];*/
+
+					console.log("req" + JSON.stringify(reqs))
+					// console.log("reqDatas" + JSON.stringify(reqDatas))
+					const response = async () => await regScrapData(reqs, 'hometax');
+					// console.log(JSON.stringify(reqDatas));
+					response()
+						.then((res) => {
+							var result = {};
+							var RESP_DATA = [];
+
+							res.forEach(function(data){
+								var resp_data = {};
+								resp_data.ERRCODE = data.RSLT_CD;
+								resp_data.ERRMSG =  data.RSLT_MSG;
+
+								if('0000' === data.RSLT_CD || '00000000' === data.RSLT_CD){
+									resp_data.SUCCESS_YN = 'Y'
+								}
+								else{
+									resp_data.SUCCESS_YN = 'N'
+								}
+								resp_data.TRAN_NO = data.SCRAP_NM;
+
+								RESP_DATA.push(resp_data);
+							})
+							result.ERRCODE = '0000'
+							result.ERRMSG = '정상처리되었습니다.'
+							result.RESP_DATA = RESP_DATA;
+
+							callbackFn(result);
+						})
+						.catch(err => {
+							var RESP_DATA = [];
+							var result = {};
+							result.ERRCODE = err.RSLT_CD
+							result.ERRMSG = err.RSLT_MSG
+							RESP_DATA.push(result);
+							result.RESP_DATA = RESP_DATA;
+							callbackFn(result);
+						})
+                }
+                
+                //세무대리인
+                else if ("SERP30_SVC_P054" === input.TRAN_NO) {
+                	let imsi = [];
+                	
+                	let data = {};
+                	data.SCRAP_NM = "나의세무대리인조회";            	
+                	
+                	imsi.push(data);
+                	scrapping054(imsi, 'hometax', callbackFn);
+                	
+                }
+            },
+            //거래처 화면이동
+            IsWeb() {
+                return true;
+            }
+        }
+    });
+}
+
+
+async function scrapping004(imsi, taskCd, callbackFn) {
+	debugger
+	const scrapResult = async (imsi) => await regScrapData(imsi, taskCd);
+	console.log("스크래핑 input" + JSON.stringify(imsi));	
+    //resp_data 값 필요 -> output 예정
+    var result = {};
+    var RESP_DATA = [];
+    
+	scrapResult(imsi)
+	.then((res) => {
+        console.log('최종 결과값 res', res);
+
+		// sns는 기관별 배열로 응답
+		if(taskCd == "snss") {
+			res.forEach(function(agencyData){
+				agencyData.forEach(function(data) {
+					var resp_data = {};
+		        	resp_data.ERRCODE = data.RSLT_CD;
+		        	resp_data.ERRMSG =  data.RSLT_MSG;
+		        	//42110000 내역없음
+		        	if('0000' === data.RSLT_CD || '42110000' === data.RSLT_CD){
+		        		resp_data.SUCCESS_YN = 'Y'
+		        	}
+		        	else{
+		        		resp_data.SUCCESS_YN = 'N'
+		        	}
+		
+					// 2023-11-29, RSLT_CD === 0000 일 때 Output ErrorCode !== 00000000 일 때 Output 객체 추가
+					if(data.Output.ErrorCode !== '00000000') {
+						resp_data.Output = data.Output;
+					}
+		
+		        	RESP_DATA.push(resp_data);
+				});
+	        });
+			
+		} else {
+			res.forEach(function(data){
+	        	var resp_data = {};
+	        	resp_data.ERRCODE = data.RSLT_CD;
+	        	resp_data.ERRMSG =  data.RSLT_MSG;
+	        	//42110000 내역없음
+	        	if('0000' === data.RSLT_CD || '42110000' === data.RSLT_CD){
+	        		resp_data.SUCCESS_YN = 'Y'
+	        	}
+	        	else{
+	        		resp_data.SUCCESS_YN = 'N'
+	        	}
+	
+				// 2023-11-29, RSLT_CD === 0000 일 때 Output ErrorCode !== 00000000 일 때 Output 객체 추가
+				if(data.Output.ErrorCode !== '00000000') {
+					resp_data.Output = data.Output;
+				}
+	
+	        	RESP_DATA.push(resp_data);
+	        })
+		}
+		
+        result.RSLT_CD = '0000'
+        result.RSLT_MSG = '정상처리되었습니다.'
+        result.RESP_DATA = RESP_DATA;
+        
+        console.log("스크래핑 결과" + JSON.stringify(result));
+        
+        callbackFn(result);
+	})
+	.catch(err => {
+        var resp_data = {};
+        resp_data.ERRMSG =  err
+        resp_data.SUCCESS_YN = 'N'
+
+        RESP_DATA.push(resp_data);
+
+        result.RSLT_CD = '9999'
+        result.RSLT_MSG = '오류'
+        result.RESP_DATA = RESP_DATA;
+        
+        console.log("스크래핑 결과실패" + JSON.stringify(result));
+        
+        callbackFn(result);
+	})
+	
+	
+}
+
+async function scrapping004ZeroPay(imsi, taskCd, callbackFn, imsiZero) {
+	const scrapResult = async (imsi) => await regScrapData(imsi, taskCd);
+	const scrapResultZero = async (imsi) => await regScrapData(imsiZero, 'zeropay');
+	
+	console.log("스크래핑 input " + JSON.stringify(imsi));	
+    //resp_data 값 필요 -> output 예정
+    var result = {};``
+    var RESP_DATA = [];
+    
+	scrapResult(imsi)
+	.then((res) => {
+        console.log('최종 결과값 res', res);
+
+
+        res.forEach(function(data){
+        	var resp_data = {};
+        	resp_data.ERRCODE = data.RSLT_CD;
+        	resp_data.ERRMSG =  data.RSLT_MSG;
+        	if('0000' === data.RSLT_CD || '42110000' === data.RSLT_CD){
+        		resp_data.SUCCESS_YN = 'Y'
+        	}
+        	else{
+        		resp_data.SUCCESS_YN = 'N'
+        	}
+
+        	RESP_DATA.push(resp_data);
+        })
+        
+        
+        result.RSLT_CD = '0000'
+        result.RSLT_MSG = '정상처리되었습니다.'
+        result.RESP_DATA = RESP_DATA;
+        
+        console.log("스크래핑 결과 " + JSON.stringify(result));
+        
+
+        return scrapResultZero(imsi)
+
+	})
+	.then((zero) => {
+		console.log('최종 결과값 제로페이', zero);
+		
+		zero.forEach(function(data2){
+	    	var resp_zero = {};
+	    	resp_zero.ERRCODE = data2.RSLT_CD;
+	    	resp_zero.ERRMSG =  data2.RSLT_MSG;
+	    	if('0000' === data2.RSLT_CD || '42110000' === data2.RSLT_CD){
+	    		resp_zero.SUCCESS_YN = 'Y'
+	    	}
+	    	else{
+	    		resp_zero.SUCCESS_YN = 'N'
+	    	}
+	
+	    	RESP_DATA.push(resp_zero);
+	    })
+	    
+	    result.RESP_DATA = RESP_DATA;                
+	    console.log("스크래핑 제로페이 까지 결과 " + JSON.stringify(result));
+	    callbackFn(result);
+		
+    })	
+	.catch(err => {
+        var resp_data = {};
+        resp_data.ERRMSG =  err
+        resp_data.SUCCESS_YN = 'N'
+
+        RESP_DATA.push(resp_data);
+
+        result.RSLT_CD = '9999'
+        result.RSLT_MSG = '오류'
+        result.RESP_DATA = RESP_DATA;
+        
+        console.log("스크래핑 결과실패" + JSON.stringify(result));
+        
+        callbackFn(result);
+	})
+}
+
+function scrapping004_lastDt(evdc_dv){
+	let lastDt = '';
+	
+	var jexAjax = jexjs.plugin('ajax', 'scrp_p001_01_r003');
+	jexAjax.setting({'suffix': '.jct'});
+	jexAjax.setting('async', false);
+	jexAjax.set("EVDC_DV", evdc_dv);
+	jexAjax.execute(function (data) {
+		lastDt = data.INQ_END_DT;
+	
+	});
+	return lastDt;
+}
+
+//시작일, 종료일 둘다 계산해야함
+function scrapping004_lastDt_Online(evdc_dv){
+	let result = {};
+	
+	var jexAjax = jexjs.plugin('ajax', 'scrp_p001_01_r003');
+	jexAjax.setting({'suffix': '.jct'});
+	jexAjax.setting('async', false);
+	jexAjax.set("EVDC_DV", evdc_dv);
+	jexAjax.execute(function (data) {
+		result.strDt = data.INQ_END_DT;
+		result.endDt = data.REQUEST_DATE_E;
+	
+	});
+	return result;
+}
+
+
+function scrapping014(input, bankCdList, RESP_DATA){
+	var result = {};
+	result.RESP_DATA = [];
+	
+	var jexAjax = jexjs.plugin('ajax', 'scrp_p001_01_r002');
+	jexAjax.setting({'suffix': '.jct'});
+	jexAjax.setting('async', false);
+	jexAjax.set("REGR_ID", input.USER_ID);
+	jexAjax.execute(function (res) {
+		res.REC.forEach(function(v) {
+			
+			//bank_cd 존재 유무
+			const found = bankCdList.some(el => el.BANK_CD === v.BANK_CD);
+			
+			if(found){
+				const SERVICE_NM = bankCdList.find(x => x.BANK_CD === v.BANK_CD).SERVICE_NM;
+				
+				RESP_DATA.find(x => x.SERVICE_NM === SERVICE_NM).CERT_YN = 'Y';
+			}else{								
+				//계좌
+				if("ACCT" === v.CERT_TYPE){
+					RESP_DATA.find(x => x.SERVICE_NM === 'ACCTNO').CERT_YN = 'Y';
+				}
+				//카드
+				else if("CARD" === v.CERT_TYPE){
+					RESP_DATA.find(x => x.SERVICE_NM === 'CARDNO').CERT_YN = 'Y';
+				}						
+				//SNS (SNS 종류(0:쇼핑, 1:배달, 2:예약, 3:여행, 4:PG
+				else if("SNS" === v.CERT_TYPE){
+					if(v.BANK_CD === "0"){
+						RESP_DATA.find(x => x.SERVICE_NM === 'SHOPPING').CERT_YN = 'Y';
+					}
+					else if(v.BANK_CD === "1"){
+						RESP_DATA.find(x => x.SERVICE_NM === 'DELIVERY').CERT_YN = 'Y';
+					}
+					else if(v.BANK_CD === "2"){
+						RESP_DATA.find(x => x.SERVICE_NM === 'BOOKING').CERT_YN = 'Y';
+					}
+					else if(v.BANK_CD === "3"){
+						RESP_DATA.find(x => x.SERVICE_NM === 'TRAVEL').CERT_YN = 'Y';
+					}
+					else if(v.BANK_CD === "4"){
+						RESP_DATA.find(x => x.SERVICE_NM === 'PAYMENTGATEWAY').CERT_YN = 'Y';									
+					}
+					else if(v.BANK_CD === "5"){
+						RESP_DATA.find(x => x.SERVICE_NM === 'SHOPPINGMBUYER').CERT_YN = 'Y';
+					}
+				
+				}	
+				
+			}		
+		
+		});
+	})
+	
+	result.RESP_DATA = RESP_DATA;
+    result.RSLT_CD = '0000'
+    result.RSLT_MSG = '정상처리되었습니다.'
+
+    console.log(result);
+	return JSON.stringify(result);
+	
+}
+
+function scrapping054(imsi, taskCd, callbackFn) {
+	const scrapResult = async (imsi) => await regScrapData(imsi, taskCd);
+
+	scrapResult(imsi)
+	.then((res) => {
+        console.log('최종 결과값 res', res);
+        //resp_data 값 필요 -> output 예정
+        var result = {};
+        var RESP_DATA = [];
+
+        res.forEach(function(data){
+        	if("00000000" == data.Output.ErrorCode){
+        		data.Output.Result.forEach(function(resp_data){
+        			resp_data.ERRCODE =  "00000000"
+        			RESP_DATA.push(resp_data);
+        		})    		
+        	}
+        	else{
+        		RESP_DATA.push(data.Output);
+        	}
+        })
+
+        result.RSLT_CD = '0000'
+        result.RSLT_MSG = '정상처리되었습니다.'
+        result.RESP_DATA = RESP_DATA;
+
+        callbackFn(result);
+    })	
+	.catch(err => {
+		var result = {};
+        var RESP_DATA = [];
+
+        var resp_data = {};
+        resp_data.ERRMSG =  err
+
+        RESP_DATA.push(resp_data);
+
+        result.RSLT_CD = '9999'
+        result.RSLT_MSG = '오류'
+        result.RESP_DATA = RESP_DATA;
+        callbackFn(result);
+	})
+
+}
+
+function scrapping067(input, CARDNO_BIZPLAY, RESP_DATA){
+	var result = {};
+	result.RESP_DATA = [];
+	
+	var jexAjax = jexjs.plugin('ajax', 'scrp_p001_01_r002');
+	jexAjax.setting({'suffix': '.jct'});
+	jexAjax.setting('async', false);
+	jexAjax.set("REGR_ID", input.USER_ID);
+	jexAjax.execute(function (res) {
+		res.REC.forEach(function(v) {
+			
+			//bank_cd 존재 유무
+			const found = CARDNO_BIZPLAY.some(el => el.BANK_CD === v.BANK_CD);
+			
+			if(found){
+				const SERVICE_NM = CARDNO_BIZPLAY.find(x => x.BANK_CD === v.BANK_CD).SERVICE_NM;
+				
+				RESP_DATA.find(x => x.SERVICE_NM === SERVICE_NM).CERT_YN = 'Y';
+			}		
+		
+		});
+	})
+	
+	result.RESP_DATA = RESP_DATA;
+    result.RSLT_CD = '0000'
+    result.RSLT_MSG = '정상처리되었습니다.'
+
+    console.log(result);
+	return JSON.stringify(result);
+	
+}

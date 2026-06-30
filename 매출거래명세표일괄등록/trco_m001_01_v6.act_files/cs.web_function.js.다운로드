@@ -1,0 +1,43 @@
+var cs = {
+    web_function: {
+        //메뉴이동
+        SERP30_SVC_P010: function (data, callbackFn) {
+            var reqData = {};
+            reqData.APP_ID = "";
+            reqData.MENU_ID = data[0].MENU_ID;
+            reqData.MENU_TITLE = data[0].MENU_TITLE;
+            reqData.MENU_PARAM = data[0].MENU_PARAM; //{"RCV_BANK_CD":"은행코드", "RCV_ACCT_NO":"계좌번호", "RCV_OWAC_NM":"예금주명", "BZAQ_NO":"거래처번호", "BZAQ_NM":"거래처명" }
+
+            var reqDatas = [];
+            reqDatas.push(reqData);
+
+            var input = {};
+            input.TRAN_NO = "SERP30_SVC_P010";
+            input.USER_ID = _USER_ID;
+            input.DATETIME = moment().format('YYYYMMDDHHmmSS');
+            input.REQ_DATA = reqDatas;
+
+            if (typeof (window.external) != "undefined") {
+                var result = window.external.RequestEmWebApi(JSON.stringify(input));
+                if ($.isFunction(callbackFn)) callbackFn(result);
+            }
+        }
+        //인증서화면 호출(cs)
+        , SERP30_SVC_P016: function (data, callbackFn) {
+            var input = {};
+            input.TRAN_NO = "SERP30_SVC_P016";
+            input.USER_ID = _USER_ID;
+            input.DATETIME = moment().format('YYYYMMDDHHmmSS');
+            input.REQ_DATA = {};
+
+            if (typeof (window.external) != "undefined") {
+                try {
+                    var result = window.external.RequestEmWebApi(JSON.stringify(input));
+                    if ($.isFunction(callbackFn)) callbackFn(result);
+                } catch (e) {
+                }
+            }
+        }
+    }
+}
+

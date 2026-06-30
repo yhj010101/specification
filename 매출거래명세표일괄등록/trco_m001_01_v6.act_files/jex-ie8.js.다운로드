@@ -1,0 +1,4899 @@
+/*! 
+ * jex javascript library v0.1.82 
+ * Copyright 2011, 2017 Webcash. All Rights Reserved. 
+ * http://jexframe.com 
+ * 
+ * Created: 2017-10-18 
+ */ 
+
+(function() {
+
+   "use strict";
+
+
+/*! 
+ * IE8에서 동작 가능하도록 function 추가
+ */
+if (!Object.create) {
+    Object.create = function (o) {
+        if (arguments.length > 1) {
+            throw new Error('Object.create implementation only accepts the first parameter.');
+        }
+        function F() {}
+        F.prototype = o;
+        return new F();
+    };
+}
+
+if(typeof String.prototype.trim !== 'function') {
+	String.prototype.trim = function() {
+		return this.replace(/^\s+|\s+$/g, ''); 
+	};
+}
+/**
+ * ## jexjs javascript library <br />
+ *
+ * @class jexjs
+ */
+var jexjs = {
+    version : "0.1.82"
+};
+
+// 전역 객체로 선언
+window.jexjs = jexjs;
+window.jj = window.jexjs;
+
+/**
+ * 전역 설정을 저장하기 위한 변수
+ *
+ * @property jexjs.global
+ * @type {Object}
+ */
+jexjs.global = {};
+
+/**
+ * logger 정보를 저장하기 위한 변수
+ * @property jexjs.global.logger.level
+ * @type {String}
+ * @default "off"
+ * off, error, warn, info, debug
+ * off : 출력안함
+ * error : javascript exception 발생시킴
+ * debug : 
+ */
+jexjs.global.logger = {
+    _ENUM_LEVEL : ['OFF','ERROR','WARN','INFO','DEBUG'],
+    level:1
+};
+
+/**
+ * debug 모드로 작동할 지에 대한 설정 <br />
+ * url?jex_debug=true 로 debug 모드를 작동시킬 수 있다.
+ *
+ * @property jexjs.global.debug
+ * @type {boolean}
+ * @default false
+ */
+jexjs.global.debug = false;
+
+/**
+ * 플러그인 설정을 저장하기 위한 변수
+ * @property jexjs.global.plugins
+ * @type {Object}
+ */
+jexjs.global.plugins = {};
+
+/**
+ * target 객체를 확장한다.
+ *
+ *
+ * @method extend
+ * @param {Object} target 확장하고자 하는 object
+ * @param {Object} obj {key:value, key:value, ...}
+ * @returns {Object}
+ * @example
+ *      var my_target = {};
+ *      jexjs.extend(my_target, {'id': 'jexjs', 'name': 'jexscript'});
+ */
+
+/**
+ * target 객체를 확장한다. <br />
+ * 기본적으로 확장하고자 하는 모든 값을 target에 설정한다. (deep = true) <br />
+ * target에 존재하는 키 값에 대해서만 확장을 하려면 (deep = false)로 설정한다. <br />
+ *
+ * @method extend
+ * @param {Object} target 확장하고자 하는 object
+ * @param {String} key
+ * @param {Object} value 2번째 파라미터가 object라면 {Boolean} _deep default : true
+ * @param {Boolean} _deep default : true
+ * @returns {Object}
+ * @example
+ *      var my_target = {};
+ *      jexjs.extend(my_target, 'id', 'jexjs');
+ */
+jexjs.extend = function(target, key, value, _deep) {
+    if ( jexjs.isNull(target) ) {      target = {};   }
+    if ( jexjs.isNull(key) )    {      return target;  }
+
+    var deep = true;
+
+    if ( typeof key === 'object' ) {
+        if ( typeof value === 'boolean' && value === false ) {
+            deep = false;
+        }
+
+        for ( var k in key ) {
+            jexjs._extendFromKeyValue(target, k, key[k], deep);
+        }
+    } else if ( typeof key === 'string' ) {
+        if ( typeof _deep === 'boolean' && _deep === false ) {
+            deep = false;
+        }
+
+        jexjs._extendFromKeyValue(target, key, value, deep);
+    }
+
+    return target;
+};
+
+jexjs._extendFromKeyValue = function(target, key, value, deep) {
+    if ( typeof target[key] === 'undefined' && !deep ) {
+        return target;
+    }
+
+    if ( jexjs.isArray(value) ) {
+        target[key] = jexjs.cloneArray(value);
+    } else if ( typeof value === 'object' && null !== value ) {
+        if ( typeof target[key] !== 'object' ) {
+            target[key] = {};
+        }
+
+        for (var j in value ) {
+            jexjs.extend(target[key], j, value[j], deep);
+        }
+    } else {
+        target[key] = value;
+    }
+
+    return target;
+};
+
+/**
+ * data를 복사한 객체를 리턴한다.
+ *
+ * @method clone
+ * @param {Object} data
+ * @returns {Object}
+ * @example
+ *      var clonedData = jexjs.clone(originalData);
+ */
+jexjs.clone = function( data ) {
+    if (jexjs.isArray(data)) {
+        return jexjs.cloneArray(data);
+    } else {
+        var cloned = {};
+        jexjs.extend(cloned, data);
+
+        return cloned;
+    }
+};
+
+/**
+ * Array를 복제한다. 내부에 object를 데이터로 갖고 있을 경우, object copy도 수행한다.
+ * @param {Array} arr
+ * @returns {Array}
+ * @example
+ *      var clonedArr = jexjs.cloneArray(['1', '2', { id: 'hi' }]);
+ */
+jexjs.cloneArray = function( arr ) {
+    if ( !jexjs.isArray(arr) ) {
+        return arr;
+    }
+
+    var clonedArr = arr.slice(0);
+
+    jexjs.forEach(clonedArr, function(i, v) {
+        if ( jexjs.isArray(v) ) {
+            clonedArr[i] = jexjs.cloneArray(v);
+        } else if ( typeof v === 'object' ) {
+            clonedArr[i] = jexjs.clone(v);
+        }
+    });
+    return clonedArr;
+};
+
+/**
+ * Array 루프를 돌려준다. callback 함수 내에서 this로 value scope를 넘겨준다.
+ *
+ * @method forEach
+ * @param {Array} arr 반복문을 돌릴 배열
+ * @param {Function } fn 사용자 정의 함수
+ * <br />
+ *
+ * <h4>callback 파라미터</h4>
+ * <table>
+ *     <tr>
+ *         <td>index</td><td>Number</td><td>배열 인덱스</td>
+ *     </tr>
+ *     <tr>
+ *         <td>value</td><td>{ Object }</td><td>배열 값</td>
+ *     </tr>
+ * </table>
+ *
+ * @example
+ *      jexjs.forEach( [ 1, 2, 3 ], function( index, value ) { ... } );
+ */
+jexjs.forEach = function ( arr, fn ) {
+    if ( jexjs.isArray(arr) ) {
+        for (var i = 0; i < arr.length; i++) {
+            var value = arr[i];
+
+            var result = fn.apply(value, [i, value]);
+
+            if (typeof result === 'boolean' && !result) {
+                break;
+            }
+        }
+    } else {
+        jexjs.warn('jexjs.forEach : Array 타입만 사용할 수 있습니다. arr : ' + typeof arr);
+    }
+};
+
+
+/**
+ * @method parseJSON
+ * @param {String} data JSON 형태를 갖춘 문자열 데이터
+ * @return {Object}
+ */
+jexjs.parseJSON = function( data ) {
+    if (typeof data === 'string') {
+        return JSON.parse( data );
+    }
+
+    return data;
+};
+
+/**
+ * @method trim
+ * @param {String} data 좌우 공백을 제거하기 위한 문자열
+ * @return {String}
+ */
+jexjs.trim = function(data) {
+    if (data && typeof data.trim === 'function') {
+        return data.trim();
+    }
+
+    return data;
+};
+
+/**
+ * 해당 객체가 Array 타입인지에 대한 검사를 수행한다.
+ *
+ * @method isArray
+ * @param {Object} obj Array 타입의 객체인지 확인하고 싶은 객체
+ * @return {Boolean}
+ */
+jexjs.isArray = function(obj) {
+    if (typeof Array.isArray === 'function') {
+        return Array.isArray(obj);
+    }
+
+    if (this.type(obj) === 'Array') {
+        return true;
+    }
+
+    return false;
+};
+
+/**
+ * 해당 문자열이 json 형태인지 확인
+ *
+ * @method isJSONExp
+ * @param {String} data json 형태임을 확인하고 싶은 문자열
+ * @return {Boolean}
+ */
+jexjs.isJSONExp = function(data) {
+    if (typeof data !== 'string') {
+        return false;
+    }
+    return /(^{[^}]+})|^\[[^\]]+\](\})$/.test(data);
+};
+
+jexjs._hasJSONField = function ( data, field ) {
+    if ( typeof data[ field ] === "undefined") {
+        return false;
+    }
+    return true;
+};
+
+/**
+ * JSON 객체에 해당 필드가 존재하는지 여부를 check 합니다.
+ * 
+ * @method hasJSONField
+ * @param {JSON} data
+ * @param {String} or {Array} field
+ * @return {Boolean}
+ */
+jexjs.hasJSONField = function( data, field ) {
+    if ( typeof field  === "string") {
+        return jexjs._hasJSONField( data, field );
+    } else if ( jexjs.isArray( field ) ) {
+        var hasField = false, f;
+        for( var i =0; i < field.length; i++) {
+            f = field[i];
+            if ( !jexjs._hasJSONField( data, f) ) {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
+
+/**
+ * @method isNull
+ * @param {data} Object null 여부를 확인하고 싶은 객체
+ * @return {Boolean}
+ */
+jexjs.isNull = function(data) {
+    if (data === null || data === undefined) {
+        return true;
+    }
+
+    return false;
+};
+
+
+/**
+ * @method empty
+ * @param {data} 값이 비어있는지 여부를 확인하고 싶은 객체
+ * @return {Boolean}
+ */
+jexjs.empty = function(data) {
+
+    if ( data === null || data === undefined ) {
+        return true;
+    } else if ( typeof data === 'string' && jexjs.trim(data) === '' ) {
+        return true;
+    } else if ( jexjs.isArray(data) && typeof data[0] === 'undefined' ) {
+        return true;
+    } else if ( typeof data === 'object') {
+        var count = 0;
+
+        for ( var i in data ) {
+            count++;
+        }
+
+        if ( count === 0 ) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+/**
+ * 
+ * @method null2Void
+ * @param {data} 문자열 data
+ * @return {String} 값이 null인 경우에는 ""를 반환하며, 그렇지 않은 경우에는 입력받은 값 그대로 반환한다.
+ */
+jexjs.null2Void = function(data){
+	return jexjs.isNull(data)? "" : data;
+};
+
+/**
+ * @method type
+ * @param {obj} Object 타입을 알고 싶은 객체
+ * @return {String} javascript 식별 가능한 형태의 객체 문자열을 리턴한다. <br />
+ * 					[ Undefined Null Array RegExp String Number Boolean Function Object Date Error ]
+ */
+jexjs.type = function(obj) {
+    return Object.prototype.toString.call(obj).match(/^\[object\s(.*)\]$/)[1];
+};
+
+/**
+ * @method error
+ * @param {String} msg 메시지
+ * @return {Error} 에러를 발생한다.
+ */
+jexjs.error = function(msg) {
+    jexjs.logger.error(msg);
+};
+
+/**
+ * @method warn
+ * @param {String} msg 메시지
+ */
+jexjs.warn = function(message) {
+    jexjs.logger.warn(message);
+};
+
+/**
+ * @method info
+ * @param {String} msg 메시지
+ */
+jexjs.info = function(message) {
+    jexjs.logger.info(message);
+};
+
+/**
+ * @method debug
+ * @param {String} msg 메시지
+ */
+jexjs.debug = function(message) {
+    jexjs.logger.debug(message);
+};
+
+
+/**
+ * URL query string의 내용을 caching해 놓기위한 객체
+ * @readOnly
+ */
+jexjs.global._url_parameter = {};
+
+/**
+ * parameter는 onload 시 URL의 query string을 기본으로 파라미터를 설정한다.
+ * 등록된 parameter가 있을 경우 key 값에 해당하는 데이터를 리턴한다.
+ *
+ * @method getParameter
+ * @param {String} key
+ * @return {String}
+ */
+jexjs.getParameter = function(key) {
+    return jexjs.global._url_parameter[key];
+};
+
+/**
+ * parameter는 onload 시 URL의 query string을 기본으로 파라미터를 설정한다.
+ * 등록된 parameter object를 리턴한다.
+ *
+ * @method getParameterMap
+ * @return {Object}
+ */
+jexjs.getParameterMap = function() {
+    return jexjs.global._url_parameter;
+};
+
+// parsing URL query string
+// URL에 존재하는 파라미터 값을 설정한다.
+(function() {
+    var queryString = window.location ? window.location.search : "";
+
+    if (queryString.indexOf("?") > -1) {
+        var startIndex = queryString.indexOf("?") + 1,
+            endIndex = queryString.indexOf("#")
+            ;
+
+        queryString = (endIndex > -1) ?
+            queryString.substring(startIndex, endIndex) :
+            queryString.substring(startIndex);
+
+        var queryArray = queryString.split("&");
+        for (var i = 0; i < queryArray.length; i++) {
+            var keyValue = queryArray[i].split("="),
+                key = keyValue[0],
+                value;
+
+            if (keyValue.length === 1) {
+                value = "";
+            } else {
+                value = keyValue[1];
+            }
+
+            jexjs.global._url_parameter[key] = decodeURIComponent(value);
+        }
+    }
+})();
+
+/**
+ * 로그레벨을 설정합니다. 
+ */
+jexjs.setLogLevel = function( enumLevel ){
+    var globalLogger = jexjs.global.logger;
+    enumLevel = enumLevel.toUpperCase();
+    var level = globalLogger._ENUM_LEVEL.indexOf( enumLevel );
+    if ( -1 < level ) {
+        globalLogger.level = level;
+    }
+};
+
+/**
+ * 현재의 로그레벨을 반환합니다.
+ */
+jexjs.getLogLevel = function(){
+    var globalLogger = jexjs.global.logger;
+    return globalLogger._ENUM_LEVEL[ globalLogger.level ];
+};
+
+//사용하지 말것!! 호환성위해 남겨둠
+// set debug = true if parameter 'jex_debug' exists 
+(function() {
+    var debug = jexjs.getParameter("jex_debug");
+    if ("boolean" == typeof debug ) {
+        if(debug) {
+            jexjs.global.logger.level = 4;
+        }
+    }
+})();
+
+// set debug logLevel
+(function() {
+    var level = jexjs.getParameter("jex_logger_level");
+    if ( "string" == typeof level ) {
+        jexjs.setLogLevel(level);
+    }
+})();
+
+
+/**
+ * 사용하지 말것!!!! 호환성유지를 위해 남겨둔다. 
+ * debug 사용여부를 설정한다.
+ * @method setDebug
+ * @param {Boolean} true or false
+ * @example
+ *      jexjs.setDebug(true);
+ */
+jexjs.setDebug = function( isDebug ) {
+    var globalLogger = jexjs.global.logger;
+    if ( isDebug ){
+        globalLogger.level = 4;
+    } else {
+        globalLogger.level = 1;
+    }
+};
+/**
+ * 사용하지 말것!!!! 호환성유지를 위해 남겨둔다. 
+ */
+jexjs.isDebug = function() {
+    var globalLogger = jexjs.global.logger;
+    
+    if ( 4 == globalLogger.level ) {
+        return true;
+    } else {
+        return false;
+    }    
+};
+
+/**
+ * 사용하지 말것!!!! 호환성유지를 위해 남겨둔다. 
+ */
+jexjs.log = function(message) {
+    jexjs.logger.debug(message);
+};
+
+/**
+ * 사용자에게 알림창을 띄운다.
+ *
+ * @method alert
+ * @param {String} message 옵션. 안내 메시지
+ * @example
+ *      jexjs.alert("잘못된 정보입니다.");
+ */
+jexjs.alert = function(message) {
+    alert(message);
+};
+
+/**
+ * 사용자로부터 Ok, Cancel 중 하나를 입력받을 수 있는 창을 띄운다.
+ *
+ * @method confirm
+ * @param {String} message 옵션. 안내 메시지
+ * @returns {Boolean}
+ * @example
+ *      var doSave = jexjs.confirm("저장하시겠습니까?");
+ */
+jexjs.confirm = function(message) {
+    return confirm(message);
+};
+
+/**
+ * 사용자로부터 값을 입력받을 수 있는 창을 띄운다.
+ *
+ * @method prompt
+ * @param {String} message 안내 메시지.
+ * @param {String} text 옵션. 기본 입력 값을 설정할 수 있다.
+ * @returns {String}
+ * @example
+ *      var userInput = jexjs.prompt("아이디를 입력해주세요.", "hello@gmail.com");
+ */
+jexjs.prompt = function(message, text) {
+    return prompt(message, text);
+};
+
+jexjs.getCode = function(group, key) {
+    return jexjs.plugin('code_manager').getCode(group, key);
+};
+
+jexjs.getSimpleCode = function(group, key) {
+    return jexjs.plugin('code_manager').getSimpleCode(group, key);
+};
+
+
+/**
+ * {{#crossLink "jexjs.plugins/require:method"}}{{/crossLink}} 함수를 이용하여 플러그인을 생성한다. <br />
+ *
+ * @example
+ *      var myPlugin = jexjs.plugin('myPlugin', 'param1', 'param2', ...);
+ *
+ *
+ * @method plugin
+ * @param {String} key 등록된 plugin key
+ * @returns {Object}
+ *
+ */
+jexjs.plugin = function(key) {
+    return jexjs.plugins.require.apply(this, arguments);
+};
+
+/**
+ * Jex Cookie
+ */
+jexjs.cookie = {};
+
+jexjs.cookie.option = {
+		expires : 365*10,
+    	path	 : "/",
+    	prefix  : ''
+};
+
+jexjs.cookieSetup = function( settings ) {
+	jexjs.extend(jexjs.cookie.option, settings );
+};
+/**
+ * cookie 정보를 저장한다.
+ * @method set
+  * @param {String} cookieName
+  * @param {String} cookieValue
+  * @param {JSONObject} option
+  * @example jexjs.cookie.set("USER_ID", "testid", { expires : 5 , path : "/" });
+ */
+jexjs.cookie.set = function( cookieName, cookieValue, option ) {
+	var name = jexjs.cookie.option.prefix + cookieName;
+	var d = new Date();
+	if(3 == arguments.length && typeof option === "object"){
+		jexjs.extend(jexjs.cookie.option, option);
+	}
+	d.setDate( d.getDate() + jexjs.cookie.option.expires );
+	document.cookie = name + "=" + encodeURIComponent(cookieValue) + "; path="+jexjs.cookie.option.path+"; expires=" + d.toGMTString() + ";";
+};
+
+ /**
+ * cookie 정보를 불러온다.
+ * @method get
+ * @param {String} cookieName
+ * @returns {String} cookieValue
+ * @example cookie.get("USER_ID");
+ */
+jexjs.cookie.get = function( cookieName ) {
+	var name = jexjs.cookie.option.prefix + cookieName + "=";
+	var ca = document.cookie.split(';');
+	for(var i=0; i<ca.length; i++) {
+	    var c = ca[i];
+	    while (c.charAt(0)==' ') c = c.substring(1);
+	    if (c.indexOf(name) != -1) return decodeURIComponent(c.substring(name.length, c.length));
+	}
+	return "";
+};
+
+/**
+* cookie 값을 삭제합니다.
+* @param {Object} cookieName
+*/
+jexjs.cookie.remove = function(cookieName) {
+	var name = jexjs.cookie.option.prefix + cookieName;
+	jexjs.cookie.set( name, "" , { expires : -1 } );
+};
+
+/**
+ * Jex Storage
+ */
+if ( typeof Storage == "undefined" ){
+       jexjs.error("storage 가 지원되지 않는 browser 입니다.");
+} else{
+    jexjs.sessionStorage = {};
+    jexjs.localStorage = {};
+     /**
+     * sessionStroage에 저장합니다.
+     */
+    jexjs.sessionStorage.set = function( key, value ) {
+        var input = value;
+        
+        if ( !jexjs.isNull( input )) {
+        	if ( "string" != typeof value && jexjs.isJSONExp( JSON.stringify( input ) ) ) {
+                input = JSON.stringify( input );
+            }
+        	input = encodeURIComponent( input );
+        }
+        sessionStorage.setItem( key, input );
+    };
+    /**
+     * sessionStroage 값을 가져옵니다.
+     */
+    jexjs.sessionStorage.get = function( key ) {
+        var result = sessionStorage.getItem(key);
+        if ( !jexjs.isNull(result) ) {
+	        result = decodeURIComponent( result );
+	        if ( jexjs.isJSONExp( result ) ) {
+	            return jexjs.parseJSON ( result );
+	        }
+        }
+        return result;
+    };
+   /**
+    * sessionStorage 값을 삭제합니다.
+    */
+    jexjs.sessionStorage.remove =  function( key ) {
+        sessionStorage.removeItem( key );
+    };
+
+     /**
+     * localStorage 저장합니다.
+     */
+    jexjs.localStorage.set = function( key, value ) {
+        var input = value;
+        if ( !jexjs.isNull( input )) {
+        	if ( "string" != typeof value && jexjs.isJSONExp( JSON.stringify( input ) ) ) {
+                input = JSON.stringify( input );
+            }
+        	input = encodeURIComponent( input );
+        }
+        localStorage.setItem( key, input );
+    };
+    /**
+     * localStorage 값을 가져옵니다.
+     */
+    jexjs.localStorage.get = function( key ) {
+        var result = localStorage.getItem(key);
+	    if ( !jexjs.isNull(result) ) {
+	        result = decodeURIComponent( result );
+	        if ( jexjs.isJSONExp( result ) ) {
+	            return jexjs.parseJSON ( result);
+	        }
+        }
+        return result;
+    };
+   /**
+    * localStorage 값을 삭제합니다.
+    */
+    jexjs.localStorage.remove =  function( key ) {
+        localStorage.removeItem( key );
+    };
+}
+
+/**
+ * jexjs가 선언되어있는 최상위 window를 가져옵니다.
+ * @method getRoot
+ * @returns {window} 최상위 window
+ * @example
+ *      var root_jexjs = jexjs.getRoot();
+ */
+jexjs.getRoot = function(p,b){
+	
+	if(jexjs.isNull(p)) {
+		p = (jexjs.isNull(opener))? parent:opener;
+		if(jexjs.isNull(p)) {
+		    p = window;
+		}
+		b = window;
+	}
+	try {
+	    if(!p.jexjs) return b;
+    } catch ( e ) {
+        return b;
+    }
+
+	if( p === b ) return b;
+	else return jexjs.getRoot(p.parent,p);
+};
+
+/**
+ * @method getOpener
+ * @returns {window}
+ * @example
+ *      jexjs.getOpener();
+ */
+jexjs.getOpener = function(){
+	return ( jexjs.isNull(opener) ) ? parent : opener;
+};
+
+/**
+ * 브라우져 정보와 버전을 확인하기 위해 사용
+ */
+jexjs.global._navigator = window.navigator;
+
+jexjs.getBrowser = function( customUserAgent ){
+	
+	if ( !customUserAgent ) customUserAgent = jexjs.global._navigator.userAgent.toLowerCase();
+	else customUserAgent = customUserAgent.toLowerCase();
+    var version = "";
+    var chooseBrowser = null;
+    var browser = {
+            'msie': false,
+            'chrome': false,
+            'firefox': false,
+            'safari': false,
+            'opera' : false,
+            'version':''
+    };
+    
+    var matchs = customUserAgent.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))[\/]?\s*([\d.]+)/i) || [];
+	
+    //해당 브라우져만 true 설정
+	for(var b in browser){
+		if ( b === matchs[1] ) {
+			browser[b] = true;
+			chooseBrowser = b;
+		}
+	}
+	
+	//MSIE값보다 trident 버전이 더 높은경우 trident값을 따름.
+	if( /msie/i.test( matchs[1]) ){
+		//IE - 'MSIE' 형식이 아닌경우
+		var trident =  /\btrident(?=\/)[\/]?\s*([\d.]+)/g.exec(customUserAgent) || [];
+		if ( chooseBrowser )	browser[ chooseBrowser ] = false;
+		browser.msie = true;
+		browser.version = ( parseFloat(matchs[2]) < ( parseFloat(trident[1]) + 4 ) ? parseFloat(trident[1]) + 4 : matchs[2] );
+		return browser;
+	}
+	//IE - 'MSIE' 형식이 아닌경우
+	else if(/trident/i.test(matchs[1]) ){
+		var rv =  /\brv[ :]+([\d.]+)/g.exec(customUserAgent) || [];
+		if ( chooseBrowser )	browser[ chooseBrowser ] = false;
+		browser.msie = true;
+		browser.version = rv[1] || '';
+		return browser;
+	}//opera user agent에 firefox가 포함된 경우
+	else if( matchs[1] === 'firefox' ){
+		version = customUserAgent.match(/\bopera[\/ ]?([\d.]+)/);
+        
+        if( null !== version ) {
+        	if ( chooseBrowser )	browser[ chooseBrowser ] = false;
+        	browser.opera = true;
+        	browser.version = version[1];
+        	return browser;
+         }
+	}
+	
+	browser.version = ( matchs[2] ? matchs[2] : navigator.appVersion );
+	if((version = customUserAgent.match(/version\/([\d.]+)/i))!== null) {
+		browser.version = version[1];
+	}
+	
+    return browser;
+};
+
+//보안문제로 https 인경우만 가능
+jexjs.getGeolocation = function( callback ) {
+    if ( "geolocation" in jexjs.global._navigator) {
+        var geolocation = jexjs.global._navigator.geolocation;
+        geolocation.getCurrentPosition( function( position ){
+            var geo = {
+                    'latitude' : position.coords.latitude,
+                    'longitude' : position.coords.longitude  
+            };
+            callback.call( undefined, geo);
+        });
+         
+    } else {
+         callback.call(undefined, {} );
+    }
+};
+
+jexjs._isJexMobile = function() {
+    return false;
+};
+
+/**
+ * TODO TEMP
+ * jQquery의 기능을 임시로 사용하기 위해 만듦.
+ * 추후에 구현예정 
+ */
+jexjs.$ = jQuery;
+
+
+/**
+ * logger <br />
+ * jexjs.isDebug() === true 일 때에만 로그를 출력한다.
+ *
+ *
+ * TODO
+ * 현재 isDebug 에 대한 체크로만 로깅을 진행하는데
+ *  # hash 값을 통해서 console, html logger를 변경하거나 하는 등의 내용에 대해서
+ *  좀 더 고민해봐야한다.
+ *
+ *
+ * @class jexjs.logger
+ */
+
+(function() {
+
+    if (typeof console === 'undefined' || !console) {    console = {};    }
+    if (typeof console.log === 'undefined') {
+        console.log = function(message) {};
+    }
+    // level : off, error, warn, info, debug
+    
+    var ConsoleLogger = function(){
+        
+        var globalLogger = jexjs.global.logger;
+        
+        function _getLevelNumber(){
+            return globalLogger.level;
+        }
+        
+        function _print( message ){
+            if ( jexjs._isJexMobile() ){
+                if ( jexjs.isEmulator() ){
+                    console.log(message);
+                }
+            } else {
+                console.log(message);
+            }
+        }
+        
+        return {
+            error: function(message) {
+                if ( 0 < _getLevelNumber() ){
+                    throw new Error(msg);
+                }
+            },
+            warn : function(message) {
+                if ( 1 < _getLevelNumber() ) {
+                    _print(message);
+                }
+            },
+            info : function(message) {
+                if ( 2 < _getLevelNumber() ) {
+                    _print(message);
+                }
+            },
+            debug: function(message) {
+                if ( 3 < _getLevelNumber() ) {
+                    _print(message);
+                }
+            }
+        };
+    };
+    
+    var HtmlLogger = function() {
+
+        /**
+         * div #jex-logger
+         *      div .jex-logger-badge
+         *      div .jex-logger-console
+         *          ul
+         *              li .jex-logger-console-line
+         */
+        var id = "jex-logger",
+            classBadge = "jex-logger-badge",
+            classConsole = "jex-logger-console",
+            classConsoleLine = "jex-logger-console-line",
+
+            classDisplayNone = "jex-display-none" // core css display:none
+        ;
+        var globalLogger = jexjs.global.logger;
+
+        var $logger = jexjs.$("#" + id);
+        if ($logger.length === 0) {
+            var html = '<div id="' + id + '">' +
+                '<div class="' + classBadge + '"></div>' +
+                '<div class="' + classConsole + ' ' + classDisplayNone + '">' +
+                    '<ul></ul>' +
+                '</div>' +
+            '</div>'
+            ;
+
+            $logger = jexjs.$(html).appendTo("body");
+        }
+
+        var $console = $logger.find('.' + classConsole),
+            $ul = $console.find("ul");
+
+        $logger.find('.' + classBadge).on('click', function() {
+            if ($console.css('display') === "none") {
+                $console.removeClass('jex-display-none');
+            } else {
+                $console.addClass('jex-display-none');
+            }
+        });
+
+        function _getLevelNumber(){
+            return globalLogger.level;
+        }
+        
+        function appendLine(message) {
+            message = 'jexjs : ' + message;
+            jexjs.$('<li class="' + classConsoleLine + '">' + message + '</li>').appendTo($ul);
+        }
+
+        return {
+            error: function(message) {
+                if ( 0 < _getLevelNumber() ){
+                    throw new Error(msg);
+                }
+            },
+            warn : function(message) {
+                if ( 1 < _getLevelNumber() ) {
+                    appendLine(message);
+                }
+            },
+            info : function(message) {
+                if ( 2 < _getLevelNumber() ) {
+                    appendLine(message);
+                }
+            },
+            debug: function(message) {
+                if ( 3 < _getLevelNumber() ) {
+                    appendLine(message);
+                }
+            }
+        };
+    };
+
+    if (jexjs.getParameter("jex_logger") !== "html") {
+        jexjs.logger = new ConsoleLogger();
+    } else {
+        jexjs.logger = new HtmlLogger();
+    }
+})();
+
+jexjs.debug("[init] loading jexjs modules");
+
+
+
+/**
+ * String 객체를 확장한다.
+ *
+ * @class String
+ */
+
+/**
+ * Usage : "".startsWith("st") <br />
+ * 문자열이 "st"로 시작할 경우 true, 그렇지 않을 경우 false를 리턴한다.
+ *
+ * @method startsWith
+ * @param {String} str
+ * @return {Boolean} {str}로 시작할 경우 true, 그렇지 않을 경우 false
+ */
+if (typeof String.prototype.startsWith !== 'function') {
+    String.prototype.startsWith = function(str) {
+        return new RegExp("^" + str).test(this);
+    };
+}
+
+/**
+ * Usage : "".endsWith("st") <br />
+ * 문자열이 "st"로 끝나는 경우 경우 true, 그렇지 않을 경우 false를 리턴한다.
+ *
+ * @method endsWith
+ * @param {String} str
+ * @return {Boolean} {str}로 끝나는 경우 true, 그렇지 않을 경우 false
+ */
+if (typeof String.prototype.endsWith !== 'function') {
+    String.prototype.endsWith = function(str) {
+        return new RegExp(str + "$").test(this);
+    };
+}
+
+
+/**
+ * Date 객체를 확장한다.
+ *
+ * @class Date
+ */
+
+/**
+ * 날짜 및 시간을 특정 형태로 변환해준다. <br />
+ * <table>
+ *     <tr><td colspan="3" style="text-align:center;">ex) 2009년 7월 4일 15시 3분 55초</td></tr>
+ *     <tr style="text-align:center;">
+ *         <td>패턴</td>
+ *         <td>설명</td>
+ *         <td>결과</td>
+ *     </tr>
+ *     <tr><td>YYYY(yyyy)</td><td>년</td><td>2009</td></tr>
+ *     <tr><td>YY(yy)</td><td>년</td><td>09</td></tr>
+ *     <tr><td>Y(y)</td><td>년</td><td>9</td></tr>
+ *     <tr><td>MM</td><td>월</td><td>07</td></tr>
+ *     <tr><td>M</td><td>월</td><td>7</td></tr>
+ *     <tr><td>dd</td><td>일</td><td>04</td></tr>
+ *     <tr><td>d</td><td>일</td><td>4</td></tr>
+ *     <tr><td>HH</td><td>시간 (00~23)</td><td>08</td></tr>
+ *     <tr><td>H</td><td>시간 (0~23)</td><td>8</td></tr>
+ *     <tr><td>hh</td><td>시간 (00 01 02 ... 11, 12 01 02 ... 11)</td><td>15</td></tr>
+ *     <tr><td>h</td><td>시간 (0 1 2 ... 11, 12 1 2 ... 11)</td><td>3</td></tr>
+ *     <tr><td>mm</td><td>분</td><td>03</td></tr>
+ *     <tr><td>m</td><td>분</td><td>3</td></tr>
+ *     <tr><td>ss</td><td>초</td><td>55</td></tr>
+ *     <tr><td>s</td><td>초</td><td>55</td></tr>
+ *     <tr><td>A</td><td>AM; PM</td><td>PM</td></tr>
+ *     <tr><td>a</td><td>am; pm</td><td>pm</td></tr>
+ *     <tr><td>AA(aa)</td><td>오전; 오후</td><td>오후</td></tr>
+ * </table>
+ *
+ * @method format
+ * @param {String} pattern
+ * @returns {String}
+ * @example
+ *      var date = new Date(2014, 9-1, 5, 14, 2, 44);
+ *      date.format("yyyy-MM-dd hh:mm:ss"); // --> 2014-09-05 02:02:44
+ *      date.format("yyyy년"); // --> 2014년
+ *      date.format("dd/MM/yy"); // --> 05/09/14
+ *      date.format("aa h시"); // --> 오후 2시
+ */
+Date.prototype.format = function(pattern) {
+    if (typeof pattern !== 'string') {        return pattern;     }
+
+    var year = null,
+        month = null,
+        day = null,
+        hour = null,
+        minute = null,
+        second = null,
+        am_pm = null
+        ;
+
+    // year
+    if (/yyyy/.test(pattern) || /YYYY/.test(pattern)) {
+        year = this.getFullYear();
+
+        pattern = pattern.replace(/yyyy/g, year);
+        pattern = pattern.replace(/YYYY/g, year);
+    }
+
+    // year
+    if (/yy/.test(pattern) || /YY/.test(pattern)) {
+        year = (this.getFullYear() + "").substring(2);
+
+        pattern = pattern.replace(/yy/g, year);
+        pattern = pattern.replace(/YY/g, year);
+    }
+
+    // year
+    if (/y/.test(pattern) || /Y/.test(pattern)) {
+        year = parseInt((this.getFullYear() + "").substring(2), 10);
+        pattern = pattern.replace(/y/g, year);
+        pattern = pattern.replace(/Y/g, year);
+    }
+
+    // month
+    if (/MM/.test(pattern)) {
+        month = this.getMonth() + 1;
+
+        if (month < 10) {
+            month = "0" + month;
+        }
+
+        pattern = pattern.replace(/MM/g, month);
+    }
+
+    // month
+    if (/M/.test(pattern)) {
+        month = this.getMonth() + 1;
+        pattern = pattern.replace(/M/g, month);
+    }
+
+    // day
+    if (/dd/.test(pattern)) {
+        day = this.getDate();
+
+        if (day < 10) {
+            day = "0" + day;
+        }
+
+        pattern = pattern.replace(/dd/g, day);
+    }
+
+    // day
+    if (/d/.test(pattern)) {
+        day = this.getDate();
+        pattern = pattern.replace(/d/g, day);
+    }
+
+    // hour : 0 ~ 23
+    if (/HH/.test(pattern)) {
+        hour = this.getHours();
+
+        if (hour < 10) {
+            hour = "0" + hour;
+        }
+
+        pattern = pattern.replace(/HH/g, hour);
+    }
+
+    // hour : 0 ~ 23
+    if (/H/.test(pattern)) {
+        hour = this.getHours();
+        pattern = pattern.replace(/H/g, hour);
+    }
+
+    // hour (am)00 01 02 ... 11, (pm)12 01 02 03 ... 11
+    if (/hh/.test(pattern)) {
+        hour = this.getHours();
+        if (hour > 12) {
+            hour = hour - 12;
+        }
+
+        if (hour < 10) {
+            hour = "0" + hour;
+        }
+
+        pattern = pattern.replace(/hh/g, hour);
+    }
+
+    // hour (am)0 1 2 ... 11, (pm)12 1 2 3 ... 11
+    if (/h/.test(pattern)) {
+        hour = this.getHours();
+        if (hour > 12) {
+            hour = hour - 12;
+        }
+        pattern = pattern.replace(/h/g, hour);
+    }
+
+    // minute
+    if (/mm/.test(pattern)) {
+        minute = this.getMinutes();
+        if (minute < 10) {
+            minute = "0" + minute;
+        }
+
+        pattern = pattern.replace(/mm/g, minute);
+    }
+
+    // minute
+    if (/m/.test(pattern)) {
+        minute = this.getMinutes();
+        pattern = pattern.replace(/m/g, minute);
+    }
+
+    // second
+    if (/ss/.test(pattern)) {
+        second = this.getSeconds();
+        if (second < 10) {
+            second = "0" + second;
+        }
+
+        pattern = pattern.replace(/ss/g, second);
+    }
+
+    if (/s/.test(pattern)) {
+        second = this.getSeconds();
+        pattern = pattern.replace(/s/g, second);
+    }
+
+    // 오전, 오후
+    if (/aa/.test(pattern) || /AA/.test(pattern)) {
+        am_pm = (this.getHours() < 12)? "오전": "오후";
+        pattern = pattern.replace(/aa/g, am_pm);
+        pattern = pattern.replace(/AA/g, am_pm);
+    }
+
+    // am, pm
+    if (/A/.test(pattern)) {
+        am_pm = (this.getHours() < 12)? "AM": "PM";
+        pattern = pattern.replace(/A/g, am_pm);
+    }
+
+    // am, pm
+    if (/a/.test(pattern)) {
+        am_pm = (this.getHours() < 12)? "am": "pm";
+        pattern = pattern.replace(/a/g, am_pm);
+    }
+
+
+    return pattern;
+};
+
+/**
+ *
+ * @method format
+ * @param {String} pattern
+ * @param {Date} date 없을 경우 현재 시간을 기준으로 생성
+ * @returns {String}
+ * @static
+ * @example
+ *      var now = Date.format("yyyyMMdd"); // --> 20140925
+ *      var now = Date.format("yyyyMMdd", new Date(2014, 9, 25)); // --> 20140925
+ */
+Date.format = function(pattern, date) {
+    if (date instanceof Date) {
+        date.format(pattern);
+    } else {
+        return new Date().format(pattern);
+    }
+};
+
+
+
+
+/**
+ * 플러그인 등록 및 생성을 도와준다.
+ *
+ * @class jexjs.plugins
+ * @static
+ */
+jexjs.plugins = {
+    _plugins : {},
+
+    /**
+     * 플러그인 등록을 위한 함수 <br />
+     * Class 에는 function() { } 원형을 추가해야 하며, init 함수를 반드시 포함해야한다. <br />
+     * init 함수는 n개의 파라미터를 받도록 정의할 수 있고, jexjs.plugins.require('key', 'param1', 'param2', ...) 처럼 <br />
+     * 2번째 이후의 모든 파라미터를 init 함수로 넘겨준다. <br />
+     *  function init(param1, param2, ...) {   ... } <br />
+     *
+     *
+     * @example
+     *      객체를 리턴함으로써 특정 메소드만 public 메소드로써 생성하는 방법
+     *      jexjs.plugins.define('test_plugin', function() {
+     *          return {
+     *              init: function(my_param, param2) {
+     *                  ...
+     *              }
+     *          };
+     *      });
+     *
+     * @example
+     *      function() { }을 생성한 후 prototype을 통해 함수를 정의하고 등록하는 방법
+     *      var myPlugin = function() { };
+     *      myPlugin.prototype.init = function() { ... };
+     *
+     *      jexjs.plugins.define('test_plugin', myPlugin);
+     *
+     * @example
+     *      의존성 플러그인을 함께 선언하는 방법
+     *      jexjs.plugins.define('test_plugin', [ 'dep', 'mod', 'reg' ], function(dep, mode, reg) {
+     *          ...
+     *      });
+     *
+     *
+     * @method define
+     * @param {String} key
+     * @param {Array: key} _dependencies 옵션값. 의존 플러그인이 있을 경우에 사용 할 수 있다.
+     * @param {Class} _Class
+     */
+    define : function(key, _dependencies, _Class, isStatic){
+        var dependencies, Class;
+        var global = jexjs.global.plugins[key]   = {};
+
+        if (jexjs.isArray(_dependencies)) {
+            dependencies = _dependencies;
+            Class = _Class;
+            global.isStatic = !!isStatic;
+        } else {
+            Class = _dependencies;
+            global.isStatic = _Class;
+        }
+
+        global.dependencies = jexjs.clone(dependencies) || [];
+        jexjs.plugins._plugins[key] = Class;
+        jexjs.debug("  [plugin] define '" + key + "'");
+    },
+
+    /**
+     * 등록된 플러그인을 생성해준다. <br />
+     * {{#crossLink " jexjs/plugin:method"}}{{/crossLink}} 함수를 이용하여 생성할 수도 있다. <br />
+     *
+     * @example
+     *      var pluginObject = jexjs.plugins.require('test_plugin', 'param1', 'param2');
+     *      pluginObject.myMethod();
+     *
+     *
+     * @method require
+     * @param {String} key
+     * @returns {Object} plugin object
+     */
+    require : function(key) {
+        var args = Array.prototype.slice.call(arguments, 1);
+
+        var Plugin = jexjs.plugins._plugins[key];
+
+        if (jexjs.isNull(Plugin)) {
+            jexjs.error("jexjs.plugins." + key + " is not defined.");
+        }
+
+        var global = jexjs.global.plugins[key];
+
+        if (global.isStatic && global.instance) {
+            return global.instance;
+        }
+
+        var dependencies = global.dependencies,
+            dependencyPlugins = [];
+
+        for (var i = 0; i < dependencies.length; i++) {
+            var dependency = jexjs.plugins.require(dependencies[i]);
+            dependencyPlugins.push(dependency);
+        }
+
+        //var plugin = new Plugin();
+        var plugin = Object.create(Plugin.prototype);
+        var publicScope = Plugin.apply(plugin, dependencyPlugins);
+
+        if (typeof publicScope.init === 'function') {
+            //publicScope.init.apply( this , args);
+            publicScope.init.apply( publicScope , args);
+        }
+
+        if (global.isStatic) {
+            global.instance = publicScope;
+        }
+
+        return publicScope;
+    }
+};
+
+
+
+
+if (typeof Array.prototype.jexPushByIndex !== 'function') {
+    Array.prototype.jexPushByIndex = function( _data, _idx ) {
+        var idx = _idx | this.length;
+        
+        if( undefined === _idx || null === _idx ){
+            this.push( _data );
+        }else{
+            if ( _idx > this.length ){
+                this.push( _data );
+            }else{
+                this.splice( _idx, 0, _data);
+            }
+        }
+        return this.length;
+    };
+}
+/**
+ * event <br />
+ *
+ * jexjs에서 실제로 event가 발생하지 않도록, 
+ * @class Loader
+ */
+(function() {
+    
+    var Loader = function(){
+        
+        var _beforeOnload = [],
+            _afterOnload = [],
+            _beforeReload = [],
+            _afterReload = [];
+        
+        var _pageLoader = [];
+        
+        function _reload (){
+
+            var i,max;
+            
+            for (i=0, max = _beforeReload.length; i < max; i++) {
+                _beforeReload[i]();
+            }
+            
+            for(i=0; i < _pageLoader.length; i++){
+                if ( "function" == typeof _pageLoader[i].reload ){
+                    _pageLoader[i].reload();
+                }
+            }
+            
+            for(i=0, max = _afterReload.length; i < max; i++ ){
+                _afterReload[i]();
+            }
+        }
+        
+        return {
+            pushInstance : function( pageLoader ){
+                _pageLoader.push( pageLoader );
+            },
+            getInstance : function(){
+                return _pageLoader;
+            },
+            reload : function(){
+                _reload();
+            },
+            addBeforeOnload : function( _fn, _index ){
+                var idx = _index | _beforeOnload.length;
+                if ("function" == typeof _fn ) {
+                   _beforeOnload.jexPushByIndex( _fn, _index );
+                }else{
+                    jexjs.error("jexjs loader : addBeforeOnload [error] : function만 event에 추가할 수 있습니다.");
+                }
+            },
+            getBeforeOnload : function(){
+                return _beforeOnload;
+            },
+            addAfterOnload : function( _fn, _index ){
+                var idx = _index | _afterOnload.length;
+                if ("function" == typeof _fn ) {
+                   _afterOnload.jexPushByIndex( _fn, _index );
+                }else{
+                    jexjs.error("jexjs loader : addAfterOnload [error] : function만 event에 추가할 수 있습니다.");
+                }
+            },
+            getAfterOnload : function(){
+                return _afterOnload;
+            },
+            addBeforeReload : function(_fn, _index) {
+                var idx = _index | _beforeReload.length;
+                if ("function" == typeof _fn) {
+                    _beforeReload.jexPushByIndex(_fn, _index);
+                } else {
+                    jexjs.error("jexjs loader : addBeforeReload [error] : function만 event에 추가할 수 있습니다.");
+                }
+            },
+            getBeforeReload : function() {
+                return _beforeReload;
+            },
+            addAfterReload : function(_fn, _index) {
+                var idx = _index | _afterReload.length;
+                if ("function" == typeof _fn) {
+                    _afterReload.jexPushByIndex(_fn, _index);
+                } else {
+                    jexjs.error("jexjs loader : addAfterReload [error] : function만 event에 추가할 수 있습니다.");
+                }
+            },
+            getAfterReload : function() {
+                return _afterReload;
+            }
+        };
+    };
+    jexjs.loader = new Loader();
+})();
+/* ==================================================================================
+ * ajax 통신을 수행한다.
+ *
+ * - dependency
+ *      jQuery.ajax
+ *
+ * 기존 버전 호환을 위해서 .createAjaxUtil(url) 함수를 유지한다.
+ * 
+ * ajax -> success -> filter -> filter의 true, false 에 따라 업무 success, error 함수 호출
+ *      -> error -> ajax 호출시 error 함수 구현되어있지 않으면, 공통 error Function, 있으면 업무 error 함수 호출
+ * 
+ * ================================================================================== */
+jexjs.plugins.define('ajax', function() {
+    var
+        // ajax 통신 시 전달할 파라미터를 저장한다.
+        _parameter = {},
+
+        // 사용자 정의 callback
+        _callback = {
+            success: null,
+            error: null
+        },
+
+        _global     = jexjs.global.plugins.ajax,
+
+        url         = "",
+        context_path = _global.contextPath || "",
+        url_prefix  = _global.prefix || "",
+        url_suffix  = _global.suffix || ".jct",
+        filters     = _global.filters || [],
+        filter      = true,
+        beforeExecutes = _global.beforeExecutes || [];
+    
+        if( _global.callback ) jexjs.extend( _callback , _global.callback );
+    
+    var indicator = _global.indicator || jexjs.plugin('indicator', { modal: true });
+
+    var option = {
+            userData : false
+    };
+    
+    // ajax 통신에 필요한 설정 기본값
+    var settings = {
+        type: "POST",
+        url: "",
+        data: {},
+        cache: false,
+        headers: {
+            "cache-control": "no-cache",
+            "pragma": "no-cache"
+        }
+    };
+
+    jexjs.extend(settings, _global.settings);
+    
+    var jexExecutor = {
+        execute: function(settings, _parameter, option ) {
+            if ( option.userData ){
+                for(var key in _parameter){
+                    settings.data[key] = _parameter[key];
+                }
+            }else {
+                settings.data = {
+                    "_JSON_": encodeURIComponent(JSON.stringify(_parameter))
+                };
+            }
+            
+            if ( settings.delay && typeof settings.delay == "number"){
+                var delay = settings.delay;
+                delete settings.delay;
+                setTimeout(function(){
+                    jQuery.ajax(settings);
+                },delay);
+            } else {
+                jQuery.ajax(settings);
+            } 
+        }
+    };
+    
+    var _jexExecutor = _global.executor || jexExecutor;
+    
+    if ( 0 < beforeExecutes.length ){
+        _jexExecutor.beforeExecutes = beforeExecutes;
+    }
+    
+    function _execute() {
+        
+        _beforeExecute();
+        
+        var pSettings = jexjs.clone( settings );
+        
+        if ( _jexExecutor.beforeExecutes && 0 < _jexExecutor.beforeExecutes.length ) {
+            for(var i=0; i < _jexExecutor.beforeExecutes.length; i++) {
+                pSettings = _jexExecutor.beforeExecutes[i](pSettings);
+            }
+        }
+        
+        jexjs.extend( settings, pSettings );
+        
+        _jexExecutor.execute(settings, _parameter, option );
+    }
+
+    function _getUrl ( context_path , url_prefix,  url, url_suffix){
+        
+        var fullUrl = context_path + url_prefix;
+        
+        if ( -1 == url.indexOf(".jct") ){
+            fullUrl += url + url_suffix;
+        } else {
+            fullUrl += url;
+        }
+        fullUrl = fullUrl.replace( /\/\//g, "/");
+        return fullUrl;
+    }
+    
+    function _beforeExecute() {
+        settings.success    = _jQueryAjaxSuccess;
+        settings.error      = _jQueryAjaxError;
+        settings.url        = _getUrl( context_path , url_prefix , url , url_suffix );
+
+        _showIndicator();
+    }
+
+    function _jQueryAjaxSuccess(data) {
+        var result = data;
+        if (typeof result === 'string' && jexjs.isJSONExp(result)) {
+            result = jexjs.parseJSON(result);
+        }
+
+        jexjs.debug('    jexjs.plugin.ajax : ' + settings.url + ' 호출 성공');
+
+        if ( _checkFilter(result) ) {
+            if (typeof _callback.success === "function") {
+                _callback.success(result);
+            }
+        } else {
+            _jQueryAjaxError(result);
+        }
+
+        _complete();
+    }
+
+    function _checkFilter(result) {
+        if (!filter) {
+            return true;
+        }
+
+        var filterResult = true;
+        for (var i = 0, length = filters.length; i < length; i++) {
+            jexjs.debug('    jexjs.plugin.ajax : ' + ( i + 1) + ' filter start');
+            var doNext = filters[i](result);
+
+            if (typeof doNext === 'boolean' && !doNext) {
+                filterResult = false;
+                jexjs.debug('    jexjs.plugin.ajax : ' + ( i + 1) + ' filter failed');
+                jexjs.debug(result);
+                break;
+            }
+
+            if (i === length -1) {
+                jexjs.debug('    jexjs.plugin.ajax : all filter passed.');
+            }
+        }
+
+        return filterResult;
+    }
+
+    function _jQueryAjaxError(data) {
+        jexjs.debug('  jexjs.plugin.ajax [error] : 호출 실패! ' + settings.url);
+        jexjs.debug('  jexjs.plugin.ajax [error] : [' + data.status+'] ' + data.statusText);
+        if (typeof _callback.error === "function") {
+            _callback.error(data);
+        }
+        _complete();
+    }
+
+    function _complete() {
+        _hideIndicator();
+    }
+
+    function _setIndicator( _indicator ) {
+        if (typeof _indicator === 'object') {
+            if ( typeof _indicator.show === 'function' && typeof _indicator.hide === 'function' ) {
+                indicator = _indicator;
+            }
+        } else if ( typeof _indicator === 'boolean' &&  _indicator === false ){
+          indicator = _indicator;  
+        }
+    }
+
+    function _showIndicator() {
+        if (indicator) {
+            indicator.show();
+        }
+    }
+
+    function _hideIndicator() {
+        if (indicator) {
+            indicator.hide();
+        }
+    }
+
+    return {
+        init: function(_url, _indicator) {
+            url = _url;
+
+            _setIndicator( _indicator );
+        },
+
+        setIndicator: function( _indicator ) {
+            _setIndicator( _indicator );
+        },
+        
+        getIndicator : function(){
+            return indicator;
+        },
+
+        /**
+         * 파라미터를 설정하는 함수 <br />
+         * {key} 값에 {value} 값을 설정한다.
+         *
+         * @method set
+         * @param {String} key
+         * @param {Object} value
+         */
+
+        /**
+         * 파라미터를 설정하는 함수 <br />
+         * {key} 값에 {value} 값을 설정한다.
+         *
+         * @method set
+         * @param {Object} obj {key: value, key: value, ...}
+         */
+        set: function(key, value) {
+            jexjs.extend(_parameter, key, value);
+        },
+
+        /**
+         * 파라미터에 저장된 값을 얻어온다.
+         *
+         * @method get
+         * @param {key} String
+         * @return {Object} key 값에 저장된 데이터
+         */
+        get: function(key) {
+            return _parameter[key];
+        },
+
+        /**
+         * 현재 ajax 플러그인에 설정된 설정 값을 꺼낸다. <br />
+         * prefix, suffix 는 내부적으로 url_prefix, url_suffix를 리턴한다.
+         *
+         * @method setting
+         * @param {String} key 가져오고자 하는 설정값의 key
+         * @returns {Object}
+         * @example
+         *      var checkUrl = jexAjax.setting('url');
+         *      var checkSuffix = jexAjax.setting('suffix');
+         */
+
+        /**
+         * ajax 통신을 위한 설정 값을 지정한다. <br />
+         * prefix, suffix 는 내부적으로 url_prefix, url_suffix 로 지정하고 제거한 후에 <br />
+         * 나머지 설정 값은 ajax 통신을 위해 사용한다.
+         *
+         * @method setting
+         * @param {String} key
+         * @param {Object} value
+         * @example
+         *      jexAjax.setting('url', 'new_url');
+         */
+
+        /**
+         * ajax 통신을 위한 설정 값을 지정한다. <br />
+         * prefix, suffix 는 내부적으로 url_prefix, url_suffix 로 지정하고 제거한 후에 <br />
+         * 나머지 설정 값은 ajax 통신을 위해 사용한다.
+         *
+         * @method setting
+         * @param {Object} obj {key: value, key: value, ...}
+         * @example
+         *      jexAjax.setting({
+         *          'prefix': '/plugin',
+         *          'suffix': '.jct',
+         *          'url': 'new_url',
+         *          'async': false
+         *      });
+         */
+        setting: function(key, value) {
+            if (arguments.length === 1 && typeof key === 'string') {
+                if (key === 'contextPath') {
+                     return context_path;
+                } else if (key === 'prefix') {
+                    return url_prefix;
+                } else if (key === 'suffix') {
+                    return url_suffix;
+                } else if (key === 'url') {
+                    return url;
+                } else if (key === 'filter') {
+                    return filter;
+                } else if (key == 'userData'){
+                    return option.userData;
+                } else {
+                    return settings[key];
+                }
+            }
+
+            if (typeof key === 'object') {
+                for (var k in key) {
+                    this._setting(k, key[k]);
+                }
+            } else if (typeof key === 'string') {
+                this._setting(key, value);
+            }
+        },
+        _setting: function(key, value) {
+             if (key === 'contextPath') {
+                 context_path = value;
+            } else if (key === 'url') {
+                url = value;
+            } else if (key === 'prefix') {
+                url_prefix = value;
+            } else if (key === 'suffix') {
+                url_suffix = value;
+            } else if ( key === 'userData') {
+                option.userData = value;
+            } else if (key === 'filter') {
+                if (typeof value === 'boolean') {
+                    filter = value;
+                }
+            } else {
+                jexjs.extend(settings, key, value);
+            }
+        },
+
+        /**
+         * 사용자 callback을 지정한다.
+         *
+         * @method callback
+         * @param {String} key 'success' | 'error'
+         * @param {Function} fn 사용자 callback
+         *
+         * @example
+         *      function your_success(data) { }
+         *      function your_error(data) { }
+         *
+         *      jexAjax.callback('success', your_success);
+         *      jexAjax.callback('error', your_error);
+         */
+
+        /**
+         * 사용자 callback을 지정한다.
+         *
+         * @method callback
+         * @param {Object} obj {key: Fn, key: Fn, ... }
+         *
+         * @example
+         *      function your_success(data) { }
+         *      function your_error(data) { }
+         *
+         *      jexAjax.callback({
+         *          'success': your_success,
+         *          'error': your_error
+         *      });
+         */
+        callback: function(key, value) {
+            jexjs.extend(_callback, key, value);
+        },
+
+        /**
+         * executor를 설정한다. <br />
+         * default : jQuery.ajax를 사용하는 executor <br /><br />
+         *
+         * execute 함수를 반드시 구현해야 하며, settings, parameter 를 변수로 받을 수 있다. <br />
+         * execute 함수는 처리 후 반드시 settings.success, settings.error 함수를 호출해줌으로 써 <br />
+         * callback 처리를 해주어야 한다.
+         *
+         * @method executor
+         * @param {Object} executor
+         * @example
+         *      jexAjax.executor({
+         *          execute: function(settings, parameter) {
+         *              if (success) {
+         *                  settings.success({});
+         *              } else {
+         *                  settings.error({});
+         *              }
+         *          }
+         *      });
+         */
+        executor: function(executor) {
+            if (typeof executor.execute === 'function') {
+                _jexExecutor = executor;
+            } else {
+                jexjs.error("jexjs.plugin.ajax.executor must implements execute function");
+            }
+        },
+
+        /**
+         * ajax 통신을 수행한다.
+         * @method execute
+         * @param {Function} callback
+         * @example
+         *      jexAjax.execute();
+         *      jexAjax.execute(function(data) {
+         *          // success!!!!!
+         *      });
+         *
+         *      jexAjax.execute({
+         *          success: function(data) {
+         *              // success
+         *          },
+         *          error: function(data) {
+         *              // error
+         *          }
+         *      });
+         *
+         */
+        execute: function(callback) {
+            if (typeof callback === 'function') {
+                this.callback('success', callback);
+            } else if (typeof callback === 'object') {
+                if (typeof callback.success === 'function') {
+                    this.callback('success', callback.success);
+                }
+                if (typeof callback.error === 'function') {
+                    this.callback('error', callback.error);
+                }
+            }
+
+            _execute();
+        }
+    };
+});
+
+/**
+ * ajax Error 인지 아닌지를 판단합니다.
+ * ERROR값이 true 인경우
+ * @parameter dat ajax action호출 후 반한된 데이터값
+ * @example {"COMMON_HEAD":{"ERROR":true,"MESSAGE":"","CODE":""}}
+ */
+jexjs.isJexError = function( dat ){
+    if ( !jexjs.isNull( dat ) && !jexjs.isNull(dat.COMMON_HEAD) ) {
+        if ( !jexjs.isNull(dat.COMMON_HEAD.ERROR) && dat.COMMON_HEAD.ERROR ){
+            return true;
+        }
+    }
+    return false;
+};
+
+/**
+ * ajax Error 인경우 ErrorCode를 반환해줍니다.
+ * @parameter dat ajax action호출 후 반한된 데이터값
+ * @example {"COMMON_HEAD":{"ERROR":true,"c":"","CODE":""}}
+ */
+jexjs.getJexErrorCode = function( dat ) {
+    if ( !jexjs.isNull( dat ) && !jexjs.isNull(dat.COMMON_HEAD) ) {
+        return dat.COMMON_HEAD.CODE;
+    }
+    return null;
+};
+
+/**
+ * ajax Error 인경우 ErrorMessage 값을 반환해줍니다.
+ * @parameter dat ajax action호출 후 반한된 데이터값
+ * @example {"COMMON_HEAD":{"ERROR":true,"MESSAGE":"","CODE":""}}
+ */
+jexjs.getJexErrorMessage = function( dat ){
+    if ( !jexjs.isNull( dat ) && !jexjs.isNull(dat.COMMON_HEAD) ) {
+        return dat.COMMON_HEAD.MESSAGE;
+    }
+    return null;
+};
+
+/**
+ * 기존 jex2.0 호환위해 사용. jexMobile에서 사용.
+ * @param {String} url
+ * @returns { jexjs.plugin.ajax }
+ */
+jexjs.createAjaxUtil = function (url) {
+    return jexjs.plugin('ajax', url);
+};
+
+/**
+ * 공통 ajax값을 setting 합니다. 기존에 이미 설정되어있는 경우 값을 덮어 씌움.
+ * @param {Object} settings 공통 ajax 설정 값
+ */
+jexjs.ajaxSetup = function(settings) {
+    if (jexjs.isNull(settings)) {
+        return;
+    }
+
+    var globalAjax = jexjs.global.plugins.ajax;
+
+    //indicator
+    if (typeof settings.indicator === 'object') {
+        if ( typeof settings.indicator.show === 'function' && typeof settings.indicator.hide === 'function' ) {
+            globalAjax.indicator = settings.indicator;
+            delete settings.indicator;
+        }
+    } else if ( typeof settings.indicator === 'boolean' &&  settings.indicator === false ){
+        globalAjax.indicator = settings.indicator;  
+        delete settings.indicator;
+    }
+    
+    //settings
+    if (typeof settings.prefix === 'string') {
+        globalAjax.prefix = settings.prefix;
+        delete settings.prefix;
+    }
+    if (typeof settings.suffix === 'string') {
+        globalAjax.suffix = settings.suffix;
+        delete settings.suffix;
+    }
+    if (typeof settings.contextPath === 'string') {
+        globalAjax.contextPath = settings.contextPath;
+        delete settings.contextPath;
+    }
+    
+    globalAjax.settings = settings;
+};
+
+/**
+ * 공통 ajax 값을 확장합니다.
+ * @param {Object} settings 공통 ajax 설정 값
+ */
+jexjs.ajaxSetupExtend = function (settings) {
+    if (jexjs.isNull(settings)) {
+        return;
+    }
+
+    var globalAjax = jexjs.global.plugins.ajax;
+
+    //indicator
+    if (typeof settings.indicator === 'object') {
+        if ( typeof settings.indicator.show === 'function' && typeof settings.indicator.hide === 'function' ) {
+            globalAjax.indicator = settings.indicator;
+            delete settings.indicator;
+        }
+    } else if ( typeof settings.indicator === 'boolean' &&  settings.indicator === false ){
+        globalAjax.indicator = settings.indicator;  
+        delete settings.indicator;
+    }
+    
+    //settings
+    if (typeof settings.prefix === 'string') {
+        globalAjax.prefix = settings.prefix;
+        delete settings.prefix;
+    }
+    if (typeof settings.suffix === 'string') {
+        globalAjax.suffix = settings.suffix;
+        delete settings.suffix;
+    }
+    if (typeof settings.contextPath === 'string') {
+        globalAjax.contextPath = settings.contextPath;
+        delete settings.contextPath;
+    }
+    
+    jexjs.extend(globalAjax.settings, settings);
+};
+
+/**
+ * ajaxError : 공통 error 함수를 정의합니다. ajax 호출이 실패하였을 경우 수행됩니다.
+ */
+jexjs.ajaxError = function( errFn ){
+    var globalAjax = jexjs.global.plugins.ajax;
+    
+    if (!globalAjax.callback) {
+        globalAjax.callback = [];
+    }
+
+    if (typeof errFn !== 'function') {
+        return;
+    }
+    
+    globalAjax.callback.error =  errFn;
+};
+
+/**
+ * ajaxFilter : ajax호출이 성공적으로 끝난 후에 등록된 필터들을 순서대로 실행한다. <br>
+ *      filter는 false를 리턴할 경우에만 종료를 하고 <br>
+ *      그 외의 경우 모든 filter를 호출한 후 callback (success) 함수를 실행한다. <br>
+ *      false를 리턴할 경우, 공통 에러 처리 혹은 callback (error) 함수를 실행한다. <br>
+ *
+ * @method addAjaxFilter
+ * @param {Function} filter
+ * @param {Number} index 필터 추가 위치
+ * @example
+ *      jexjs.addAjaxFilter(function(data) {
+ *          // data는 ajax 호출 후 성공적으로 내려온 값이다.
+ *          return false; // 필터를 종료하고 error 처리 실행
+ *      });
+ */
+jexjs.ajaxFilter = function(filter, _index) {
+    var globalAjax = jexjs.global.plugins.ajax;
+
+    if (!globalAjax.filters) {
+        globalAjax.filters = [];
+    }
+
+    if (typeof filter !== 'function') {
+        return;
+    }
+
+    var index = (typeof _index === 'number') ? _index : globalAjax.filters.length;
+
+    if ( index >= globalAjax.filters.length ) {
+        globalAjax.filters.push(filter);
+    } else {
+        if (index === 0) {
+            var result = [];
+            result.push(filter);
+            globalAjax.filters = result.concat(globalAjax.filters);
+        } else {
+            var pre = globalAjax.filters.splice(0, index);
+            pre.push( filter );
+
+            globalAjax.filters = pre.concat(globalAjax.filters);
+        }
+    }
+};
+
+/**
+ * @deprecated
+ * @param {Function} filter
+ */
+jexjs.addAjaxFilter = function(filter) {
+    jexjs.debug('    jexjs.addAjaxFilter is deprecated. change method name to `jexjs.ajaxFilter`');
+    jexjs.ajaxFilter(filter);
+};
+
+/**
+ * ajax execute함수를 쏘기전에 호출해주는 전처리 실행함수
+ * @param {function} beforeExecute
+ */
+jexjs.addAjaxBeforeExecute = function( beforeExecute ){
+    
+    if ( typeof beforeExecute != 'function'){
+        return;
+    }
+    
+    var globalAjax = jexjs.global.plugins.ajax;
+    if ( !globalAjax.beforeExecutes ){
+        globalAjax.beforeExecutes = [];
+    }
+    
+    globalAjax.beforeExecutes.push( beforeExecute );
+};
+
+/**
+ * global Executor 구현
+ */
+jexjs.setAjaxExecutor = function ( executor ) {
+    var globalAjax = jexjs.global.plugins.ajax;
+    if( "function" == typeof executor.execute ) {
+        globalAjax.executor = executor;
+    }else  {
+        jexjs.error("jexjs.plugin.ajax.executor must implements execute function");
+    }
+};
+
+/* ==================================================================================
+ * code manager은 jex framework와 통신하여 code 에 해당하는 값을 얻어 온다. <br />
+ *
+ * var jexCodeManager = jexjs.plugin("code_manager"); <br />
+ *
+ * @class jexjs.plugins.code_manager
+ * ================================================================================== */
+jexjs.plugins.define('code_manager', function() {
+    // init static data on global
+    if (!jexjs.global.plugins.code_manager.cachedCode) {
+        jexjs.global.plugins.code_manager.cachedCode = {};
+    }
+
+    if (!jexjs.global.plugins.code_manager.cachedSimpleCode) {
+        jexjs.global.plugins.code_manager.cachedSimpleCode = {};
+    }
+    
+    if (!jexjs.global.plugins.code_manager.settings) {
+        jexjs.global.plugins.code_manager.settings = {};
+    }
+    
+    /*
+     DV_CD 는 _code.jct 를 호출할 때 어떤 형태의 데이터를 리턴받을지에 대한 코드 값이다.
+     jexstudio > 코드 관리에서 등록된 코드 목록을 호출할 때 사용한다.
+
+     1 : "코드 값"           - GROUP, KEY 값과 함께 넘길 경우, { RESULT: "String" } 형태로 데이터를 받는다.
+     2 : [ 키, 코드 배열 ]    - GROUP 값과 넘길 경우, { RESULT: [{KEY: "", CODE: ""}, ... ] } 형태로 데이터를 받는다.
+     3 : "심플코드 값"        - GROUP, KEY 값과 함께 넘길 경우, { RESULT: "String" } 형태로 데이터를 받는다.
+     4 : [ 키, 심플코드 배열 ] - GROUP 값과 넘길 경우, { RESULT: [{KEY: "", CODE: ""}, ... ] } 형태로 데이터를 받는다.
+     */
+    var DV_CD = {
+        "CODE_FROM__GROUP_KEY": 1,
+        "CODE_FROM__GROUP": 3,
+
+        "SIMPLE_CODE_FROM__GROUP_KEY": 2,
+        "SIMPLE_CODE_FROM__GROUP": 4
+    };
+
+    var defaultOrderOption = {
+        baseField   : 'KEY', // KEY, CODE, USR
+        order       : 'ASC' //  ASC, DESC
+    };
+
+    var lastOrder = {
+        baseField   : defaultOrderOption.baseField,
+        order       : defaultOrderOption.order
+    };
+
+    var globalSettings = jexjs.global.plugins.code_manager.settings;
+    var cache = (jexjs.isNull( globalSettings.cache )? false : globalSettings.cache);
+    
+    var cachedCode = jexjs.global.plugins.code_manager.cachedCode;
+    var cachedSimpleCode = jexjs.global.plugins.code_manager.cachedSimpleCode;
+
+    var code_url = '_code';
+
+    var contextPath = globalSettings.contextPath || "",
+    	 urlPrefix = globalSettings.prefix || "",
+        urlSuffix = globalSettings.suffix || ".jct";
+
+    /* jexjs.ajax 플러그인의 Executor를 교체할 수 있다. */
+    var ajaxDummyExecutor;
+
+    function getCode(cacheData, group, key, dv_cd, orderOpts) {
+        var orderBase   = orderOpts.ORDER_BASE || defaultOrderOption.baseField,
+            order       = orderOpts.ORDER      || defaultOrderOption.order;
+
+        if (lastOrder.baseField !== orderBase || lastOrder.order !== order) {
+            cacheData[group] = undefined;
+            lastOrder.baseField     = orderBase;
+            lastOrder.order         = order;
+        }
+
+        if ( cache ){
+            if (key) {
+                if (typeof cacheData[group] === 'object' &&
+                    typeof cacheData[group][key] !== 'undefined') {
+    
+                    return cacheData[group][key];
+                }
+            } else {
+                if (typeof cacheData[group] === 'object') {
+                    return jexjs.clone(cacheData[group]);
+                }
+            }
+        }
+
+        var jexAjax = jexjs.createAjaxUtil(code_url);
+        jexAjax.set('DV_CD', dv_cd);
+        jexAjax.set('GROUP', group);
+        jexAjax.set('ORDER_BASE', orderBase);
+        jexAjax.set('ORDER', order);
+        if (key) {
+            jexAjax.set('KEY', key);
+        }
+        
+        if (contextPath) {
+            jexAjax.setting('contextPath', contextPath);
+        }
+
+        if (urlPrefix) {
+            jexAjax.setting('prefix', urlPrefix);
+        }
+
+        if (urlSuffix) {
+            jexAjax.setting('suffix', urlSuffix);
+        }
+
+        jexAjax.setting('async', false);
+
+        if (ajaxDummyExecutor) {
+            jexAjax.executor( { execute: ajaxDummyExecutor } );
+        }
+
+        jexAjax.execute(function(data) {
+            if (data.RESULT) {
+                var target = { };
+                target[group] = { };
+
+                var hasData = false;
+
+                if ( jexjs.isArray(data.RESULT) ) {
+                    delete cacheData[group];
+                    jexjs.forEach(data.RESULT, function(index, value) {
+                        hasData = true;
+                        var each = value;
+                        target[group][each.KEY] = each.CODE;
+                    });
+                } else if ( typeof data.RESULT === 'string' && key ) {
+                    hasData = true;
+                    target[group][key] = data.RESULT;
+                }
+
+                if (hasData) {
+                    jexjs.extend( cacheData, target );
+                }
+            }
+        });
+
+        if (key) {
+            if (typeof cacheData[group] === 'object' &&
+                typeof cacheData[group][key] !== 'undefined') {
+
+                return cacheData[group][key];
+            }
+        } else {
+            if (typeof cacheData[group] === 'object') {
+                return jexjs.clone(cacheData[group]);
+            }
+        }
+
+        return null;
+    }
+
+    function getUrl() {
+        var result = code_url;
+
+        if (urlPrefix) {
+            result = urlPrefix + result;
+        }
+
+        if (urlSuffix) {
+            result = result + urlSuffix;
+        }
+        
+        if (contextPath) {
+            result = contextPath + result;
+        }
+
+        return result;
+    }
+    
+    return {
+        init: function( orderOpt ) {
+            if ( orderOpt ) {
+                defaultOrderOption.baseField    = orderOpt.ORDER_BASE || 'KEY';
+                defaultOrderOption.order        = orderOpt.ORDER || 'ASC';
+                lastOrder.baseField = defaultOrderOption.baseField;
+                lastOrder.order = defaultOrderOption.order;
+                if ( orderOpt.cache ){
+                    cache = orderOpt.cache;
+                } 
+            }
+        },
+
+        /**
+         * @method getCode
+         * @param {String} group    그룹 코드 값. 필수
+         * @param {String} _key      키 코드 값. 선택
+         * @returns { Object || String }
+         */
+        getCode: function(group, _key, _orderOpts) {
+            var url = getUrl();
+
+            if (!cachedCode[url]) {
+                cachedCode[url] = { };
+            }
+
+            var key = null,
+                orderOpts = { };
+            if (typeof _key === 'string') {
+                key = _key;
+                orderOpts = _orderOpts || {};
+            } else if (typeof _key === 'object') {
+                orderOpts = _key;
+            }
+
+            var cacheData = cachedCode[url];
+
+            var dv_cd = DV_CD.CODE_FROM__GROUP;
+            if (cacheData[group] && key) {
+                dv_cd = DV_CD.CODE_FROM__GROUP_KEY;
+            }
+
+            return getCode(cacheData, group, key, dv_cd, orderOpts);
+        },
+
+        /**
+         * @method getSimpleCode
+         * @param {String} group    그룹 코드 값. 필수
+         * @param {String} _key      키 코드 값. 선택
+         * @returns { Object || String }
+         */
+        getSimpleCode: function(group, _key, _orderOpts) {
+            var url = getUrl();
+
+            if (!cachedSimpleCode[url]) {
+                cachedSimpleCode[url] = { };
+            }
+
+            var key = null,
+                orderOpts = {};
+            if (typeof _key === 'string') {
+                key = _key;
+                orderOpts = _orderOpts || {};
+            } else if (typeof _key === 'object') {
+                orderOpts = _key;
+            }
+
+            var cacheData = cachedSimpleCode[url];
+
+            var dv_cd = DV_CD.SIMPLE_CODE_FROM__GROUP;
+            if (cacheData[group] && _key) {
+                dv_cd = DV_CD.SIMPLE_CODE_FROM__GROUP_KEY;
+            }
+
+            return getCode(cacheData, group, _key, dv_cd, orderOpts);
+        },
+
+        /**
+         * 호출 URL을 변경할 때 사용한다. 기본 url : _code
+         * @method url
+         * @param _url
+         */
+        url: function(_url) {
+            code_url = _url;
+        },
+        
+        contextPath: function(_contextPath) {
+        	contextPath = _contextPath;
+        },
+
+        urlPrefix: function(_urlPrefix) {
+            urlPrefix = _urlPrefix;
+        },
+
+        urlSuffix: function(_urlSuffix) {
+            urlSuffix = _urlSuffix;
+        },
+
+        dummy: function( executor ) {
+            if (typeof executor === 'function') {
+                ajaxDummyExecutor = executor;
+            }
+        },
+        removeCache : function(){
+            var url = getUrl();
+            if (cachedCode[url]) {
+                delete cachedCode[url];
+            }
+            if (cachedSimpleCode[url]) {
+                delete cachedSimpleCode[url];
+            }
+        },
+        isCache : function(){
+            return cache;
+        }
+    };
+});
+
+/**
+ * @param settings { JSONObject }
+ * cache : true or false 
+ */
+jexjs.codeManagerSetup = function( settings ){
+    if (jexjs.isNull(settings)) {
+        return;
+    }
+    var codeManagerGrobal = jexjs.global.plugins.code_manager;
+    codeManagerGrobal.settings = settings;
+};
+
+/**
+ * dom 플러그인을 생성한다. <br />
+ *
+ * var jexDom = jexjs.plugin("dom"); <br />
+ *
+ * @class jexjs.plugins.dom
+ */
+
+jexjs.plugins.define('dom', function() {
+
+	var _OPT = {
+		'TYPE' : {
+			'JSON' : 'Json',
+			'ARRAY' : 'Array'
+		}
+	};
+	    
+	var  _opt = {
+            TYPE : _OPT.TYPE.JSON  // Json or Array
+	};
+
+    function _init ( opt ) {
+        jexjs.extend( _opt, opt );
+    }
+    
+	function get(domId, findName) {
+		var $scope = jexjs.$("#" + domId);
+		if ($scope.length === 0) {
+			return;
+		}
+
+		if (!findName) {
+			return;
+		}
+
+		var $find = $scope.find('[name="' + findName + '"]');
+		if ($find.length === 0) {
+			return;
+		}
+
+		var tagName = $find[0].tagName.toLowerCase(), result;
+
+		if ("input" === tagName) {
+			var type = $find.attr("type").toLowerCase();
+
+			if ("checkbox" === type) {
+				result = [];
+
+				$scope.find('[name="' + findName + '"]:checked').each(function() {
+				    
+				    if ( _opt.TYPE == _OPT.TYPE.JSON ) {
+				        result.push({'value':jexjs.$(this).val()});
+				    } else {
+				        result.push(jexjs.$(this).val());
+				    }
+				});
+
+				return result;
+			} else if ("radio" === type) {
+				return jexjs.null2Void($scope.find('[name="' + findName + '"]:checked').val());
+			}
+
+			return $find.val();
+		} else if ("select" === tagName) {
+			return jexjs.null2Void($find.val());
+		} else if ("textarea" === tagName) {
+			return $find.val();
+		} else {
+			return $find.html();
+		}
+	}
+
+	function getAll(domId) {
+		var result = {};
+
+		jexjs.$("#" + domId).find("[name]").each(function() {
+			var key = jexjs.$(this).attr("name");
+
+			if (!key) {
+				return true;
+			}
+
+			if (typeof result[key] === "undefined") {
+				result[key] = jexjs.null2Void(get(domId, key));
+			}
+		});
+
+		return result;
+	}
+
+	function set(domId, findName, value) {
+		var $scope = jexjs.$("#" + domId);
+		if ($scope.length === 0) {
+			return;
+		}
+
+		if (!findName) {
+			return;
+		}
+
+		var $find = $scope.find('[name="' + findName + '"]');
+		if ($find.length === 0) {
+			return;
+		}
+
+		var tagName = $find[0].tagName.toLowerCase();
+
+		if ("input" === tagName) {
+			var type = $find.attr("type");
+			if ("checkbox" === type) {
+			    
+				if (typeof value === "string") {
+					if ("" === value.trim()) {
+						$find.each(function() {
+							jexjs.$(this)[0].checked = false;
+						});
+					} else {
+						var checkbox = $scope.find('[name="' + findName + '"][value="' + value + '"]')[0];
+						if (checkbox) {
+							checkbox.checked = true;
+						}
+					}
+				} else if (jexjs.isArray(value)) {
+					for (var i = 0; i < value.length; i++) {
+						if( value[i].value && "string" === typeof value[i].value ) {
+							set(domId, findName, value[i].value);
+						}else{
+							set(domId, findName, value[i]);
+						}
+					}
+				}
+			} else if ("radio" === type) {
+				if ("" === value.trim()) {
+					$find.each(function() {
+						jexjs.$(this)[0].checked = false;
+					});
+				} else {
+					var radio = $scope.find('[name="' + findName + '"][value="' + value + '"]')[0];
+					if (radio) {
+						radio.checked = true;
+					}
+				}
+			} else {
+				$find.val(value);
+			}
+		} else if ("select" === tagName) {
+	        $find.val(value);
+		} else if ("textarea" === tagName) {
+			$find.val(value);
+		} else {
+			$find.html( value );
+		}
+	}
+
+	function setAll(domId, params) {
+		for ( var i in params) {
+			set(domId, i, params[i]);
+		}
+	}
+
+	function clear(domId, findName) {
+       var $scope = jexjs.$("#" + domId);
+        if ($scope.length === 0) {
+            return;
+        }
+
+        if (!findName) {
+            return;
+        }
+
+        var $find = $scope.find('[name="' + findName + '"]');
+        if ($find.length === 0) {
+            return;
+        }
+
+        var tagName = $find[0].tagName.toLowerCase();
+        if ( "select" === tagName ) {   	//clear 할때, selectbox는 첫 value로 selected 설정
+            if ( 0 < $find.children("option").length ){
+                set( domId, findName, $find.children("option").eq(0).val() );
+                return;
+            }
+        } else if ( "input" === tagName) {   //clear 할때, radio는 첫 value로 checked 설정
+			 var type = $find.attr("type");
+			 if( "radio" === type ) {
+					if ( 0 < $find.length ){
+						set( domId, findName, $find.eq(0).val() );
+						return;
+					}
+			 }
+				
+        }
+		
+        set(domId, findName, "");
+	}
+
+	function clearAll(domId) {
+		jexjs.$("#" + domId).find("[name]").each(function() {
+			clear(domId, jexjs.$(this).attr("name"));
+		});
+	}
+
+	return {
+		init : function( opt ) {
+		    _init( opt );
+		},
+
+		/**
+		 * {domId} 하위 태그들 중 name={findName} 인 태그의 값을 리턴한다. <br />
+		 * [type=checkbox] 인 경우 Array 형태로 리턴한다.
+		 *
+		 * @method get
+		 * @param {String} domId
+		 * @param {String} findName
+		 * @returns {String | Array}
+		 * @example
+		 *      jexjs.plugin("dom").get("my_form", "loginId");     // jex@jexframe.com
+		 *      jexjs.plugin("dom").get("more_info", "hobby");     // [ "book", "computer" ]
+		 */
+		get : function(domId, findName) {
+			return get(domId, findName);
+		},
+
+		/**
+		 * {domId} 하위 태그들 중 name={findName} 인 태그의 값을 설정한다.
+		 *
+		 * @method set
+		 * @param {String} domId
+		 * @param {String} findName
+		 * @param {String | Array} value [type=checkbox]의 경우 Array 형태의 파라미터도 가능하다.
+		 * @example
+		 *      jexjs.plugin("dom").set("my_form", "loginId", "jex@jexframe.com");
+		 *      jexjs.plugin("dom").set("more_info", "hobby", [ "book", "computer" ]);
+		 */
+		set : function(domId, findName, value) {
+			set(domId, findName, value);
+		},
+
+		/**
+		 * {domId}의 하위 태그들 중 name 태그를 갖는 태그의 value를 리턴한다. <br />
+		 * @method getAll
+		 * @param {String} domId
+		 * @returns {Object}
+		 * @example
+		 *      var getAll = jexjs.plugin("dom").getAll("my_form");
+		 *      getAll.loginId  // jex@jexframe.com
+		 */
+		getAll : function(domId) {
+			return getAll(domId);
+		},
+
+		/**
+		 * {domId}의 하위 태그들 중 [name=params의 키] 를 만족하는 태그들의 값을 설정한다.
+		 * @method setAll
+		 * @param {String} domId
+		 * @param {Object} params
+		 */
+		setAll : function(domId, params) {
+			setAll(domId, params);
+		},
+
+		/**
+		 * {domId}의 하위 태그 중 [name={findName}]을 만족하는 태그의 value를 초기화한다. <br />
+		 *   - [type=checkbox, radio] = checked: false <br />
+		 *   - [all] = value: ""
+		 *
+		 * @method clear
+		 * @param {String} domId
+		 * @param {String} findName
+		 */
+		clear : function(domId, findName) {
+			clear(domId, findName);
+		},
+
+		/**
+		 * {domId}의 하위 태그 중 [name] 속성을 갖는 모든 태그의 값을 clear 시킨다. <br />
+		 * @method clearAll
+		 * @param {String} domId
+		 */
+		clearAll : function(domId) {
+			clearAll(domId);
+		}
+	};
+});
+
+/**
+ * file upload 플러그인 <br />
+ *
+ * iframe 을 이용하여 form 전송을 통하여 file을 업로드 한다.
+ *
+ * var file_uploader = jexjs.plugin("file_upload"); <br />
+ *
+ * @class jexjs.plugins.file_upload
+ */
+
+jexjs.plugins.define('file_upload', function() {
+
+    var _global = jexjs.global.plugins.file_upload;
+    
+    var _parameter = {};    // file외의 일반 text data
+    
+    var form_file_upload_id = "jex_file_upload_form";
+
+    var random = new Date().getTime(),
+        template_form = '<form method="post" enctype="multipart/form-data" style="position:absolute; top: -1000px; left: -1000px;"></form>',
+        template_iframe = '<iframe style="display:none;"></iframe>',
+        template_file = '<input type="file" />',
+        template_submit = '<input type="submit" value="upload" />';
+
+    var contextPath = _global.contextPath || "",
+        prefix = _global.prefix || "",
+        suffix = _global.suffix || ".jct",
+        url,
+        $form,
+        $targetFrame,
+        files = [];
+
+    var success;
+    
+    var options = {
+            multiple : false,
+            reset:true
+    };
+    
+    var events = {
+            
+    };
+    
+    if ( _global.options ){
+        jexjs.extend( options, _global.options );
+    }
+    
+    function init( _url , option ) {
+        
+        settings( option );
+        
+        initDom();
+
+        url = _url;
+
+        $form.attr({
+            'action': getUrl( _url ),
+            'target': $targetFrame.attr('name')
+        });
+    }
+    
+    function settings ( key, value ){
+        if ( typeof key === 'object' ){
+            for( var k in key){
+                _settings( k, key[k]);
+            }
+        }else if ( typeof key === 'string'){
+            _settings( key, value );
+        }
+    }
+    
+    function _settings ( key, value ){
+        if ( 'contextPath' === key ){
+            contextPath = value;
+        }else if ( 'prefix' === key ){
+            prefix = value;
+        }else if ( 'suffix' === key ){
+            suffix = value;
+        }
+        options[ key ] = value;
+    }
+    
+    function getUrl( _url ){
+        var fullUrl = "";
+        
+        if ( !jexjs.empty( contextPath )){
+            fullUrl += contextPath + "/" ;
+        }
+        if ( !jexjs.empty( prefix )){
+            fullUrl += prefix + "/" ;
+        }
+        
+        //id에 .jct 확장자 넘어온경우
+        if ( -1 != fullUrl.indexOf(".jct") && ".jct" == suffix) {
+            fullUrl +=  _url;
+        } else {
+            fullUrl +=  _url + suffix;
+        }
+        
+        return fullUrl;
+    }
+
+    function initDom() {
+        var random = new Date().getTime();
+        $form = jexjs.$('#' + form_file_upload_id + "_" + random);
+        if ($form.length === 0) {
+            $form = jexjs.$(template_form);
+            $form.appendTo("body");
+        }
+
+        if ($form.find('input[type=submit]').length === 0) {
+            $form.append(jexjs.$(template_submit));
+        }
+
+        $form.off('submit').on('submit', function(event) {
+            var data = new FormData();
+            var $inputFile = $(jexjs.$(this).find("input[type=file]")[0]);
+
+            //파일 다건선
+            if ( options.multiple ){
+                var _files = files;
+                for( var i = 0; i < _files.length; i++ ){
+                    data.append( $inputFile.attr('name') +"_" + i, _files[i] );
+                }
+            }//파일 단건 선택
+            else{
+                data.append(
+                    $inputFile.attr('name'),
+                    $inputFile[0].files[0]
+                );
+            }
+            
+            //file 객체외의 데이터가 있는 경우 추가
+            if ( _parameter ) {
+                for( var key in _parameter ) {
+                    data.append(key, _parameter[key] );
+                }
+            }
+            
+            jQuery.ajax({
+                url: getUrl(url),
+                type: 'POST',
+                data: data,
+                async: false,
+                cache: false,
+                processData: false,
+                contentType: false,
+                success: function(data, textStatus, jqXHR) {
+                    if (typeof success === 'function') {
+                        success(data);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    jexjs.warn("file_upload plugin:: error :: "+textStatus);
+                }
+            });
+
+            return false;
+        });
+
+        $targetFrame = jexjs.$(template_iframe);
+        $targetFrame.attr('name', 'jex_fileupload_frame');
+        $targetFrame.appendTo("body");
+    }
+
+    function add(name, _callback) {
+        var $input_file = $form.find('input[name=' + name + ']')[0];
+        
+        if (typeof $input_file !== 'undefined') {
+            $input_file.remove();
+        }
+            
+        $input_file = jexjs.$(template_file)
+            .attr({
+                'id': name,
+                'name': name
+            });
+
+        if ( options.multiple ){
+            $input_file.prop("multiple",true);
+        }
+        
+        $form.append($input_file);
+        
+        $input_file.on('change', function( e ) {
+            var targetFiles = e.target.files || e.dataTransfer.files;
+            if ( !jexjs.empty(targetFiles)){
+                for(var k=0; k < targetFiles.length; k++){
+                    jexjs.debug("    jexjs.plugin.file_upload : e.files["+k+"]::"+ targetFiles[k].name);
+                }
+            }
+            
+            if ( options.reset ){
+                files = targetFiles;
+            }else {
+                for(var i=0; i < targetFiles.length; i++){
+                    var isDuplicate = false;
+                    for(var j=0; j < files.length; j++){
+                        if ( files[j].name == targetFiles[i].name){
+                            jexjs.debug("    jexjs.plugin.file_upload : overwrite file::"+ targetFiles[i].name);
+                            files[j] = targetFiles[i];
+                            isDuplicate = true;
+                        }
+                    }
+                    if ( !isDuplicate ){
+                        jexjs.debug("    jexjs.plugin.file_upload : add file::"+ targetFiles[i].name);
+                        files.push(targetFiles[i]);
+                    }
+                }
+            }
+            
+            if (typeof _callback === "function") {
+                _callback( $input_file[0], jexjs.clone(files) );
+            }
+        });
+
+        $input_file.click();
+    }
+    
+    function _removeFile( orgFileName ) {
+        var file, newFiles = [];
+        var isRemove = false;
+        for ( var i = 0; i < files.length; i++ ){
+            file = files[i];
+            if ( orgFileName != file.name ){
+                newFiles.push(file);
+            }else{
+                isRemove = true;
+            }
+        }
+        files = newFiles;
+        if ( isRemove ){
+            jexjs.debug("    jexjs.plugin.file_upload : remove file::"+ orgFileName);
+            return 1;
+        }
+        return 0;
+    }
+    
+    function removeFileList(name, orgFileName, _callback ){
+        var $input_file = $form.find('input[name=' + name + ']')[0];
+        var removeCount = 0;
+        if ( "string" == typeof orgFileName ) {
+            removeCount =  _removeFile(orgFileName);
+        }else if ( jexjs.isArray(orgFileName) ) {
+            for(var i=0; i < orgFileName.length; i++){
+                removeCount += _removeFile( orgFileName[i] );
+            }
+        }
+        _callback( $input_file[0], jexjs.clone(files), removeCount );
+    }
+    
+    function upload(_callback) {
+        success = _callback;
+
+        $form.find('input[type=submit]').click();
+    }
+
+    function setUrl(_url) {
+        url = _url;
+        $form.attr('action', getUrl(_url) );
+    }
+
+    return {
+        init: function(_url , option) {
+            init(_url, option);
+        },
+        //일반데이터 추가
+        setData : function( key , value ){
+            jexjs.extend(_parameter, key, value);
+        },
+        //파일추가
+        add: function(name, callback) {
+            add(name, callback);
+        },
+        //파일삭제
+        remove : function( name, fileNameList , callback) {
+            removeFileList( name, fileNameList , callback);
+        },
+        //파일업로드
+        upload: function(_callback) {
+            upload(_callback);
+        },
+        url: function(_url) {
+            setUrl(_url);
+        }
+    };
+});
+
+/**
+ * 파일업로드 공통 설정
+ */
+jexjs.fileUploadSetup = function( settings ){
+
+    if (jexjs.isNull( settings )) {
+        return;
+    }
+
+    var globalFileUpload = jexjs.global.plugins.file_upload;
+    
+    //settings
+    if (typeof settings.prefix === 'string') {
+        globalFileUpload.prefix = settings.prefix;
+        delete settings.prefix;
+    }
+    if (typeof settings.suffix === 'string') {
+        globalFileUpload.suffix = settings.suffix;
+        delete settings.suffix;
+    }
+    if (typeof settings.contextPath === 'string') {
+        globalFileUpload.contextPath = settings.contextPath;
+        delete settings.contextPath;
+    }
+    
+    globalFileUpload.options = settings;
+    
+};
+
+/* ========================================================================
+ * jexjs.plugins.form
+ * 생성시 기준 element 이하에서 'keydown : enter' 이벤트가 발생할 경우
+ * 지정된 element의 지정된 event를 실행시킨다.
+ * ======================================================================== */
+
+// auto binding
+$(function() {
+    $(document.body ).find('[jex-form]').each(function() {
+        var $scope = $( this );
+        var $target = $scope.find('[jex-submit]');
+        var event = $target.attr('jex-submit');
+
+        function isExceptElement( e ) {
+            var targetNode = e.target;
+            var tagName = targetNode.tagName.toLowerCase() ;
+            
+            if ( "textarea" == tagName ) {
+                return true;
+            } else if ( "input" == tagName )  {
+                var type = targetNode.getAttribute("type").toLowerCase();
+                if ( "submit" == type ) {
+                    return true;
+                }
+            } else if( "button" == tagName ) {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        $scope.on('keydown', function(e) {
+            var keyCode = e.which || e.keyCode;
+            if (keyCode === 13) {
+                if ( !isExceptElement( e ) ) {
+                    jexjs.debug('    jexjs.plugins.form : jex-submit event 실행');
+                    if ($target) {
+                        $target.trigger(event);
+                        return false;
+                    }
+                }
+            }
+        });
+    });
+});
+
+jexjs.plugins.define('form', function() {
+    var $scope,
+        $target,
+        event;
+
+    var attr = {
+        form: 'jex-form',
+        submit: 'jex-submit'
+    };
+
+    function get$(element) {
+        if (typeof element === 'string') {
+            if (!element.startsWith('#')) {
+                element = '#' + element;
+            }
+
+            return jexjs.$( element );
+        } else if (element && element instanceof jQuery) {
+            return element;
+        } else if (element && element instanceof HTMLElement) {
+            return jexjs.$( element );
+        }
+    }
+
+    function isExceptElement( e ) {
+        var targetNode = e.target;
+        var tagName = targetNode.tagName.toLowerCase() ;
+        
+        if ( "textarea" == tagName ) {
+            return true;
+        } else if ( "input" == tagName )  {
+            var type = targetNode.getAttribute("type").toLowerCase();
+            if ( "button" == type ) {
+                return true;
+            }
+        } else if( "button" == tagName ) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    function listen() {
+        $scope.on('keydown', function(e) {
+            var keyCode = e.which || e.keyCode;
+
+            if (keyCode === 13) {
+                if ( !isExceptElement( e ) ) {
+                    jexjs.debug('    jexjs.plugins.form : jex-submit event 실행');
+                    if ($target) {
+                        $target.trigger(event);
+                        return false;
+                    }
+                }
+            }
+        });
+    }
+
+    return {
+        init: function(element) {
+            $scope = get$(element);
+
+            if (!$scope) {
+                jexjs.error('form 플러그인은 `elementId | HTMLElement | jQueryElement` 중 하나를 파라미터로 입력해야 합니다.');
+            }
+
+            if ($scope.attr( attr.form )) {
+                var $submitElement = $scope.find('[' + attr.submit + ']');
+                var _event = $submitElement.attr( attr.submit );
+
+                listen();
+
+                $target = $submitElement;
+                event = _event;
+            }
+        },
+        setSubmit: function(_element, _event) {
+            var _$target = get$(_element);
+
+            if (!_$target) {
+                jexjs.error('jexjs.plugins.form : setSubmit시 대상이 될 수 있는 `elementId | HTMLElement | jQueryElement`중 하나를 파라미터로 입력해야 합니다.');
+            }
+
+            if (typeof _event !== 'string') {
+                jexjs.error('jexjs.plugins.form : setSubmit시 이벤트명은 문자열로 입력해야 합니다.');
+            }
+
+            $target = _$target;
+            event = _event;
+
+            listen();
+        }
+    };
+});
+
+
+/* ==================================================================================
+ * indicator 플러그인은 사용자에게 '현재 ~ 작업을 진행 중' 임을 나타낼 때 사용한다.
+ * 이를 나타내기 위해서 기본적으로 메인 화면을 덮는 `배경` 위에 진행 중을 표시하는 `이미지`로 구성해서 사용한다.
+ * #jex-indicator-wrap
+ *   .jex-indicator
+ *      .jex-indicator-bg
+ *          .jex-indicator-img
+ *
+ * indicator 는 document.body 마다 하나씩만 존재할 수 있다. 즉, 최초 생성 후에는 제거하지 않는다.
+ *
+ * var jexIndicator = jexjs.plugin('indicator');
+ * ================================================================================== */
+
+jexjs.plugins.define('indicator', [ 'template' ], function($template) {
+
+    var id = {
+        'wrap' : 'jex-indicator-wrap'
+    };
+    
+    var name = {
+        'theme': {
+            'def'   : 'jex-indicator-theme-default',
+            'modal'     : 'jex-indicator-theme-modal',
+            'user'  :   'jex-indicator-theme-user'
+        }
+    };
+
+    var cssClass = {    //기본 디자인
+        wrapper : '',
+        bg: 'jex-indicator',
+        imgBg: 'jex-indicator-bg',
+        img: 'jex-indicator-img',
+        modal: 'modal',
+        active : 'active'
+    };
+    
+    var targetCssClass = {  //target을 입력받아 특정 영역에 indicator를 사용할때의 기본 디자인
+        bg: 'jex-indicator-target',
+        imgBg: 'jex-indicator-bg-target'
+    };
+
+    var template = {
+        wrapper: '<div id="#{ id }" class="#{ classWrapper }"></div>',
+        indicator: '<div name="#{ themeName }" class="#{ classBg }"><div class="#{ classImgBg }"><span class="#{ classImg }"></span></div></div>'
+    };
+
+    var options = {
+        scopeWindow: null,
+        modal: false,
+        user : false,
+        target : null   //기본적으로는 indicator wrap 이 body에 추가되지만, target이 있는 경우는 target에 indicator가 추가.
+                        //위치의 기준이 되는 태그이기때문에, target은 "position:relative"로 설정하여야 한다. 그리고 width, hegith.
+    };
+    
+    var fn = {
+        show : function( $indicator ){
+            $indicator.addClass( cssClass.active );
+        },
+        hide : function( $indicator){
+            $indicator.removeClass( cssClass.active );
+        }
+    };
+
+    var $indicator;
+
+    function init() {
+        var scope = options.scopeWindow || jexjs.getRoot() || window;
+        var wrapper = null;
+
+        // target이 없는 경우.
+        if ( jexjs.isNull(options.target) ) {
+            wrapper = scope.document.getElementById(id.wrap);
+            
+            //wrapper가 append 되어있지 않으면, 생성.
+            if (jexjs.isNull(wrapper)) {
+                jexjs.debug('    jexjs.plugin.indicator: init indicator-wrapper');
+
+                var wrapperTemplate = $template.render(template.wrapper, { 
+                    id: id.wrap,
+                    classWrapper : cssClass.wrapper
+                }),
+                    $wrapper = jexjs.$(wrapperTemplate);
+                jexjs.$(scope.document.body).append($wrapper);
+                
+                wrapper = $wrapper[0];
+            }
+        }// target id가 있는 경우.
+        else {
+            wrapper = scope.document.getElementById(options.target);
+            cssClass = jexjs.extend( cssClass, targetCssClass );
+        }
+        
+        
+
+        var themeName = name.theme.def;
+        if ( options.user ){
+            themeName = name.theme.user;
+        }else if (options.modal) {
+            themeName = name.theme.modal;
+        }
+
+        var $tmpIndicator = jexjs.$(wrapper).find('[ name="'+ themeName +'"]');
+        if ($tmpIndicator.length > 0) {
+            $indicator = $tmpIndicator;
+        } else {
+            
+            var html = $template.render(template.indicator, {
+                themeName: themeName,
+                classBg: cssClass.bg,
+                classImgBg: cssClass.imgBg,
+                classImg: cssClass.img
+            });
+
+            $indicator = jexjs.$( html );
+
+            if (options.modal) {
+                $indicator.addClass( cssClass.modal );
+            }
+            jexjs.$(wrapper).append($indicator);
+        }
+    }
+    function show() {
+        fn.show( $indicator );
+    }
+
+    function hide() {
+        fn.hide( $indicator );
+    }
+
+    return {
+        init: function(_opts) {
+            if (_opts) {
+                
+                if (typeof _opts.css === 'object') {
+                    options.user = true;    //사용자 정의 class
+                    cssClass = jexjs.extend( cssClass, _opts.css );
+                    delete _opts.css;
+                }
+                
+                if ( _opts.fn ){
+                    if (typeof _opts.fn.show === 'function') {
+                        fn.show = _opts.fn.show;
+                    }
+                    if (typeof _opts.fn.hide === 'function') {
+                        fn.hide = _opts.fn.hide;
+                    }
+                    delete _opts.fn;
+                }
+                
+                if (typeof _opts.scopeWindow === 'object') {
+                    options.scopeWindow = _opts.scopeWindow;
+                    delete _opts.scopeWindow;
+                }
+                
+                options = jexjs.extend( options, _opts );
+                
+                if ( _opts.target ) {
+                    id.wrap = id.wrap + "_" + _opts.target;
+                }
+            }
+            init();
+        },
+        show: function() {
+            show();
+        },
+        hide: function() {
+            hide();
+        }
+    };
+});
+/* ========================================================================
+ * jexjs.plugins.input
+ * 사용자의 키보드 입력에 대한 제어를 담당하는 플러그인
+ * ======================================================================== */
+
+jexjs.plugins.define('input', function() {
+    var rules = jexjs.global.plugins.input.rules || {};
+
+    var inputAttr = 'jex-input';
+
+    function listen( $scope ) {
+        if ( jexjs.empty($scope.attr(inputAttr)) ) {
+            $scope.find('[' + inputAttr + ']').each(function() {
+                listen( jexjs.$(this) );
+            });
+        } else {
+            var checkList = ($scope.attr( inputAttr ) || '').split(';');
+            jexjs.forEach(checkList, function(index, value) {
+                var each = jexjs.trim(value);
+
+                if (jexjs.empty(each)) {
+                    return true;
+                }
+
+                var fn = rules[ each ];
+
+                if (!fn) {
+                    jexjs.error(' [ input ] 등록되지 않은 rule 입니다. ' + each);
+                }
+
+                fn( $scope );
+            });
+        }
+    }
+
+    return {
+        addRule: function( name, fn ) {
+            rules[name] = fn;
+        },
+        listen: function( $scope ) {
+            listen( $scope );
+        },
+        rules: rules
+    };
+}, true);
+
+
+/* ==================================================================================
+ * ml 플러그인은 페이지에서 다국어를 사용하는 경우 필요한 플러그인이다.
+ *
+ * jexjs.plugin('ml');
+ * ================================================================================== */
+
+jexjs.plugins.define('ml', [ 'indicator', 'ajax','template', 'queue', 'code_manager' ], function( $indicator, $ajax, $template, $queue, $codeManager ) {
+    
+    var _globalMl =  jexjs.global.plugins.ml,
+    _viewId = (function(){
+                var viewId = null;
+                var pathName = window.location.pathname || window.location.href;
+                var matchList = pathName.match(/(\w)+.act/g);
+                if ( matchList && matchList.length == 1 ){
+                    viewId = matchList[0].replace(".act","");
+                    return viewId;
+                }else {
+                    jexjs.debug("    jexjs.plugin.ml : view Id 추출 실패!! "+ pathName);
+                }
+            })();
+    
+    var _CONST = {
+            TRANSLATE_MODE_Y : true,    //dom 번역을 한다.
+            TRANSLATE_MODE_N : false    //dom 번역없이 param 값에 대한 변경만
+    };
+    
+    var _settings = {
+            isUseHeader : true,
+            isUseBody : true,
+            contextPath : null,
+            prefix : null,
+            url : "jexMLang",
+            suffix : "",
+            codeManager : $codeManager,
+            isTranslateLocal : false,    //페이지 최초 road시 loca언어인경우에는 번역할필요가 없으나 HTML parameter를 사용하면 필요하여 추가 ( isTranslateServer : false 일때 )
+            isTranslateServer : false    //페이지 최초 road시 번역된 Html 이 내려오는경우 true, 번역되지 않은 data가 내려오는 경우 false
+    };
+    
+    var _FUNC = {
+            'beforeInit' : function( info ){
+            },
+            'afterInit' : function( info ){
+            },
+            'beforeChange' : function( info ){
+                info.indicator.show();
+            },
+            'afterChange' : function( info ){
+                info.indicator.hide();
+            },
+            //{ 'VIEW_ID':viewId, 'ML_ID': mlKey, 'ML_TP':_ML_TP.HTML }
+            'isInsertMlKey' : function(){
+                return true;
+            },
+            //{ 'VIEW_ID':viewId, 'ML_ID': mlKey, 'ML_TP':_ML_TP.HTML }
+            'setInsertViewId' : function(){
+                return _viewId;
+            }
+    };
+    var _ML_ATTR = "data-jex-ml" ,
+        _ML_ATTR_VIEW_ID = "data-jex-view",
+        _ML_ATTR_NOMAL_VIEW_ID = "data-jex-nomal-view", //사용하지 말기. jex-view와 동일한처리
+        _ML_ATTR_OPT_DYNAMIC = "data-jex-ml-opt-dynamic",
+        _ML_ATTR_PARAM = "data-jex-param",
+        _ML_ATTR_META_VIEW_ID = "data-jex-ml-id",   //서버번역일때, script에서 다국어 data를 가져오는 view id를 알려주기위해 함께 내려줌.
+        _ML_TP = {
+            HTML : "V",
+            JS   : "J"
+        },
+        _ML_ACTION = {
+            LOAD: 'LOAD',       //해당 언어에 대한 다국어 데이터를 반환하며, 쿠키에 언어코드는 set 하지 않는다.
+            SET : 'SET',        //해당 언어에 대한 다국어 데이터를 반환하며, 쿠키에 언어코드도 set
+            INSERT : 'INSERT'   //page에 대한 다국어 key insert
+        },
+        _ML_ATTR_CODE_GROUP = "data-jex-code-group",
+        _ML_ATTR_CODE_KEY = "data-jex-code-key",
+        _ML_ATTR_CODE_TEPLATE = "data-jex-code-tpl",
+        _IS_ML_DEBUG = false,
+        _IS_LOADED = false,  //local단어일때는 ajax호출하지 않음. false인경우는 한번도 다국어정보를 read 하지 않은 상태
+        _CACHED_ML_DATA = {},
+        _LOCAL_JS_ML_DATA = {},
+        _LOAD_VIEW_LIST = [];
+    
+    //local 다국어 정보를 서버에서 주는 경우는 이미 local 다국어 정보를 가지고 있음.
+    var _LOCAL_HTML_ML_DATA = null;
+    try{
+        _LOCAL_HTML_ML_DATA  = htmlOriginalValues;
+        jexjs.debug("    jexjs.plugin.ml : Local Data from Server : "+ JSON.stringify(_LOCAL_HTML_ML_DATA));
+    }catch (e){
+        _LOCAL_HTML_ML_DATA = {};
+    }
+        
+    $indicator = jexjs.plugin("indicator",{ modal : true});
+    
+    if ( _globalMl.settings ){
+        jexjs.extend( _settings, _globalMl.settings);
+    }
+    
+    if ( _globalMl.event ){
+        jexjs.extend( _FUNC, _globalMl.func );
+    }
+    
+    function setLocalLang( localLang ){
+        jexjs.cookie.set("JEX_LOCAL_LANG", localLang);
+    }
+    
+    function setLang ( lang ){
+        jexjs.cookie.set("JEX_LANG", lang);
+    }
+    
+    /**
+     * 초기화
+     */
+    function _init( settings ){
+
+        _setSettings( settings );
+        
+        //meta 태그에 view id가 있는경우
+        var headNodes = document.head || document.getElementsByTagName("head")[0]; // ie8 document.head 없음.
+        var metaNode = headNodes.querySelector("meta["+_ML_ATTR_META_VIEW_ID+"]");
+        if ( null !== metaNode ) {
+            _viewId = metaNode.getAttribute( _ML_ATTR_META_VIEW_ID );
+            jexjs.debug("    jexjs.plugin.ml : init : meta tag view id load ::"+ _viewId);
+        }
+        
+        try {
+            jexjs.debug("    jexjs.plugin.ml : init : isUseHeader :" + _settings.isUseHeader);
+            jexjs.debug("    jexjs.plugin.ml : init : isUseBody :" + _settings.isUseBody);
+            jexjs.debug("    jexjs.plugin.ml : init : contextPath :" + _settings.contextPath);
+            jexjs.debug("    jexjs.plugin.ml : init : prefix :" + _settings.prefix);
+            jexjs.debug("    jexjs.plugin.ml : init : url :" + _settings.url);
+            jexjs.debug("    jexjs.plugin.ml : init : suffix :" + _settings.suffix);
+            jexjs.debug("    jexjs.plugin.ml : init : isTranslateLocal :" + _settings.isTranslateLocal);
+            jexjs.debug("    jexjs.plugin.ml : init : isTranslateServer :" + _settings.isTranslateServer);
+        } catch(e) {
+            
+        }
+        //  Dom Element에서 local 단어 추출하여 저장
+        //  - 서버에서 번역을 해주지 않는 경우.
+        //  - 서버에서 번역을 해주는 모드인데, local 언어인경우는 local 단어 추출
+        if ( !_settings.isTranslateServer || ( _settings.isTranslateServer && jexjs.getLang() == jexjs.getLocalLang()) ){
+            //local 단어 load
+            _saveLocalMl();
+        }
+        //local단어가 아닌경우만 해당 언어의 다국어정보 load
+        if ( jexjs.getLang() != jexjs.getLocalLang() ) {
+            _loadViewData();
+        }
+        //TODO 초기설정과 chagne를 분리하게되면 _initChange를 public 함수로 변경하면됨.
+        //현재 언어로 번역
+        _initChange();
+    }
+    
+    function _initChange() {
+        
+        if ( "function" == typeof _FUNC.beforeInit){
+            _FUNC.beforeInit.call(undefined,  {
+                'LANG' : jexjs.getLang(),
+                'indicator' : $indicator
+            });
+        }
+        
+        function _afterInitFn() {
+            if ( "function" == typeof _FUNC.afterInit ) {
+                _FUNC.afterInit.call(undefined , {
+                        'LANG' : jexjs.getLang(),
+                        'indicator' : $indicator
+                });
+            }
+        }
+       
+        // 서버에서 번역을 해주는 경우, param 만 값 치환
+        if ( _settings.isTranslateServer ){
+            _changeDom( _CONST.TRANSLATE_MODE_N, jexjs.getLang(), _afterInitFn );
+        }
+        // 서버에서 번역을 해주지 않는 경우
+        else {
+            if ( !jexjs.empty(_CACHED_ML_DATA) ){   //local언어가 아닌경우 해당언어로 dom 변경
+                _changeDom( _CONST.TRANSLATE_MODE_Y, jexjs.getLang(), _afterInitFn );
+            }else{  // local 단어 인경우
+                //html에 parameter 를 사용하는 경우는 local단어인경우도 변환작업 필요.
+                if( _settings.isTranslateLocal ){
+                    _changeDom( _CONST.TRANSLATE_MODE_N, jexjs.getLang(), _afterInitFn );
+                }else{
+                    _afterInitFn();
+                }
+            }
+        }
+    }
+    
+    //settings
+    function _setSettings( settings ){
+        var lang = jexjs.getLang();
+        var localLang = jexjs.getLocalLang();
+        
+        // local단어와 기본언어 단어가 쿠키에없거나 parameter에 없으면, 기본값은 KO;
+        if ( jexjs.empty(lang)){
+            if( settings && settings.LANG ){
+                setLang( settings.LANG);
+            }else{
+                setLang("KO");
+            }
+        }
+        if ( jexjs.empty(localLang) ){
+            if( settings && settings.LOCAL_LANG ){
+                setLocalLang( settings.LOCAL_LANG);
+            }else{
+                setLocalLang("KO");
+            }
+        }
+        
+        if ( settings ){
+            if ( settings.jexFunction ){
+                var jexFunction = settings.jexFunction;
+                for(var fnNm in jexFunction){
+                    if ( "function" == typeof jexFunction[fnNm]){
+                        _FUNC[fnNm] = jexFunction[fnNm];
+                    }
+                }
+                delete settings.jexFunction;
+            }else if (settings.LANG){
+                delete settings.LANG;
+            }else if (settings.LOCAL_LANG){
+                delete settings.LOCAL_LANG;
+            }
+        }
+        
+        jexjs.extend( _settings, settings );
+    }
+    
+    //Dom Element의 text 정보를 저장
+    function _saveLocalMl(){
+        
+        if ( _settings.isUseHeader ){
+            try{
+                var headNodes = document.head || document.getElementsByTagName("head")[0]; // ie8 document.head 없음.
+                var localHeadNodes = headNodes.cloneNode(true);
+                _readRocalMl( localHeadNodes.childNodes );
+            }catch(e){
+                jexjs.debug("    jexjs.plugin.ml : _saveLocalMl read head error");
+            }
+        }
+        
+        if ( _settings.isUseBody ){
+            var bodyNodes = document.body,
+            localBodyNodes = bodyNodes.cloneNode(true);
+            _readRocalMl( localBodyNodes.childNodes );
+        }
+    }
+    
+    //local 단어정보를 메모리에 저장
+    function _readRocalMl( nodes ){
+        var node = null,
+        mlAttrNm = null,
+        mlAttrValue = null,
+        subAttr = null,
+        mlValue = null;
+        for(var i=0, len = nodes.length; i < len; i++){
+            node = nodes[i];
+            if ( 1 == node.nodeType ){  //element 인경우만 처리
+                if ( node.hasChildNodes() ){
+                    _readRocalMl( node.childNodes );
+                }
+                for(var j=0, atts = node.attributes, attsLen = atts.length; j < attsLen; j++){
+                    mlAttrNm = atts[j].name;
+                    mlAttrValue = atts[j].value;
+
+                    if( "" === mlAttrValue.trim() ){    //다국어 key 가 공백이면 무시
+                        continue;
+                    }
+                    
+                    if ( mlAttrNm == _ML_ATTR ) {   //다국어 key
+                        mlValue = node.innerHTML;
+                        if ( jexjs.getLocalLang() == jexjs.getLang() ){    //local언어인경우 local단어 없으면, ajax 호출
+                            if ( "" === mlValue.trim() ){
+                                var word = getHtmlMlData( null, mlAttrValue, jexjs.getLang() );
+                                if (jexjs.empty(word)){
+                                    jexjs.debug("    jexjs.plugin.ml : _readRocalMl : "+ mlAttrValue +" 다국어 key의 local단어가 없습니다. 성능개선을 위해 local단어를 추가해주세요.");
+                                    _loadViewData();
+                                }
+                            }
+                        }
+                        _LOCAL_HTML_ML_DATA[ mlAttrValue ] = node.innerHTML;
+                    } else if( _ML_ATTR_OPT_DYNAMIC != mlAttrNm && mlAttrNm.startsWith( _ML_ATTR ) ) {   //attribute 다국어 key
+                        subAttr = mlAttrNm.substr(_ML_ATTR.length + 1);
+                        _LOCAL_HTML_ML_DATA[ mlAttrValue ] = node.getAttribute(subAttr);
+                    }
+                }
+            }
+        }
+    }
+    
+    // domId 나 html contents를 parameter로 받아 다국어 번역된 contents를 return 해 줍니다.
+    // display 언어가 local단어와 동일하면 번역하지 않습니다.
+    function _translateHtml( p_contents, option ){
+        var contents;
+        var newContents;
+        var async = option.async;
+        
+        //sync 인경우만 clone 하여 사용
+        if ( !async ) {
+            if ( jexjs.isNull( p_contents.childNodes ) ){
+                newContents = jexjs.$(p_contents).clone(true);
+            }else{
+                newContents = jexjs.$(p_contents).clone(true)[0];
+            }
+        }else{
+            newContents = p_contents;
+        }
+        
+        if ( jexjs.isNull( newContents.childNodes ) ){
+            _readRocalMl( newContents );
+            //local언어가 아닌경우
+            if ( jexjs.getLocalLang() != jexjs.getLang() ){
+                _changeDomNodes( _CONST.TRANSLATE_MODE_Y, newContents , jexjs.getLang() );
+            }//local언어인경우
+            else{
+                if ( _settings.isTranslateLocal ){
+                    _changeDomNodes( _CONST.TRANSLATE_MODE_Y, newContents , jexjs.getLang() );
+                }
+            }
+        }else{
+            _readRocalMl( newContents.childNodes );
+            //local언어가 아닌경우
+            if ( jexjs.getLocalLang() != jexjs.getLang() ){
+                _changeDomNodes( _CONST.TRANSLATE_MODE_Y, newContents.childNodes , jexjs.getLang() );
+            }//local언어인경
+            else{
+                if ( _settings.isTranslateLocal ){
+                    _changeDomNodes( _CONST.TRANSLATE_MODE_Y, newContents.childNodes , jexjs.getLang() );
+                }
+            }
+        }
+        return newContents;
+    }
+    
+    //언어변경 이벤트 발생시
+    function _change( lang, opt ){
+
+        var param = {
+                'LANG' :lang,
+                'indicator' : $indicator
+        };
+        
+        if ( "function" == typeof _FUNC.beforeChange ){
+            _FUNC.beforeChange.call(undefined, param);
+        }
+        
+        function fn(){
+            var localLang = jexjs.getLocalLang();
+            
+            if ( localLang != lang && jexjs.empty( _CACHED_ML_DATA[ lang ] ) ){
+                _loadViewData( lang );
+                if ( 0 < _LOAD_VIEW_LIST.length){
+                    for(var i=0 ; i < _LOAD_VIEW_LIST.length; i++){ // 다른 load view가 load 된적이 있는 경우는 언어변경시에도 함께 load
+                        _addLoadView(_LOAD_VIEW_LIST[i]);
+                    }
+                }
+            }else{
+                setLang( lang );    //이미 load된 언어인경우 언어정보만 쿠키에 저장
+            }
+            _changeDom( _CONST.TRANSLATE_MODE_Y, lang, function(){
+                jexjs.loader.reload();
+                if ( "function" == typeof _FUNC.afterChange ){
+                    _FUNC.afterChange.call(undefined , param);
+                }
+            });
+        }
+        
+        if ( opt && opt.delay ){
+            setTimeout( fn , opt.delay );
+        }else{
+            fn();
+        }
+    }
+    
+    //언어코드에 대한 정보로 Dom 변경
+    function _changeDom( isTranslate, lang, callback ){
+          if ( _settings.isUseHeader ){
+              var headNodes = document.head || document.getElementsByTagName("head")[0]; // ie8 document.heade 없음.
+              _changeDomNodes( isTranslate, headNodes.childNodes , lang );
+          }
+        
+          if ( _settings.isUseBody ){
+              var bodyNodes = document.body;
+              _changeDomNodes( isTranslate, bodyNodes.childNodes, lang );
+          }
+              
+          if ( "function" == typeof callback ){
+              callback();
+          }
+//        var headNodes, newHeadNodes, bodyNodes, newBodyNodes;
+//        
+//        //ie8 인경우 
+//        jexjs.debug("jexjs.plugin.ml [ getHtmlMlData ] : isMsie=" +jexjs.getBrowser().msie+" , version="+ jexjs.getBrowser().version );
+//        if ( jexjs.getBrowser().msie && "8.0" == jexjs.getBrowser().version ){
+//            if ( _settings.isUseHeader ){
+//                headNodes = document.head || document.getElementsByTagName("head")[0]; // ie8 document.heade 없음.
+//                _changeDomNodes( headNodes.childNodes , lang );
+//            }
+//            if ( _settings.isUseBody ){
+//                bodyNodes = document.body;
+//                _changeDomNodes( bodyNodes.childNodes, lang );
+//            }
+//        }
+//        //ie8 외의 경우
+//        else {
+//            if ( _settings.isUseHeader ){
+//                headNodes = document.head || document.getElementsByTagName("head")[0]; // ie8 document.heade 없음.
+//                newHeadNodes = jexjs.$("head").clone(true)[0];
+//                _changeDomNodes( newHeadNodes.childNodes , lang );
+//            }
+//            if ( _settings.isUseBody ){
+//                bodyNodes = document.body;
+//                newBodyNodes = jexjs.$("body").clone(true)[0];
+//                _changeDomNodes( newBodyNodes.childNodes, lang );
+//            }
+//            if ( _settings.isUseHeader ){
+//                headNodes.parentNode.replaceChild(newHeadNodes, headNodes);
+//            }
+//            if ( _settings.isUseBody ){
+//                bodyNodes.parentNode.replaceChild(newBodyNodes, bodyNodes);
+//            }
+//        }
+    }
+    
+    function _changeDomNodes( isTranslate, newNodes, lang , parentCodeGroup){
+
+        var node = null,
+        attrNm = null,
+        attrValue = null,
+        subAttr = null,
+        insertViewId = null,
+        isDynamic = null,
+        codeManager = _settings.codeManager,
+        codeTemplate = null,
+        codeGroup = parentCodeGroup,
+        mlWord = null,
+        params = {};
+        
+        for(var i=0, len = newNodes.length; i < len; i++){
+            node = newNodes[i];
+            if ( 1 == node.nodeType ){  //element 인경우만 처리
+                
+                //view Id
+                if ( node.hasAttribute( _ML_ATTR_VIEW_ID )){
+                    insertViewId = node.getAttribute( _ML_ATTR_VIEW_ID );
+                } else if ( node.hasAttribute( _ML_ATTR_NOMAL_VIEW_ID )){   //사용하지 말것. view id와 동일한처리
+                    insertViewId = node.getAttribute( _ML_ATTR_NOMAL_VIEW_ID );
+                }else{
+                    insertViewId = null;
+                }
+                
+                if ( isTranslate ) {    // 번역이 필요한 경우만 필요
+                    //codeGroup 있는 경우
+                    if ( node.hasAttribute( _ML_ATTR_CODE_GROUP ) ){
+                        codeGroup = codeManager.getCode(node.getAttribute( _ML_ATTR_CODE_GROUP ));
+                    }
+                    
+                    //code template 확인
+                    if ( node.hasAttribute( _ML_ATTR_CODE_TEPLATE )){
+                        codeTemplate = node.getAttribute( _ML_ATTR_CODE_TEPLATE );
+                    }
+                }
+                //auto insert 여부 확인
+                if ( node.hasAttribute( _ML_ATTR_OPT_DYNAMIC )){
+                    isDynamic = ( "true" == node.getAttribute( _ML_ATTR_OPT_DYNAMIC ) ? true : false );
+                }
+                
+                for(var j=0, atts = node.attributes, attsLen = atts.length; j < attsLen; j++){
+                    attrNm = atts[j].name;
+                    attrValue = atts[j].value;
+                    
+                    if ( "" === attrValue.trim() ) continue;    //다국어 key에 대한 값이 없는 경우 무시
+                    
+                    if ( attrNm == _ML_ATTR ) { //다국어 key
+                        if ( node.hasAttribute( _ML_ATTR_PARAM ) ){
+                            params = node.getAttribute( _ML_ATTR_PARAM );
+                            if ( jexjs.isJSONExp( params ) ){
+                                params = JSON.parse( params );
+                            }else{
+                                params = {};
+                            }
+                        }
+                        mlWord = getHtmlMlData( insertViewId, attrValue , lang, isDynamic, params );
+                        
+                        if ( isTranslate || ( !isTranslate && !jexjs.empty(params) ) ) {    // 번역을 하지 않아도 되는 경우는 param이 있는 경우만 다시 변경
+                            node.innerHTML = mlWord;
+                        }
+                    }
+                    else if( _ML_ATTR_OPT_DYNAMIC != attrNm && attrNm.startsWith( _ML_ATTR ) ) { //attribute 다국어 key
+                        subAttr = attrNm.substr( _ML_ATTR.length + 1);
+                        if ( node.hasAttribute( _ML_ATTR_PARAM +"-" + subAttr ) ){
+                            params = node.getAttribute( _ML_ATTR_PARAM +"-" + subAttr );
+                            if ( jexjs.isJSONExp( params ) ){
+                                params = JSON.parse( params );
+                            }else{
+                                params = {};
+                            }
+                        }
+                        
+                        mlWord = getHtmlMlData( insertViewId, attrValue , lang, isDynamic, params );
+                        
+                        if ( isTranslate || ( !isTranslate && !jexjs.empty(params) ) ) {    // 번역을 하지 않아도 되는 경우는 param이 있는 경우만 다시 변경
+                            node.setAttribute(subAttr, mlWord);
+                        }
+                    }else if ( isTranslate && attrNm == _ML_ATTR_CODE_KEY ){  // code key
+                        if ( codeGroup ){
+                            if ( codeTemplate ){
+                                var codeData = { 
+                                     'KEY' : attrValue,
+                                    'CODE': codeGroup[attrValue]
+                                };
+                                setNodeData( node, $template.render(codeTemplate, codeData ));
+                            }else{
+                                setNodeData( node, codeGroup[attrValue]);
+                            }
+                        }
+                    }
+                }
+                
+                if ( node.hasChildNodes() ){
+                    _changeDomNodes( isTranslate, node.childNodes, lang, codeGroup );
+                }
+            }
+        }
+    }
+    
+    //
+    function getNodeData ( node ){
+        if( "input" == node.tagName.toLowerCase() && "text" == node.getAttribute("type")){
+            return node.value;
+        }else{
+            return node.innerHTML;
+        }
+    }
+    
+    //코드인경우 사용
+    function setNodeData ( node, value ){
+        if( "input" == node.tagName.toLowerCase() && "text" == node.getAttribute("type")){
+            node.value = value;
+        }else{
+            node.innerHTML = value;
+        }
+    }
+    
+    /**
+     * html local key 를 가져옵니다.
+     */
+    function _getHtmlLocalData( key ){
+        return _LOCAL_HTML_ML_DATA[ key ];
+    }
+    
+    /**
+     * HTML 캐시된 단어를 가져옵니다.
+     * LANG 단어 > 사전의 LOCAL_LANG의 단어
+     */
+    function _getHtmlCachedData( key, lang ){
+        var mlData = _CACHED_ML_DATA[lang];
+        var htmlData = {};
+        
+        if ( mlData &&  mlData[_ML_TP.HTML] ) {
+            htmlData = mlData[_ML_TP.HTML];
+            if (htmlData[key]) {
+                return htmlData[key];
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * javascript local단어를 저장합니다.
+     */
+    function _setJsLocalData( key, localWrd ){
+        _LOCAL_JS_ML_DATA[ key ] = localWrd;
+        jexjs.debug("    jexjs.plugin.ml : setJsLocalData :" + JSON.stringify(_LOCAL_JS_ML_DATA));
+    }
+    
+    /**
+     * javascript local단어를 가져옵니다.
+     */
+    function _getJsLocalData( key ){
+        return _LOCAL_JS_ML_DATA[ key ];
+    }
+        
+    /**
+     * javascript cacheed된 data를 가져옵니다.
+     * LANG 단어 > 사전의 LOCAL_LANG의 단어
+     */
+    function _getJsCachedData( key, lang){
+        var mlData = _CACHED_ML_DATA[lang];
+        var jsData = {};
+        if ( mlData && mlData[_ML_TP.JS] ) {
+            jsData = mlData[_ML_TP.JS];
+            if (jsData[key]) {
+                return jsData[key];
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * key에 대한 HTML data 반환
+     * local언어인경우 local 사용
+     * 그외의 언어인경우
+     * HTML LANG 사전단어 > HTML LOCAL 단어 > HTML LOCAL_LANG에 대한 사전단어 > JS LANG 사전단어 > JS LOCAL 단어 > JS LOCAL_LANG에 대한 사전단어
+     */
+    function getHtmlMlData ( insertViewId, mlKey, lang, isDynamic, params ) {
+        
+        var localLang = jexjs.getLocalLang();
+        insertViewId = insertViewId || _FUNC.setInsertViewId.call(undefined, { 'ML_ID': mlKey, 'ML_TP':_ML_TP.HTML }) || _viewId; 
+        var localWrd = _getHtmlLocalData( mlKey );
+        var word = null;
+        var mlDataOfLang = _CACHED_ML_DATA[ lang ];
+        
+        if ( jexjs.isNull( mlDataOfLang ) && localLang != lang ) {
+            jexjs.debug("    jexjs.plugin.ml : getHtmlMlData :" + lang +" 언어가 load 되어있지 않습니다.");
+        }
+        
+        word  = _getHtmlCachedData( mlKey, lang ) || _getHtmlCachedData( mlKey, localLang ) || _getJsCachedData( mlKey, lang ) || _getJsCachedData( mlKey, localLang ) ;
+        
+        //다국어 정보를 load 했지만, 다국어 ID가 없는 경우 id insert.
+        //일단 dynamic attribute 있는 경우에는 insert 안함.
+        if ( _IS_LOADED && jexjs.isNull( word ) ){
+            var isInsertMlKey = ( !jexjs.isNull(isDynamic)? !isDynamic : _FUNC.isInsertMlKey.call(undefined, { 'VIEW_ID':insertViewId, 'ML_ID': mlKey, 'ML_TP':_ML_TP.HTML } ));
+            if ( isInsertMlKey ){
+                _insertMlKey( insertViewId, _ML_TP.HTML, mlKey, localWrd, lang, isDynamic );
+            }else{
+                jexjs.debug("    jexjs.plugin.ml : getHtmlMlData : viewId=" +insertViewId+" ,mlkey="+ mlKey+" , localwrd="+localWrd+" 를 db에 insert 요청안함");
+            }
+        }
+        
+        // local 언어인경우 HTML에 등록된 단어 사용, 없는 경우 사전의 local단어 , js local data
+        if( lang == localLang ){
+             word = _getHtmlLocalData( mlKey ) || _getHtmlCachedData( mlKey, localLang ) || _getJsLocalData( mlKey ) || _getJsCachedData( mlKey, localLang );
+        }
+        // local 언어가 아닌경우, 해당언어에 등록된 단어 반환. but, 없는경우 local언어 단어 사용.
+        else {
+            word  = _getHtmlCachedData( mlKey, lang ) || _getJsCachedData( mlKey, lang );
+            if ( jexjs.isNull(word) ){
+                word =  _getHtmlLocalData( mlKey ) ||  _getHtmlCachedData( mlKey, localLang ) || _getJsLocalData( mlKey ) ||  _getJsCachedData( mlKey, localLang );
+            }
+        }
+        
+        //단어에 parameter가 있는 경우 render
+        
+        if ( !jexjs.empty(params) ){
+            word = _getRenderHtml( word, params );
+        }
+        
+        return word;
+    }
+    
+    /**
+     * html에서는 #{ ID } 표현이 불가능하기때문에, #[ ID ] 사용
+     */
+    function _getRenderHtml( template , param){
+        var startVar = '#[',
+            endVar = ']',
+            changeStartVar = '#{',
+            changeEndVar = '}',
+            i_start,
+            i_end,
+            result = '',
+            cursor=0;
+        
+        while (( i_start = template.indexOf(startVar, cursor)) != -1) {
+            
+            i_end = template.indexOf(endVar, i_start);
+            if (i_end === -1) {
+                jexjs.error("  template] render error : can not found ']' ");
+            }
+            result += template.substring(cursor, i_start);
+            result = result.concat( changeStartVar );
+            result += template.substring(i_start + startVar.length, i_end + endVar.length - 1);
+            result = result.concat( changeEndVar );
+            cursor = i_end + 1;
+        }
+        
+        result += template.substring(cursor);
+        return getRender( result , param );
+    }
+    /**
+     * key에 대한 JS data 반환
+     * 해당언어에 다국어 id가 없는 경우 debug 모드인경우 다국어 id insert 하고 다국어정보 다시 불러옴.
+     * 우선순위 : local 언어인경우 - parameter로 입력받은 local단어 -> 사전의 local 언어의 단어
+     * 우선순위 : local 언어아닌경우 - 현재 언어의 단어 -> parameter로 입력받은 local단어 > 사전의 local 언어의 단어
+     */
+    function getJsMlData ( mlKey, _localWrd, _param, _option ){
+        
+        var localWrd = null, param = null, option = null;
+        
+        if ("string" == typeof _localWrd ){
+            localWrd = _localWrd;
+            
+            param = _param;
+            option = _option;
+            _setJsLocalData( mlKey, localWrd );
+        }else{
+            param = _localWrd;
+            option = _param;
+        }
+        
+        if( jexjs.isNull(option)){
+            option = {};
+        }
+        
+        var lang = option.LANG || jexjs.getLang();
+        var localLang = jexjs.getLocalLang();
+        var word = null;
+        var mlDataOfLang = _CACHED_ML_DATA[ lang ];
+        var insertViewId = null;
+        
+        if ( jexjs.isNull( mlDataOfLang ) && localLang != lang ){
+            jexjs.debug("    jexjs.plugin.ml : getJsMlData :" + lang +" 언어가 load 되어있지 않습니다.");
+        }
+        
+        word  = _getJsCachedData( mlKey, lang ) || _getJsCachedData( mlKey, localLang );
+        
+        //다국어 정보를 load 했지만, 다국어 ID가 없는 경우 id insert
+        if ( _IS_LOADED && jexjs.isNull( word ) ){
+            insertViewId = option.VIEW_ID || option.NOMAL_VIEW_ID || _FUNC.setInsertViewId.call(undefined, { 'ML_ID': mlKey, 'ML_TP':_ML_TP.JS }) || _viewId; 
+            if ( _FUNC.isInsertMlKey.call(undefined, { 'VIEW_ID':insertViewId, 'ML_ID': mlKey, 'ML_TP':_ML_TP.JS } ) ){
+                _insertMlKey( insertViewId, _ML_TP.JS, mlKey, localWrd, lang );
+            }else{
+                jexjs.debug("    jexjs.plugin.ml : getJsMlData : " + insertViewId + " | " + mlKey +" 를 db에 insert 요청안함");
+            }
+        }
+        
+        // local언어인경우
+        if ( lang == localLang ){
+            word = _getJsLocalData( mlKey );
+        }// local 언어가 아닌경우
+        else{
+            word  = _getJsCachedData( mlKey , lang ) || _getJsLocalData( mlKey ) || _getJsCachedData( mlKey , localLang );
+        }
+        
+        return word ? getRender( word , param ): null;
+   }
+    
+    /**
+     * lang이 없는 경우는 localLang 데이터 반환, 있는 경우는 해당언어 데이터 반환, "ALL"인경우 전체 데이터 반환
+     * @param lang 언어코드
+     */
+    function _loadViewData( _lang, p_action ){
+        
+        var lang = _lang || jexjs.getLang();
+        
+        //언어코드 없는 경우는 local 언어에 대한 다국어정보를 반환
+        var action = p_action || _ML_ACTION.SET;
+        var jaxAjax = jexjs.createAjaxUtil( _settings.url );
+        jaxAjax.set("ACTION", action );
+        jaxAjax.set("VIEW_ID", _viewId);
+        if ( !jexjs.empty(lang) ){
+            jaxAjax.set("LANG", lang);  //ALL로 보내면 전체 언어 가져옮.
+        }
+        if ( !jexjs.isNull( _settings.prefix ) ){
+            jaxAjax.setting('prefix', _settings.prefix  );
+        }
+        if ( !jexjs.isNull( _settings.suffix ) ){
+            jaxAjax.setting('suffix', _settings.suffix  );
+        }
+        if ( !jexjs.isNull( _settings.contextPath ) ){
+            jaxAjax.setting('contextPath', _settings.contextPath  );
+        }
+        jaxAjax.setting('async', false );
+        jaxAjax.setIndicator(false);
+        jaxAjax.execute(function(data) {
+            jexjs.debug("    jexjs.plugin.ml : _loadViewData:" + _viewId + " 다국어 정보 "+ lang +" 요청!!");
+            jexjs.debug("    jexjs.plugin.ml : data:" + JSON.stringify(data));
+            
+            _IS_LOADED = true; 
+            if ( data.ML_DATA ) {
+                if ( data.ML_DATA[ data.LANG ] ){
+                    _setCacheData( data.ML_DATA[ data.LANG ] , data.LANG );
+                }
+                if ( jexjs.getLocalLang() != data.LANG &&  data.ML_DATA[ jexjs.getLocalLang() ] ){
+                    _setCacheData( data.ML_DATA[ jexjs.getLocalLang() ] , jexjs.getLocalLang() );
+                }
+            }
+            
+            if ( action == _ML_ACTION.SET){
+                if ( data.LANG ) setLang( data.LANG );
+            }
+            
+            if( data.debug ){
+                _IS_ML_DEBUG = data.debug;
+            }else{
+                _IS_ML_DEBUG = false;
+            }
+        });
+    }
+    
+    //현재 viewid 페이지 외에 view를 load 합니다.
+    function _addLoadView( viewId ){
+        _addLoadViewList( viewId ); //추가적으로 load된 view가 있는경우,
+        var lang = jexjs.getLang();
+        var jaxAjax = jexjs.createAjaxUtil( _settings.url );
+        jaxAjax.set("ACTION", _ML_ACTION.LOAD );
+        jaxAjax.set("VIEW_ID", viewId);
+        jaxAjax.set("LANG", lang);  //ALL로 보내면 전체 언어 가져옮.
+        if ( !jexjs.isNull( _settings.prefix ) ){
+            jaxAjax.setting('prefix', _settings.prefix  );
+        }
+        if ( !jexjs.isNull( _settings.suffix ) ){
+            jaxAjax.setting('suffix', _settings.suffix  );
+        }
+        if ( !jexjs.isNull( _settings.contextPath ) ){
+            jaxAjax.setting('contextPath', _settings.contextPath  );
+        }
+        jaxAjax.setting('async', false );
+        jaxAjax.setIndicator(false);
+        jaxAjax.execute(function(data) {
+            jexjs.debug("    jexjs.plugin.ml : _addViewLoad:" + viewId + " 다국어 정보 "+ lang +"추가 요청!!");
+            jexjs.debug("    jexjs.plugin.ml : add data:" + JSON.stringify(data));
+            if ( data.ML_DATA ) {
+                if ( data.ML_DATA[ data.LANG ] ){
+                    _setCacheData( data.ML_DATA[ data.LANG ] , data.LANG );
+                }
+                if ( jexjs.getLocalLang() != data.LANG &&  data.ML_DATA[ jexjs.getLocalLang() ] ){
+                    _setCacheData( data.ML_DATA[ jexjs.getLocalLang() ] , jexjs.getLocalLang() );
+                }
+            }
+        });
+    }
+    
+    //load한 다국어 정보를 cache 합니다.
+    function _setCacheData( data , lang ){
+        
+        if ( !_CACHED_ML_DATA[lang] ){
+            _CACHED_ML_DATA[lang] = jexjs.clone( data );
+        } else{
+            jexjs.extend( _CACHED_ML_DATA[lang], data );
+        }
+        
+        // View or JS가 하나도 없는 경우 빈 object 생성.
+        if( jexjs.isNull( _CACHED_ML_DATA[lang][_ML_TP.HTML] ) ){
+            _CACHED_ML_DATA[lang][_ML_TP.HTML] = {};
+        }
+        if( jexjs.isNull( _CACHED_ML_DATA[lang][_ML_TP.JS] ) ){
+            _CACHED_ML_DATA[lang][_ML_TP.JS] = {};
+        }
+    }
+    
+    /**
+     * 다국어 debug 모드인경우, view Load 할때 or js key 호출시 등록되지 않은 다국어 key 인경우 DB에 자동으로 insert 한다.
+     */
+   function _insertMlKey ( insertViewId, mlTp, mlKey, localWrd, lang, isDynamic ){
+       jexjs.debug("    jexjs.plugin.ml : _insertMlKey : debug=" + _IS_ML_DEBUG );
+       
+       if ( _IS_ML_DEBUG && !jexjs.empty(mlKey)){
+           jexjs.debug("    jexjs.plugin.ml : _insertMlKey : insertViewId="+insertViewId+", mltp="+mlTp+", mlKey=" + mlKey +" ,localWrd="+ localWrd +" 를 db에 insert 요청");
+           var jaxAjax = jexjs.createAjaxUtil( _settings.url );
+           jaxAjax.set("ACTION", _ML_ACTION.INSERT );
+           jaxAjax.set("ML_TP", mlTp );
+           jaxAjax.set("VIEW_ID", insertViewId);
+           jaxAjax.set("ML_ID", mlKey );
+           if( !jexjs.isNull( localWrd ) ){
+               jaxAjax.set("LOCAL_WRD", localWrd );
+           }
+           jaxAjax.set("CHG_YN", 'Y' );
+           jaxAjax.set("USR_REG_YN", 'Y' );
+           if ( !jexjs.isNull( _settings.prefix ) ){
+               jaxAjax.setting('prefix', _settings.prefix  );
+           }
+           if ( !jexjs.isNull( _settings.suffix ) ){
+               jaxAjax.setting('suffix', _settings.suffix  );
+           }
+           if ( !jexjs.isNull(_settings.contextPath) ){
+               jaxAjax.setting('contextPath', _settings.contextPath  );
+           }
+           jaxAjax.setIndicator(false);
+           jaxAjax.execute(function(data) {
+               jexjs.debug("    jexjs.plugin.ml : _insertMlKey : insertViewId="+insertViewId+", mltp="+mlTp+", mlKey=" + mlKey +" ,localWrd="+ localWrd +" 를 db에 insert");
+               _loadViewData( lang, _ML_ACTION.LOAD );
+           });
+       }
+   }
+   
+   function getRender( template , params ){
+       if ( params && "object" == typeof params ){
+           return $template.render( template , params );
+       }else{
+           return template;
+       }
+   }
+   
+   /**
+    * LOAD 된 VIEW LIST 목록에 view id를 추가합니다.
+    */
+   function _addLoadViewList( viewId ){
+       var isAlreadyIncludeView = false; 
+       if ( 0 === _LOAD_VIEW_LIST.length ){
+           _LOAD_VIEW_LIST.push(viewId);
+       }else{
+           for(var i=0; i < _LOAD_VIEW_LIST.length; i++){
+               if ( viewId == _LOAD_VIEW_LIST[i] ){
+                   isAlreadyIncludeView = true;
+                   break;
+               }
+           }
+           if( !isAlreadyIncludeView ){
+               _LOAD_VIEW_LIST.push(viewId);
+           }
+       }
+   }
+    
+    //TODO
+    function _getJsText( mlKey, lang ){
+        var originalText = getJsMlData( mlKey, param, lang );
+        return _toJsText( originalText );
+    }
+
+    //TODO
+    function _getHtmlText( mlKey, lang ){
+        var originalText = getHtmlMlData( mlKey, lang);
+        return _toHtmlText( originalText );
+    }
+    
+    //TODO
+    function _toHtmlText ( text ){
+        var htmlText = "";
+        //TODO 공백 -> &nbsp;
+        //TODO \n -> <br> (html) , <br /> (xhtml)
+        return text;
+    }
+    
+    //TODO
+    function _toJsText( text ){
+        var jsText = "";
+        //TODO &nbsp; -> 공백 
+        //TODO <br> (html) , <br /> (xhtml) -> \n
+        return text;
+    }
+    
+    return {
+        /**
+         * 객체 생성시 처리할 로직
+         */
+        init: function( settings ) {
+            _init( settings );
+        },
+        getViewId : function(){
+            return _viewId;
+        },
+        /**
+         * 함수를 추가합니다. 
+         * setViewId , beforeChange, afterChange, change function
+         */
+        addFunction : function(fnNm , fn ){
+            if ( "function" == typeof fn ){
+                _FUNC[fnNm] = fn ;
+            }
+        },
+        /**
+         * 언어코드에 다국어정보를 가져온뒤 Dom Element 변경
+         * @param lang 언어코드
+         */
+        change : function( lang, opt ){
+            _change(lang, opt);
+        },
+        /**
+         * 입력한 그대로의 값을 반환
+         * @param {string} mlKey 다국어 key
+         * @param {string} localWrd local단어
+         * @param {JSONObject} param
+         * @param {JSONObject} option { "VIEW_ID" : "COM_ID" };
+         * @example jexjs.plugin("ml").get("key1","{USR_NM} 님 안녕하세요.",{"USR_NM":"이름"}, { "VIEW_ID" : "login_0001_01" });
+         *  jexjs.plugin("ml").get("key1", {"USR_NM":"이름"}, { "VIEW_ID" : "login_0001_01" });
+         */
+        get : function ( mlKey, localWrd, param, option ){
+            return getJsMlData.apply(this, arguments );
+        },
+        /**
+         * 해당언어로 번역한 html을 반환합니다.
+         */
+        translateHtml : function( contents , opt ){
+            if ( !opt ){ opt = {};}
+            opt.async  = false;
+            return _translateHtml( contents, opt );
+        },
+        asyncTranslateHtml : function( contents , opt ){
+            if ( !opt ){ opt = {};}
+            opt.async  = true;
+            _translateHtml( contents, opt );
+        },
+        /**
+         * viewId를 load 합니다.
+         */
+        addLoadView: function( viewId ){
+            _addLoadView( viewId );
+        }
+        //,
+        /**
+         * js용 다국어 정보 반환
+         */
+//        getJsText : function( mlKey, param, lang ){
+//            return _getJsText( mlKey, param, lang );
+//        },
+        /**
+         * html용 다국어 정보 반환
+         */
+//        getHtmlText : function( mlKey, lang ){
+//            return _getHtmlText( mlKey, lang );
+//        }
+    };
+},true );
+
+/**
+ * 현재 display되고 있는 언어가 무엇인지 상관없이 프로젝트의 local언어가 무엇인지 반환한다. 
+ */
+jexjs.getLocalLang = function() {
+    return jexjs.cookie.get("JEX_LOCAL_LANG");
+};
+
+/**
+ * 현재 display되고 있는 언어가 무엇인지, 언어코드를 반환한다.
+ * 언어코드는 ISO 639-1 2bytes 언어코드를 따른다.
+ */
+jexjs.getLang = function() {
+    return jexjs.cookie.get("JEX_LANG");
+};
+
+/**
+ * 되도록 사용하지 말것!!
+ * 씨티에서만 사용.
+ * - 언어버튼 눌렀을때 location 후 해당 언어로 표시해주기 위해 사용.
+ * - 쿠키만 변경하고 location  되지 않으면, display 된 값과 쿠키값이 다른경우가 발생하여 새로고침시 언어 변경될수있음
+ */
+jexjs.setLang = function( lang ) {
+    jexjs.cookie.set("JEX_LANG", lang);
+};
+
+/**
+ * Mobile인 경우 App에서 언어가 변경된 경우 Web으로 언어변경을 알린다.
+ * 
+ */
+jexjs.setChangeLangListener = function( fn ) {
+    if ( "function" == typeof fn ) {
+        if ( jexjs._isJexMobile() ) {
+            jexMobile._addCallFunctionFromNative( 'appcall_changeLang', fn);
+        } else {
+            jex.warn("jex.mobile.js 에서만 사용가능한 함수입니다.");
+        }
+    }
+};
+
+/**
+ * Mobile인 경우 Web에서 언어변경시 App으로 언어변경을 알린다.
+ */
+jexjs.noticeChangeLang = function ( lang ) {
+    if ( jexjs._isJexMobile() ) {
+        jexMobile.callNative('changeLang', {'JEX_LANG':lang });
+    } else {
+        jex.warn("jex.mobile.js 에서만 사용가능한 함수입니다.");
+    }
+};
+/* ==================================================================================
+ * pageloader
+ *
+ * jexjs.plugin('pageloader');
+ * ================================================================================== */
+
+jexjs.plugins.define('pageloader', function( ) {
+    
+    var _pageInfo = {
+        'onload': null,     //실제 onload 된경우 발생하는 이벤트
+        'reload' : null,    //실제로는 onload 되지않았지만, load 해야하는 경우 사용되는 event
+        'event' : null      //event
+    };
+    
+    function _onload(){
+        
+        var i, max;
+        var beforeOnload = jexjs.loader.getBeforeOnload();
+        var afterOnload = jexjs.loader.getAfterOnload();
+        var beforeReload = jexjs.loader.getBeforeReload();
+        var afterReload = jexjs.loader.getAfterReload();
+        
+        var fn = null;
+        for( i=0, max = beforeOnload.length; i < max; i++ ){
+            fn = beforeOnload.pop();
+            fn();
+        }
+        
+        for( i=0, max = beforeReload.length; i < max; i++ ){
+            beforeReload[i]();
+        }
+
+        // TODO queue 사용하도록 변경
+        if ( "function" == typeof _pageInfo.onload ){
+            _pageInfo.onload();
+        }
+        
+        if ( "function" == typeof _pageInfo.reload ){
+            _pageInfo.reload();
+        }
+        
+        for( i=0, max = afterReload.length; i < max; i++ ){
+            afterReload[i]();
+        }
+        
+        for( i=0, max = afterOnload.length; i < max; i++ ){
+            fn = afterOnload.pop();
+            fn();
+        }
+    }
+    
+    function _reload(){
+        if ( "function" == typeof _pageInfo.reload ){
+            _pageInfo.reload();
+        }
+    }
+    
+    return {
+        /**
+         * 객체 생성시 처리할 로직
+         */
+        init: function( pageInfo ) {
+            
+            var self = this;
+            jexjs.loader.pushInstance( this );
+            
+            for( var prop in pageInfo){
+                if ( undefined !== _pageInfo[prop] && "function" == typeof pageInfo[prop]){
+                    _pageInfo[prop] = pageInfo[prop];
+                }
+            }
+            
+            $(document).ready(function() {
+                self.onload();
+            });
+            
+            if ( "function" == typeof _pageInfo.event ){
+                _pageInfo.event.apply(this, arguments);
+            }
+        },
+        onload : function(){
+            _onload();
+        },
+        reload : function(){
+            _reload();
+        },
+        bindAllEvent : function(){
+            if ( "function" == typeof _pageInfo.event ){
+                _pageInfo.event.apply(this, arguments);
+            }
+        },
+        addEvent : function( selector, eventId, fn ){
+            jexjs.debug("    jexjs.plugin.pageloader : addEvent: "+selector+","+eventId);
+            
+            if( "function" == typeof fn){
+                //TODO 추후에 이벤트 jquery 대신에 script로 변경
+                jexjs.$( selector ).bind( eventId, function(){
+                   fn.apply(this, arguments); 
+                });
+                
+            }else{
+                jexjs.error("    jexjs.plugin.pageloader : addEvent : function만 event에 추가할 수 있습니다.");
+            }
+        }
+    };
+});
+
+jexjs.createPageloader = function( pageInfo ){
+    return jexjs.plugin("pageloader", pageInfo );
+};
+/* ==================================================================================
+ * queue 플러그인은 비동기로 실행되는 함수들을 순차적으로 호출하기 위한 용도로 사용된다.
+ *
+ * jexjs.plugin('queue');
+ * ================================================================================== */
+jexjs.plugins.define('queue', function() {
+
+    var jobList = [];
+    var isRun = false;
+
+    var _next = function( addedJob ) {
+        if (typeof addedJob === 'function') {
+            jobList.push( addedJob );
+        }
+
+        if ( !isRun ) {
+            if (jobList.length > 0) {
+                isRun = true;
+
+                var job = jobList.shift();
+                
+                job(function() {
+                    isRun = false;
+                    _next();
+                });
+            }
+        }
+    };
+
+    return {
+        next: function( job ) {
+            _next( job );
+            return this;
+        }
+    };
+});
+
+
+/* ==================================================================================
+ * screenshot 플러그인은 화면에 출력된 html document를 이미지파일로 렌더링해주는 플러그인이다.
+ *  - Dependency : html2canvas ( http://html2canvas.hertzen.com/ )
+ *
+ * jexjs.plugin('screenshot');
+ * ================================================================================== */
+jexjs.plugins.define('screenshot', function() {
+
+    function log(msg) {
+        return 'jexjs.plugins.screenshot : ' + msg;
+    }
+
+    if (!window.html2canvas) {
+    	if( jexjs.getBrowser().msie && 9 > parserFloat( jexjs.getBrowser().version) ){
+    		jexjs.error( log('screenshot 플러그인은 IE9+ 부터 지원합니다.') );
+    	}else{
+    		jexjs.error( log('html2canvas가 정의되지 않았습니다.') );
+    	}
+    }
+
+    function toCanvas( _callback, _scope ) {
+        var scope = _scope || document.body;
+
+        var doc = document.documentElement;
+        var left = (window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0);
+        var top = (window.pageYOffset || doc.scrollTop)  - (doc.clientTop || 0);
+
+        window.scrollTo(0, 0);
+
+        html2canvas(scope, {
+            logging: jexjs.global.debug || false
+        }).then(function(canvas) {
+            window.scrollTo(left, top);
+
+            if (typeof _callback === 'function') {
+                _callback( canvas );
+            }
+        });
+   }
+
+    function toImage( _callback, _scope ) {
+        toCanvas(function(canvas) {
+            var dataUrl = canvas.toDataURL();
+
+            var $img = $('<img>').attr('src', dataUrl);
+            if (typeof _callback === 'function') {
+                _callback( $img[0] );
+            }
+        }, _scope);
+    }
+
+    function toBlob( _callback, _scope ) {
+        toCanvas(function(canvas) {
+            var dataUrl = canvas.toDataURL();
+            var blob = dataURLtoBlob(dataUrl);
+
+            if (typeof _callback === 'function') {
+                _callback( blob );
+            }
+        }, _scope);
+    }
+
+    function dataURLtoBlob( dataURL ) {
+        var byteString = atob(dataURL.split(',')[1]);
+
+        var mimeString = dataURL.split(',')[0].split(':')[1].split(';')[0];
+
+        var ab = new ArrayBuffer(byteString.length);
+        var ia = new Uint8Array(ab);
+        for ( var i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+
+        return new Blob( [ia], { type: mimeString });
+    }
+
+    return {
+        toCanvas: function( callback, scope ) {
+            toCanvas(callback, scope);
+        },
+        toImage: function( callback, scope ) {
+            toImage(callback, scope);
+        },
+        toBlob: function( callback, scope ) {
+            toBlob(callback, scope);
+        }
+    };
+});
+
+/* ==================================================================================
+ * template 플러그인은 '문자열 템플릿'과 '변수 맵'을 통해서 하나의 완성된 '문자열'을 만들어주는 플러그인이다.
+ *
+ * var BANNER_TEMPLATE = 'Welcome to #{ title }. #{ loginUser.loginId }님이 로그인 하였습니다.';
+ * var params = {
+ *   'title': 'jexjs',
+ *   loginUser: {
+ *      'loginId': 'helloworld'
+ *   }
+ * }
+ *
+ * 일 때, 위 두 재료를 합하여
+ *
+ *      'Welcome to jexjs. helloworld님이 로그인하였습니다.
+ *
+ * 를 완성해준다.
+ *
+ *
+ * jexjs.plugin('template');
+ * ================================================================================== */
+jexjs.plugins.define('template', function() {
+
+    var NOT_FOUND_PARAM = 'undefined';
+
+    function render(_template, params) {
+        var
+            result = '',
+            cursor = 0, // work pointer
+            startVar = '#{',
+            endVar = '}'
+        ;
+
+        (function() {
+            var i_start,
+                i_end;
+
+            while (( i_start = _template.indexOf(startVar, cursor)) != -1) {
+                i_end = _template.indexOf(endVar, i_start);
+
+                if (i_end === -1) {
+                    jexjs.error("  template] render error : can not found '}' ");
+                }
+
+                result = result + _template.substring(cursor, i_start);
+
+                var this_var = _template.substring(i_start + startVar.length, i_end + endVar.length - 1);
+
+                /*jshint evil: true*/
+                var fn = new Function('localScope', 'return localScope.' + this_var);
+
+                var fnResult = NOT_FOUND_PARAM;
+                try {
+                    fnResult = fn(params);
+
+                    if ( 'undefined' == typeof fnResult) {
+                        fnResult = NOT_FOUND_PARAM;
+                    }
+                } catch(e) { }
+
+                result = result + fnResult;
+                cursor = i_end + 1;
+            }
+
+            result = result + _template.substring(cursor);
+        })();
+
+        return result;
+    }
+
+
+    return {
+        init: function( ) {
+
+        },
+
+        /**
+         * String 템플릿과 parameter를 합쳐서 완성된 String을 만든다.
+         *
+         * @method render
+         * @param {String} key || template
+         * @param {Object} params
+         * @returns {String}
+         */
+        render: function(_keyOrTemplate, params, option) {
+            if ( option ) {
+                if ( "string" == typeof option.NOT_FOUND_PARAM) {
+                    NOT_FOUND_PARAM = option.NOT_FOUND_PARAM;
+                }
+            }
+            var self = this,
+                template = self.get(_keyOrTemplate) || _keyOrTemplate;
+
+            return render(template, params);
+        },
+        renderSpace : function( _keyOrTemplate, params ) {
+            return this.render( _keyOrTemplate, params, {
+                'NOT_FOUND_PARAM' : ''
+            });
+        },
+        add: function(_id, _template) {
+            jexjs.global.plugins.template._list[_id] = _template;
+        },
+        get: function(_id) {
+            return jexjs.global.plugins.template._list[_id];
+        },
+        _registerFromDom: function() {
+            var self = this,
+                domTemplateList = document.getElementsByTagName("jex-template"),
+                scriptTemplateList = document.getElementsByTagName("script"),
+                i, length = domTemplateList.length
+                ;
+
+            for (i = 0; i < length; i++) {
+                var domTemplate = domTemplateList[i],
+                    domId = domTemplate.getAttribute('id'),
+                    domText = domTemplate.innerHTML.trim()
+                ;
+
+                self.add(domId, domText);
+            }
+
+            length = scriptTemplateList.length;
+            for( i = 0; i < length; i++) {
+                var scriptTemplate = scriptTemplateList[i],
+                    scriptId = scriptTemplate.getAttribute('id'),
+                    scriptType = scriptTemplate.getAttribute('type'),
+                    scriptText = scriptTemplate.innerHTML.trim()
+                ;
+
+                if (scriptId && scriptType === "text/jex-template") {
+                    self.add(scriptId, scriptText);
+                }
+            }
+        }
+    };
+}, true);
+
+//jexjs.global.plugins.template.tag = "jex-template"; 옵션
+jexjs.global.plugins.template._list = {};
+
+$(document).ready(function() {
+    jexjs.plugin("template")._registerFromDom();
+});
+
+})();

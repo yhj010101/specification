@@ -1,0 +1,3706 @@
+/**
+ * <pre>
+ * TCMC PROJECT
+ * @COPYRIGHT (c) 2009-2012 WebCash, Inc. All Right Reserved.
+ *
+ * @File Name      : trco_m001_01
+ * @File path    	 : TCMC_PT_STATIC/web/serp/js
+ * @author       	 : 관리자 ( jexframe@webcash.co.kr )
+ * @Description    :
+ * @History      	 : 20131104084813, 관리자
+ * </pre>
+ **/
+var _isTimer = false;
+var _ntfyCnt = 0;
+var _loading = null;
+var _datTrcoList = [];
+var tempTrocIdx = 0;
+var _thisConst = {
+	    PAGE_NAME : 'trco_m001_01_v6'
+	};
+var delTrcoPopup = "none";
+var _totlCnt = "";
+var _grid;        // 엑셀 그리드 변수
+var colOption;
+var btnOption;
+var _globalData = {
+	template: '',
+	excelGrid: []
+};
+var max_trsc_dt = '';
+var before_amt = '';
+var itil_crov_dt = '';
+var rcbl_sum = '';
+var upay_sum = '';
+var _eventId = "",_eventThis;
+var _eventNm = "";
+var _eventEmail = "";
+var _eventKey = "";
+var selectedGrpTypes = '';
+var selectedGrpTypesDisplay = [];
+
+new (Jex.extend({
+
+	onload:function() {
+		_this = this;
+		//--- todo onload start ---//
+		_loading = jex.plugin.get("JEX_LODING"); 
+		callTrcoGrp();
+		$("#chk_all").live("click", function() {
+		    $("input.chk").not(":disabled").prop("checked", $(this).is(":checked"));
+		});
+		btnOption = {
+    		report: {
+    			use: true,
+    			type: 'trco_1'
+    		},
+    		excel: {
+    			use: true,
+    			call_back: undefined,
+    			sub_menu: [
+    				{
+    					label: '화면 엑셀 다운로드', 
+    					call_back: callBackExcelDownload
+    				},
+    				{
+    					label: '거래처 담당자 다운로드',
+    					call_back: callBackExcelDownloadCusContactInfo
+    				},
+    				{
+    					label: '일괄등록 양식 다운로드',
+    					call_back: undefined,
+    					sub_menu: [
+    						{label: '사업자(간편) 양식', call_back: callBackExcelDownloadSimp},
+    						{label: '사업자(상세) 양식', call_back: callBackExcelDownloadCorp},
+    						{label: '개인 거래처 양식', call_back: callBackExcelDownloadIndv}
+    					]
+    				}
+    			]
+    		},
+    		print: {
+    			use: true,
+    			call_back: callBackPrint
+    		},
+    		item_option: {
+    			use: true
+    		},
+    		guide: {
+    			use: false
+    		},
+			set: {
+                use: false, // 경리나라 6.1
+                title: '환경설정',
+                call_back: callBackBizEnvSetting
+            }
+    	};
+    	
+    	_thisBtnLayer.setButtonOption(btnOption);
+		_searchList.setOrderBy('TRCO_CMNM');
+		_searchList.setLnpWay('A');
+		_searchList.setPagePerCnt('100');
+
+		// 거래처 상세페이지 바로가기
+		const sessRdrtData = window.sessionStorage.getItem('rdrt_trco_m003_01');
+		if (sessRdrtData) {
+			window.sessionStorage.removeItem('rdrt_trco_m003_01');
+			try {
+				const data = JSON.parse(sessRdrtData);
+				//거래처 상세정보 보기
+				$("#bsnn_no").val(data.BSNN_NO);
+				$("#trco_key").val(data.TRCO_KEY);
+				$("#inqy_dsnc").val(_searchList.getInqyDsnc());
+				$("#grp_code").val(_searchList.getGrpCd());
+				_searchList.setPageNo('1');
+				$("#page_no").val(_searchList.getPageNo());
+				$("#s_cate_gory").val(category);
+
+				//상호(법인명), 거래처명 보기설정 여부
+				$("#view_trco_nm").val('both'); //둘 다 표시
+				if ($('.TRCO_BSNN_NM').length == 0) { // 거래처명만
+					$("#view_trco_nm").val('cmnm');
+				}
+
+				//그룹 탭 저장
+				var tabIdx = $('.btn_round').index($('.btn_round.on'));
+				$("#tab_color").val(tabIdx);
+
+				cf_submit(document.frm1, '/trco_m003_01.act');
+			} catch (e) {}
+		}
+
+		//페이지 사이즈
+		$(window).resize(function (){
+			$("#rspb_info_list").hide();	//담당자정보
+			$("#acct_info_list").hide();
+			$("#trco_acct_list").hide();
+			$(".layer_icobilling").hide();
+		});
+		
+		$("body").css("overflow-x","hidden");
+		
+		initGroupManager(jexjs.null2Void(selectedGrpTypes)); //#19779 >>> 거래처 그룹 지정 및 일괄변경 기능 추가
+		//crudUserGrpList(); // 경리나라 6.1
+        var opt = {};
+		
+		//검색조건쿠키불러오기
+		var use_search_option = $.cookie("use_search_option"); //거래처상세화면에서 뒤로가기 눌렀을 경우 값이 있음. 
+		if(use_search_option && use_search_option == "Y"){
+			$.cookie("use_search_option", null, { expires: 1  , path :"/" });
+			var search_option = $.cookie("search_option");
+			console.log(search_option);
+			if(search_option){
+				try{
+				search_option = decodeURIComponent(search_option);
+				search_option = JSON.parse(search_option);
+				//leftMenu 셋팅
+					
+				//검색조건값셋팅
+				_searchList.setSearchJson(search_option);
+				//검색조건화면설정-----
+				//검색어
+				$("#search_txt").val(_searchList.getTrcoCmnm());
+				
+				//정렬 순서
+				$("a[data-srt_nm]").removeClass("on");
+				$("a[data-srt_nm="+_searchList.getOrderBy()+"]").addClass("on");
+				$("a[data-lnp_way]").removeClass("on");
+				$("a[data-lnp_way="+_searchList.getLnpWay()+"]").addClass("on");
+				$("#order_nm").html($("#order_li li.list:eq(0)").find("a.on").text() + '<span class="'+(_searchList.getLnpWay()=='A'?'dorder':'aorder')+'"></span>');
+				//범주
+				$("input[name=order_color][value="+_searchList.getOrderColor()+"]").attr("checked", true);
+				var order_color_nm = null2void($("input[name=order_color]:checked").parent().clone().find("input").remove().end().html()).replace("&nbsp;&nbsp;&nbsp;","");
+				$("#order_color_nm").html(order_color_nm);
+				
+				if(search_option.ORDER_COLOR != "") {
+					$('#order_color_li').find('input[value='+search_option.ORDER_COLOR+']').click();
+				}
+				
+				//그룹 표기
+				$('.btn_round').removeClass('on');
+				if (_searchList.getInqyDsnc() == "1") {
+					$('.btn_round:eq(0)').addClass('on');
+				} else {
+					$('.btn_round[grp_cd='+_searchList.getGrpCd()+']').addClass('on');
+				}
+				
+				//페이지당표시개수
+				$(".btn_combo_down span").html(_searchList.getPagePerCnt());
+				
+				}catch(e){}
+			}
+		}
+		
+		fn_commonCellGrid();
+		fn_commonViewColumn();
+        fn_pageResize();
+
+		setTimeout(function() { 
+			if($('#grp_code').val() != '') {
+				$('#order_group_li').find('input[val-grpcd='+$('#grp_code').val()+']').prop('checked',true);
+				$('#order_group_nm').html($('#order_group ul').find('input[val-grpcd='+$('#grp_code').val()+']').attr('val-grpnm'));
+			}
+		}, 900);
+
+	}, event:function() {
+		
+		//--- define event action ---//
+		
+		//페이지 사이즈 조절
+		$(window).resize(function(){
+            fn_pageResize();
+        });
+		//내사업장목록
+		this.addEvent('.biz_select_box', 'mouseleave', function(e) {
+			$(".biz_select_box .sel_layer").hide();
+		});
+		//내사업장선택
+		this.addEvent('.biz_select_box li', 'click', function(e) {
+			var _this = $(this);
+			var jexAjax = jex.createAjaxUtil("trco_0000_03_l001");
+			jexAjax.set("BSNN_NO", $(_this).attr("val-bsnnno"));
+			jexAjax.setErrTrx(false);
+			jexAjax.execute(function(dat) {
+				$(".biz_select_box .sel_layer").hide();
+				$(".biz_select_box").find("span").html($(_this).html());
+				$("#ifr_main").attr("src","trco_0005_01.act");
+			});
+		});
+		
+		//검색
+		this.addEvent('#searchBtn', 'click', function(e) {
+			_searchList.setTrcoCmnm($("#search_txt").val());
+			_searchList.setPageNo(1);
+			drawTrcoList();	
+		});
+		//검색
+		this.addEvent('#search_txt','keypress',function(key){
+			if(key.keyCode == 13){
+				_searchList.setTrcoCmnm($("#search_txt").val());
+				_searchList.setPageNo(1);
+				drawTrcoList();
+	            $(this).blur();
+			}
+		});
+		
+		// 이월기준일 등록
+		$('.btn_setCrovDt').live('click', function() {
+			let $form = $('<form method="post"></form>');
+			open_smartPop({ href: 'trco_m013_02_v6.act', width: 377, height: 300, target: window, frm: $form, iframe: "Y" });	
+		});
+		
+		// 초기이월 초기화
+		$('#btn_reset').live('click', function() {
+			var jexAjax = jex.createAjaxUtil('trco_m013_01_r006');
+			jexAjax.set("SRT_NM", _searchList.getOrderBy());
+			jexAjax.set("LNP_WAY",_searchList.getLnpWay());
+			jexAjax.execute(function(dat) {
+				// 91 미수금 / 90 미지급금
+				let RECORD = dat.REC;
+				if(RECORD.length > 0) {
+					$.each(RECORD, function(i,v) {
+						if(v.EVDC_DV == "91") {
+							alert(`거래처명 ${v.TRCO_CMNM} 이 매출대금수금(${formatter.datetime(v.TRSC_DT,"yyyy-mm-dd")})에서 사용중입니다.\n수납확인 내역을 삭제 후 진행할 수 있습니다.`);
+						} else {
+							alert(`거래처명 ${v.TRCO_CMNM} 이 매입대금지급(${formatter.datetime(v.TRSC_DT,"yyyy-mm-dd")})에서 사용중입니다.\n지급확인 내역을 삭제 후 진행할 수 있습니다.`);
+						}
+					})
+				} else {
+					let $form = $('<form method="post"></form>');
+					open_smartPop({ href: 'trco_m013_04.act', width: 500, height: 172, target: window, frm: $form, iframe: "Y" });
+					/*var jexAjax = jex.createAjaxUtil('trco_m013_01_d001');
+					jexAjax.execute(function(dat) {
+						if(dat.RSLT_CD == "0000") {
+							fn_execute();
+							$("#search_ctt").val("")
+							_thisPage.fn_crovDtSearch();
+						}
+					})*/
+				}
+			});	
+		});
+		
+		// 추가버튼(휴지통, 초기이월)
+		$('#btn_showLayer').on('click', function() {
+			$('.ly_mnLst').show();
+			$('.ly_mnLst_d2').hide();
+		});
+		$('#btn_regExcelCrov').on('click', function() {
+			$('.ly_mnLst_d2').show();
+		});
+		
+		// 거래처 등록
+		this.addEvent("#trco_arrow","click",function(){
+			$('.ly_add_list').show();
+		});
+		this.addEvent("#trco_add","click",function(){
+			$('#pageGb').val('');
+			cf_submit(document.frm1,"/trco_m004_01.act");
+		});
+		$('.reg_ul>li').on('click', function() {
+			var idx = $(this).index();
+			$('#pageGb').val(idx);
+			if (idx == 0) {
+				cf_submit(document.frm1,"/trco_m005_01.act");
+			} else if (idx == 1) {
+				cf_submit(document.frm1,"/trco_m005_01.act");
+			} else if (idx == 2) {
+				cf_submit(document.frm1,"/trco_m005_01.act");
+			} else {
+				$('#pageGb').val('');
+				cf_submit(document.frm1,"/trco_m004_01.act");
+			}
+		});
+		
+		//거래처등록 - 홈텍스 e새로 등록 
+		this.addEvent('#eseroBtn', 'click', function(e) {
+			var	sizeW = 452;
+			var	sizeH = 462;
+			var nLeft =  sizeW/2 ;
+			var nTop  =  sizeH/2 ;
+			var option= ",toolbar=no,menubar=no,location=no,scrollbars=no,status=no,resizable=no";
+			var url = "/trco_0016_02.act";
+			var winObj= window.open(url, 'win', "left=" + nLeft + ",top=" +  nTop + ",width=" + sizeW + ",height=" + sizeH  + option );		
+		});
+		
+		//거래처자동등록->홈텍스 e새로 등록팝업 
+		//2024-01-16 초기설정 마법사
+		$(document).on("click", "#AUTO_TRCO_REG area", function(){
+			//$("#eseroBtn").click();
+			open_smartPop({ href: "comm_0024_01.act?MENU=TRCO", width: 1030, height: 700, target: window});
+			$('#cboxOverlay').hide();
+		});
+		
+		//처리 메시지 표시
+		this.addEvent('.etcpop_wrap .btn_lyclose', 'click', function(e) {
+			$(".etcpop_wrap").fadeOut(500);
+			_isRunShowPrint = false;
+		});
+		
+		//그룹 조회 변경
+		$('.btn_round').on('click', function() {
+			$('.btn_round').removeClass('on');
+			$(this).addClass('on');
+			var idx = $(this).index();
+			if (idx == 0) {
+				_searchList.setInqyDsnc("1");
+				_searchList.setGrpCd("");
+			} else {
+				_searchList.setInqyDsnc("2");
+				_searchList.setGrpCd($(this).attr('grp_cd'));
+			}
+			drawTrcoList();
+		});
+		
+		//정렬기준 변경
+		$('#order_nm').live('click',function(){
+			if($(this).parent().find('#order_li').is(':visible')){
+				$(this).parent().find("#order_li").fadeOut();
+			}else{
+				
+				$(this).parent().find('#order_li').show();	
+			}
+		});
+		//정렬기준
+		this.addEvent("#order_by ul li a","click",function(){
+			$(this).parents("li.list").find("a.on").removeClass("on");
+			$(this).addClass("on");
+			var srt_nm  = $(this).parents('ul#order_li').find('li.list:eq(0)').find("a.on").attr("data-srt_nm");  //정렬컬럼명
+			var lnp_way = $(this).parents('ul#order_li').find('li.list:eq(1)').find("a.on").attr("data-lnp_way"); //정렬방법 A,D
+			$(this).parents('div.type3').find('#order_nm').html($(this).parents('ul#order_li').find('li.list:eq(0)').find("a.on").text() + '<span class="'+(lnp_way=='A'?'dorder':'aorder')+'"></span>');
+			_searchList.setOrderBy(srt_nm);
+			_searchList.setLnpWay (lnp_way);
+			_searchList.setTrcoCmnm($("#search_txt").val());
+			_searchList.setPageNo(1);
+			drawTrcoList();
+		});
+		
+		//정렬기준 (미수금, 미지급금 tab)
+		this.addEvent("#order_by_tab2 ul li a, #order_by_tab3 ul li a","click",function(){
+			$(this).parents("li.list").find("a.on").removeClass("on");
+			$(this).addClass("on");
+			var srt_nm  = $(this).parents('ul#order_li').find('li.list:eq(0)').find("a.on").attr("data-srt_nm");  //정렬컬럼명
+			var lnp_way = $(this).parents('ul#order_li').find('li.list:eq(1)').find("a.on").attr("data-lnp_way"); //정렬방법 A,D
+			$(this).parents('div.type3').find('#order_nm').html($(this).parents('ul#order_li').find('li.list:eq(0)').find("a.on").text() + '<span class="'+(lnp_way=='A'?'dorder':'aorder')+'"></span>');
+			_searchList.setOrderColor("");
+			_searchList.setOrderBy(srt_nm);
+			_searchList.setLnpWay (lnp_way);
+			_searchList.setTrcoCmnm($("#search_txt").val());
+			_searchList.setPageNo(1);
+			drawTrcoList();
+		});
+		//범주 변경
+		this.addEvent('#order_color_nm','click',function(){
+			if($('#order_color_li').is(':visible')){
+				$("#order_color_li").fadeOut();
+			}else{
+				$('#order_color_li').show();	
+			}
+		});
+		//범주 정렬
+		$("#order_color ul").find("label").on('change', function(){
+			var order_color_nm = null2void($("input[name=order_color]:checked").parent().clone().find("input").remove().end().html()).replace("&nbsp;&nbsp;&nbsp;","");
+			$("#order_color_nm").html(order_color_nm + " 메모");
+			$("#order_color_li").hide();
+			var color = null2void($(this).find("input[name='order_color']").val(),"");
+			_searchList.setOrderColor(color);
+			_searchList.setTrcoCmnm($("#search_txt").val());
+			_searchList.setPageNo(1);
+			drawTrcoList();
+		});
+		
+		// html 클릭시 검색 정렬기준,범주  레이어 닫기
+		$(document).on("click", "html", function(e){
+			closeLayerBox(e);
+			if ($('.new_memo').is(":visible") || $('.modi').is(":visible")) {
+				return;
+			} else {
+				fn_hideAni($('.mclose'));
+			}
+		});
+		$(document).on("click", ".ico_memo, .side_wrap, .ly_group_slbx", function(e) {
+			e.stopPropagation(); 
+		});
+		
+		//한건 휴지통 보내기
+		$('.ico_delete').live('click', function(){
+			var temp = JSON.parse(decodeURIComponent($(this).closest('tr').find('td:eq(0) > #data').val()));
+			trashcanTrcoOne(temp.BSNN_NO, temp.TRCO_KEY);
+		});
+		//휴지통 보내기
+		this.addEvent("#trcoDelBtn , .delete_bt.delete_grp", "click", function() {
+			trashcanTrco();
+		}); 
+		//휴지통 복원하기
+		this.addEvent("#trcoRestoreBtn", "click", function() {
+			restoreTrco();
+		});
+		//거래처삭제
+		this.addEvent("#trcoDeleteBtn", "click", function() {
+			deleteTrco();
+		});
+		
+		//메모 표시
+		$(".ico_memo").live('click',function(){
+			var temp = $(this).closest("tr").find("#data").val();
+	        temp = decodeURIComponent(temp);
+	        temp = JSON.parse(temp);
+
+			//거래처명 세팅
+			$('.memo_trco_cmnm').html(temp.TRCO_CMNM);
+			//메모 색상
+			$('.mcolor').children().removeClass("on");
+			$('.mcolor').find('.color_'+null2void(temp.TRCO_COLOR,"white")).addClass("on");
+			drawMemoList({TRCO_KEY: temp.TRCO_KEY});
+			set_animation($('.side_wrap'));
+		});
+		
+		//메모 등록 호출
+		$('.call_memo_box').live('click', function() {
+			$(".memo_text").val("");
+			$("#memoList").closest(".mCustomScrollbar").addClass("write");
+			$("div[name=memo_mod_form]").prev().show();
+			$("div[name=memo_mod_form]").hide();
+			$(".new_memo").show();
+			$('.memo_text').focus();
+		});
+		//메모 등록 취소
+		$(".memo_close_btn").live("click",function(){
+			$("#memoList").closest(".mCustomScrollbar").removeClass("write");
+			$(".new_memo").hide();
+		});
+		//메모 등록
+		$(".memo_save_btn").live("click",function(){
+			saveMemo();
+		});
+		//메모 수정 버튼
+		$(document).on("click", "a[name=mod_memo]", function(e){
+			$("#memoList").closest(".mCustomScrollbar").removeClass("write");
+			$(".new_memo").hide();
+			$(this).parents("div[name=memo_infm_form]").next().show();
+			$(this).parents("div[name=memo_infm_form]").hide();
+		});
+		//메모 삭제 버튼
+		$(document).on("click", "a[name=del_memo]", function(e){
+			if(confirm("등록된 메모를 삭제 하시겠습니까?")){
+				var trco_key = $(this).parents("div[name=memo_infm_form]").attr("trco_key");
+				var memo_id = $(this).parents("div[name=memo_infm_form]").attr("memo_id");
+				deleteMemo({TRCO_KEY: trco_key, MEMO_ID: memo_id});
+				$(this).parents("div[name=memo_infm_form]").next().remove();
+				$(this).parents("div[name=memo_infm_form]").remove();
+			}
+		});
+		//메모 수정 저장 버튼
+		$(document).on("click", "a[name=mod_save_memo]", function(e){
+			$(".new_memo").hide();	//등록 있다면 숨김
+			var trco_key = $(this).parents("div[name=memo_mod_form]").attr("trco_key");
+			var memo_id = $(this).parents("div[name=memo_mod_form]").attr("memo_id");
+			var memo = $(this).parents("div[name=memo_mod_form]").find("textarea").val();
+			modifyMemo({TRCO_KEY: trco_key, MEMO_ID: memo_id, MEMO:memo});
+			$(this).parents("div[name=memo_mod_form]").prev().find(".mcont").html(null2void(memo).replace(/\n/gi,"<br>"));
+			$(this).parents("div[name=memo_mod_form]").prev().show();
+			$(this).parents("div[name=memo_mod_form]").hide();
+		});
+		//메모 수정 취소 버튼
+		$(document).on("click", "a[name=mod_cancel_memo]", function(e){
+			$(this).parents("div[name=memo_mod_form]").prev().show();
+			$(this).parents("div[name=memo_mod_form]").hide();
+		});
+		//메모 색상 버튼
+		$(document).on("click", "a[name=memo_colr]", function(e){
+			if($(this).hasClass("on")) return;
+			var trco_key = $("#memoList").children().attr("trco_key");
+			var trco_colr = $.trim($(this).attr("class").replace(/color_/g,""));
+			modifyTrcoColor({TRCO_KEY: trco_key, TRCO_COLR: trco_colr});
+			$("a[name=memo_colr]").removeClass("on");
+			$(this).addClass("on");
+			//행 메모도 바꿔줌
+			drawTrcoList();
+		});
+		
+		//지도 표시
+		$('.btn_map').live("click",function(){
+			
+			var idx = $("#tbTbody_TRCO_LIST tr").parent().find("tr").index($(this).parent());
+			var map = $("#trco_map");
+			var dttm = null2void(_datTrcoList[idx].AMNN_DTTM,_datTrcoList[idx].RGSN_DTTM);
+			 
+			var obj = $(this).offset();
+			map.css({"top":obj.top,"left": (obj.left - $(map).width() - 20)});
+			map.find("#map_addr").text(null2void(_datTrcoList[idx].TRCO_RPRS_BSUN_POST_ADRS,"")+" "+null2void(_datTrcoList[idx].TRCO_RPRS_BSUN_DTL_ADRS,""));
+			map.find(".update_date").text(formatter.datetime( dttm, "yyyy-mm-dd hh24:mi:ss"));
+			map.find("#map_event").attr('data',idx);
+			map.show();
+		});
+		
+		//입금계좌등록 버튼 클릭시 거래처 계좌등록 팝업
+		$(document).on('click', '#regBtn_acct_info', function() {
+			
+	    	var $form = $("<form method='post'></form>");
+			var ttrco_info = $(this).data('info')
+			var ttrco_no = $(this).data('trco_bsnn_no');
+			var ttrco_key = $(this).data('trco_key');
+			var ttrco_cmnm = $(this).data('trco_cmnm');
+			$form.append("<input name='TRCO_INFO'			value='"+ttrco_info+"'>");
+			$form.append("<input name='TRCO_BSNN_NO'			value='"+ttrco_no+"'>");
+			$form.append("<input name='TRCO_KEY'			value='"+ttrco_key+"'>");
+			$form.append("<input name='TRCO_CMNM'			value='"+ttrco_cmnm+"'>");
+	    	open_smartPop({href: "trco_m001_03.act", width:400, height:250, scrolling:false, target:window, frm:$form});
+		});
+	
+		//발행버튼 
+		$(".btn_billing").live("click",function(){
+			var idx = $(this).closest('tr').index();
+			var billing = $(".layer_icobilling");
+			tempTrocIdx = idx;
+			billing.css({"top":$(this).offset().top,"right":"70px","z-index":2000});
+			billing.show();
+		});
+		//발행 목록 클릭시 
+		this.addEvent('.layer_icobilling ul li','click',function(){
+			fn_PopupCall2($(this).attr('id'));
+		});
+		//발행 목록 레이어 팝업 hide
+		$(".tip_layerpopup,.layer_icobilling").live('mouseleave', function(e) {
+			//메모 제외
+			$(this).attr("id")!= "memoBox"?$(this).fadeOut():"";
+		});
+		
+		//거래처 목록 체크박스 전체선택시 그룹지정 체크박스 표시해주기
+		$("#allCheck").live("click",function(){
+			var allCheck = $(this).is(":checked");
+			$("input[name=trco]").each(function(){
+				$(this).attr("checked", allCheck);
+			});
+		});
+		
+		//거래처 목록 클릭시 이벤트
+		//$("#tbTbody_TRCO_LIST tr td").live("click",function(e){
+		$(".moveTrcoDetail").live("click",function(e){
+			/*var idxTr = $("#tbTbody_TRCO_LIST tr").parent().find("tr").index($(this).parent());
+			var idxTd = $("#tbTbody_TRCO_LIST tr:eq("+idxTr+") td").parent().find("td").index(this);
+			var idxLastTd = $("#tbTbody_TRCO_LIST tr:eq("+idxTr+") td").length - 1;
+			
+			//상호(법인명),거래처명, 거래처사업자번호 외 클릭시에는 상세화면으로 이동하지 않음.
+			//미수금 미지급금 탭 상세 포함
+			if($(this).find("div[class=TRCO_BSNN_NM],div[class=TRCO_CMNM],div[class=TRCO_BSNN_NO],div.hasSpan").length == 0){
+				return; 
+			}*/
+			
+			//검색조건쿠키저장 - 상세화면에서 목록화면으로 되돌아올 경우 이값을 사용함
+			var sch_opt = encodeURIComponent(JSON.stringify(_searchList.getSearchJson()));  
+			$.cookie("search_option", sch_opt, { expires: 1  , path :"/" });
+			
+			var temp = JSON.parse(decodeURIComponent($(this).attr('data')));
+			
+			//거래처 상세정보 보기
+			$("#bsnn_no").val(temp.BSNN_NO);
+			$("#trco_key").val(temp.TRCO_KEY);
+			$("#inqy_dsnc").val(_searchList.getInqyDsnc());
+			$("#grp_code").val(_searchList.getGrpCd());
+			$("#srt_color").val(_searchList.getOrderColor());
+			$("#page_no").val(_searchList.getPageNo());
+			$("#s_cate_gory").val(category);
+			
+			//상호(법인명), 거래처명 보기설정 여부
+			$("#view_trco_nm").val('both'); //둘 다 표시
+			if ($('.TRCO_BSNN_NM').length == 0) { // 거래처명만
+				$("#view_trco_nm").val('cmnm'); 
+			}
+			
+			cf_submit(document.frm1,"/trco_m003_01.act");
+		});
+		
+		//팩스전송 문서클릭
+		$("#send_layer a").click(function(){
+			_sendInfo.moreView = "1";
+			$("tbody#SEND_TYPE_REC").empty();
+
+			if (_eventId == "TRCO_FXNO") {
+				fn_sendList($(this).attr('id'),"fax");
+			} else {
+				fn_sendList($(this).attr('id'),"email");
+			}
+		});
+		//팩스전송 팝업닫기
+		this.addEvent("#pop_closebtn","click",function(){
+			_sendInfo.moreView = "1";
+			$("tbody#SEND_TYPE_REC").empty();
+			$("#send_pop").hide();
+		});
+		//팩스전송하기
+		$("#submit").live("click",function(){
+			if($("tbody#SEND_TYPE_REC").find("input[type='checkbox']:checked").length ==0){
+				alert("전송할 대상을 선택해주세요.");
+				return;
+			}
+			var connect_key = [];
+			var connect_info = [];
+			var send_type = "";
+			var add_file_list = [];
+			$("tbody#SEND_TYPE_REC").find("input[type='checkbox']:checked").each(function(){
+				connect_key.push($(this).parent().find("#issu_id").val());
+				var tmp = {
+						"CONNECT_KEY" : $(this).parent().find("#issu_id").val(),
+						"CONNECT_AMT" : $(this).parent().parent().find(".t_right").attr("monm")
+				}
+				connect_info.push(tmp);
+				
+				var ADD_FILE_LIST = fn_getAddFileList($(this).parent().find("#issu_id").val(), $(this));
+				$.each(ADD_FILE_LIST, function(i,v) {
+					var tmpfile = {
+							"ADD_FILE_NAME" : v.FILE_ORIGN_NM,
+							"ADD_FILE_PATH" : v.FILE_NM,
+							"ADD_FILE_ORG_PATH" : v.FILE_PATH
+					}
+					add_file_list.push(tmpfile);
+				});
+			});
+			var connect_rec = {
+					"CONNECT_INFO" : connect_info
+			}
+			var add_file_info = { "ADD_FILE_LIST" : add_file_list};
+			if(_sendInfo.type == "팩스"){
+				send_type = "fax";					
+			}else{
+				send_type = "email";
+			}
+			SendPopup(encodeURIComponent(JSON.stringify(connect_rec)),$("#title_code").val(),send_type,add_file_info);
+			
+			$("#send_pop").hide();
+		});
+		
+		//이월 미수금/미지급금 수정 버튼
+		$('.edit, .showInputBox').live('click', function() {
+			closeInputBox();
+			var $this = $(this);
+			if ($this.hasClass('showInputBox')) {
+				$this = $(this).next().find('.edit');
+			}
+			var data = JSON.parse(decodeURIComponent($this.closest('tr').find('td:eq(0)').find('#data').val()));
+			var classNm = $this.closest('td').find('div:eq(0)').attr('class').substring(0, 8);
+			if (classNm == "RCBL_AMT") {
+				if (!evdcRegChek(data.TRCO_KEY, 'C', 1)) {
+					alert('매출대금수금('+formatter.date(max_trsc_dt)+')에서 사용중입니다.\n수납확인 내역을 삭제 후 진행할 수 있습니다.');
+                    return;
+				}
+			} else {
+				if (!evdcRegChek(data.TRCO_KEY, 'C', 2)) {
+					alert('매입대금지급('+formatter.date(max_trsc_dt)+')에서 사용중입니다.\n지급확인 내역을 삭제 후 진행할 수 있습니다.');
+                    return;
+				}
+			}
+			var amt = $this.closest('.'+classNm).find('.tar').html();
+			var amtNum = Number(amt.replaceAll(',',''));
+			var editHtml = '';
+			editHtml += '<div class="tar '+classNm+'">';
+			editHtml += '<!-- 입력박스 -->';
+			editHtml += '	<div class="combo_postbx ">';
+			editHtml += '	<!-- 입력영역 -->';
+			editHtml += '		<div class="combo_post_bg tp2 no_pd">';
+			editHtml += '			<input type="text" style="width:100%;" beforeAmt="'+amtNum+'" value="'+amt+'" placeholder="" class="tar input_box_amt">';
+			//editHtml += '			<div class="btn">';
+			//editHtml += '				<a class="del"><span class="blind">삭제</span></a>';
+			//editHtml += '			</div>';
+			editHtml += '		</div>';
+			editHtml += '	<!-- //입력영역 -->';
+			editHtml += '	</div>';
+			editHtml += '<!-- //입력박스 -->';
+			editHtml += '</div>';
+			$this.closest('td').empty().append(editHtml);
+			$('.input_box_amt').select();
+		});
+		$('.del').live('click', function() {
+			$(this).closest('td').find('.tar').val('');
+		});
+		$('.input_box_amt').live('keypress', function(e) {
+			if (e.keyCode && e.keyCode == 13) {
+				closeInputBox();
+			}
+		});
+		$('.input_box_amt').live('keyup', function(e) {
+			let _target = e.target
+			let _target_value = Number($(_target).val().replace(/[^0-9]/g, ""))
+
+			let isMinus = false;
+			if ($(_target).val()[0] == '-') {
+				isMinus = true;
+			}
+
+			let value1 = Number(_target_value);
+			if (isMinus) {
+				value1 = Number('-' + value1);
+			}
+
+			$(_target).text(formatter.number(Number(value1)));
+
+			before_amt = $(_target).attr('beforeAmt');
+
+			if($(_target).val() == "") {
+				$(_target).val("");
+				return		;
+			} else if ($(_target).val() == '0-' || $(_target).val() == '-0' || $(_target).val() == '-') {
+				$(_target).val('-');
+				return;
+			} else if(_target_value == 0) {
+				$(_target).val(0);
+				return;
+			}
+
+			$(_target).val(formatter.number(value1));
+		});
+
+		$(".list_scroll").endOfScroll(function() {
+			if ($('#tbTbody_TRCO_LIST').find("tr").length == 0) {
+				return false;
+			}
+
+			if (_searchList.getTotlPageNcnt() != _searchList.getPageNo()) {
+				_searchList.setPageNo(_searchList.getPageNo() + 1);
+				drawTrcoList(_searchList.getPageNo());
+			}
+		});
+
+	}
+
+}))();
+//----------------------------------------------------------------------------------------------------------
+/**
+ * 스크롤 마지막 이벤트 등록
+ */
+$.fn.endOfScroll = function(callback) {
+	return this.each(function() {
+		if (!callback) {
+			$(this).off("scroll");
+		} else {
+			$(this).on("scroll", function() {
+				if (Math.ceil($(this).scrollTop() + $(this).innerHeight()) >= $(this)[0].scrollHeight) {
+					if ($.isFunction(callback)) {
+						callback.call($(this));
+					}
+				}
+			});
+		}
+	});
+};
+
+//메모 조회
+function drawMemoList(input) {
+	if (!input) input = {};
+
+	var jexAjax = jex.createAjaxUtil("trco_m001_01_r001");
+
+	jexAjax.set("TRCO_KEY", input.TRCO_KEY);
+	
+	jexAjax.execute(function(dat) {
+		$('.memo_text').val('');
+		$(".new_memo").hide();
+		$("#memoList").closest(".mCustomScrollbar").removeClass("write");
+		$("#memoList").empty();
+		if (dat.CNT == 0) {
+			$("#memoList").html('<div class="memo bdt0" id="none_memo" trco_key="'+input.TRCO_KEY+'">등록된 메모가 없습니다.</div>');
+		} else {
+			$("#none_memo").remove();
+			$.each(dat.REC,function(i,v){
+		    	var bdt0 = "";
+				if(i == 0){
+					bdt0 = "bdt0";
+				}
+				var html='';
+				html+='<div class="memo '+bdt0+'" name="memo_infm_form" trco_key="'+input.TRCO_KEY+'" memo_id="'+v.MEMO_ID+'">';
+	            html+='    <div class="mcont">'+null2void(v.TRCO_MEMO).replace(/\n/gi,"<br>")+'</div>';
+	            html+='    <div class="mw_btn">';
+	            html+='        <span class="mw_name">'+null2void(v.CORR_NM)+'</span>';
+	            html+='        <span class="mw_time">'+formatter.datetime(v.AMNN_DTTM, "yyyy-mm-dd hh24:mi")+'</span>';
+	            html+='        <a href="#none" class="mw_modify" name="mod_memo"><span class="blind">수정</span></a>';
+	            html+='        <a href="#none" class="mw_delete" name="del_memo"><span class="blind">삭제</span></a>';
+	            html+='    </div>';
+	            html+='</div>';
+	            html+='<div class="memo '+bdt0+' modi" name="memo_mod_form" trco_key="'+input.TRCO_KEY+'" memo_id="'+v.MEMO_ID+'" style="display:none;"> ';
+	            html+='		<div class="mcont"><div class="txt_ipt"><textarea style="width:100%;">'+null2void(v.TRCO_MEMO)+'</textarea></div></div>';
+	            html+='		<div class="mw_btn mgt15">';
+            	html+='			<a href="#none" class="btn_style1_b" name="mod_save_memo"><span>저장</span></a>';
+        		html+='			<a href="#none" class="btn_style1" name="mod_cancel_memo"><span>취소</span></a>';
+    			html+='			</div>';
+				html+='		</div>';
+	            html+='</div>';
+	            $("#memoList").append(html);
+			});
+			$("div[name=memo_infm_form]:last").addClass('mgb40');
+			$("div[name=memo_mod_form]:last").addClass('mgb40');
+		}
+	});
+}
+
+//메모 등록
+function saveMemo() {
+	var trcoKey = $("#memoList").children().attr("trco_key");
+	$('#none_memo').remove();
+	var jexAjax = jex.createAjaxUtil("trco_m001_01_c001");
+
+	jexAjax.set("TRCO_KEY", trcoKey);
+	jexAjax.set("TRCO_MEMO", $(".memo_text").val());
+	
+	jexAjax.execute(function(dat) {
+		if (dat.RSLT_CD == "0000") {
+			$("#memoList").closest(".mCustomScrollbar").removeClass("write");
+			$(".new_memo").hide();
+			drawMemoList({TRCO_KEY: trcoKey});
+			//저장 메시지 
+			$('#save_toggle').css("top", ($(window).height()-$('#save_toggle').height())/2-50 + 50);
+			$("#save_toggle").css("display","block");
+			$("#save_toggle").fadeOut(2000);
+		}
+	});
+}
+
+//메모 수정
+function modifyMemo(input) {
+	var jexAjax = jex.createAjaxUtil("trco_m001_01_u002");
+	
+	jexAjax.set("TRCO_KEY", input.TRCO_KEY);
+	jexAjax.set("MEMO_ID", input.MEMO_ID);
+	jexAjax.set("TRCO_MEMO", input.MEMO);
+	
+	jexAjax.execute(function(dat) {
+		if (dat.RSLT_CD == "0000") {
+			drawMemoList({TRCO_KEY: input.TRCO_KEY});
+			//저장 메시지 
+			$('#save_toggle').css("top", ($(window).height()-$('#save_toggle').height())/2-50 + 50);
+			$("#save_toggle").css("display","block");
+			$("#save_toggle").fadeOut(2000);
+		}
+	});
+}
+
+//메모 삭제
+function deleteMemo(input) {
+	var jexAjax = jex.createAjaxUtil("trco_m001_01_u003");
+	
+	jexAjax.set("TRCO_KEY", input.TRCO_KEY);
+	jexAjax.set("MEMO_ID", input.MEMO_ID);
+	
+	jexAjax.execute(function(dat) {
+		if (dat.RSLT_CD == "0000") {
+			drawMemoList({TRCO_KEY: input.TRCO_KEY});
+		}
+	});
+}
+
+//거래처 색상 변경
+function modifyTrcoColor(input) {
+	var jexAjax = jex.createAjaxUtil("trco_m001_01_u004");
+	
+	jexAjax.set("TRCO_KEY", input.TRCO_KEY);
+	jexAjax.set("TRCO_COLOR", input.TRCO_COLR);
+	
+	jexAjax.execute(function(dat) {
+		if (dat.RSLT_CD == "0000") {
+			//저장 메시지 
+			$('#save_toggle').css("top", ($(window).height()-$('#save_toggle').height())/2-50 + 50);
+			$("#save_toggle").css("display","block");
+			$("#save_toggle").fadeOut(2000);
+		}
+	});
+}
+
+//엘리먼트 애니메이션 right:0 고정
+function set_animation(elm){
+	elm.css({right:-$(this).width()+"px"});
+	elm.show();
+	elm.animate({right:0},400);
+}
+//엘리먼트 애니메이션 닫기
+function fn_hideAni(that){
+	var elm = $(that).closest(".side_wrap");
+	elm.animate({right:-$(this).width()+"px"},400,'',function(){elm.hide();});
+}
+
+function mapApiCall(_this){
+	var idxTr = $(_this).attr('data');
+	if(!_datTrcoList[idxTr].TRCO_RPRS_BSUN_POST_ADRS){
+		malert("WE0043");
+		return;
+	}
+	var url = "trco_0005_13.act?BSNN_NO="+_datTrcoList[idxTr].BSNN_NO+"&TRCO_KEY="+_datTrcoList[idxTr].TRCO_KEY+"&_tmp=";
+	layerPopupIfr(url, 650, 552, '');
+}
+
+//발행 리스트 조회
+function getDat(){ 
+	 
+	var jexAjax = jex.createAjaxUtil("trco_0023_02_r001");
+	
+	jexAjax.setErrTrx(false); //throw new JexBIZException 경우도 execute로 넘어오게 설정	
+	_loading.start();
+	jexAjax.execute(function(dat) {
+		if(dat.COMMON_HEAD.ERROR){
+			_loading.stop();
+			alert('error : ' + JSON.stringify(dat.COMMON_HEAD.MESSAGE) );
+			return;
+		}  
+
+		$(".layer_icobilling ul").find("li").each(function(){
+			var set_opt = $(this).attr("id")
+			dat[set_opt] == "N"?$(this).remove():"";
+		});
+		_loading.stop();
+		data = dat;
+
+	});
+}
+
+function excelDown(input){
+	if ($('#tbTbody_TRCO_LIST > tr').length == 0) {
+		alert('조회된 거래처가 없습니다.');
+		return;
+	}
+	if (!input) input = 0;
+	var trcoList = [];
+	_loading.start();
+	
+	$("#r_inqy_dsnc").val(_searchList.getInqyDsnc());
+	$("#r_grp_cd").val(_searchList.getGrpCd());
+	$("#r_trco_cmnm").val(_searchList.getTrcoCmnm());
+	$("#r_srt_color").val(_searchList.getOrderColor());
+		
+	var frm = document.form1;
+	var oldTarget = frm.target;
+	
+	if (input == 0) {
+		frm.action = "/trco_0019_01_l002.act";
+	} else if (input == 1) {
+		frm.action = "/trco_0019_01_l005.act";
+	} else if (input == 2) {
+		frm.action = "/trco_0019_01_l006.act";
+	} else if (input == 3) {
+		frm.action = "/trco_0019_01_l007.act";
+	}
+	
+    frm.target = "LogicHiddenFrame";
+    frm.submit();
+    frm.target = "_self";
+    setTimeout("excelClose()", 5000);
+}
+function excelClose(){
+	_loading.stop();
+}
+
+/**
+ * 팝업호출
+ * @returns
+ */
+function fn_PopupCall2(arg,code){
+	//전자세금계산서 발행기능 일시적 제한처리
+//	if(arg == "TRSC_SETUP_01"){
+//		layerPopupIfr("tcmc_pop_02.act", 480, 255, '');
+//		return;
+//	}
+	
+	//종이세금계산서
+	if(arg == "m2310"){
+		tms.ui.PaperTaxPopUp({"TRCO_KEY":_datTrcoList[tempTrocIdx].TRCO_KEY});
+		return;
+	}
+	
+	var pop_gubn =arg.substr(11,2);
+	var param = {};
+	var url = "";
+	var _buyrData = {};
+	//거래처 데이터 생성
+	_buyrData = _datTrcoList[tempTrocIdx];
+	_buyrData.TRCO_RPRS_BSUN_DTL_ADRS = null2void(_datTrcoList[tempTrocIdx].TRCO_RPRS_BSUN_DTL_ADRS,"");
+	_buyrData.TRCO_BSNN_NO = null2void(_datTrcoList[tempTrocIdx].TRCO_BSNN_NO,"").replace(/-/gi,"");
+	_buyrData.TRCO_KEY = null2void(_datTrcoList[tempTrocIdx].TRCO_KEY,"");
+	param = {"BSNN_NO":_bsnnNo,"SESSION_DATA": _encodeData , "TRCO_DATA" : encodeURIComponent(JSON.stringify(_buyrData)).replace(/'/g, escape)};
+
+	switch(pop_gubn){
+	case "01":					//매출 세금계산서
+		param["popupW"] = "950";
+		param["popupH"] = "685";
+		url = "trgm_0001_01_10.jsp";
+		setFormToTaxbill(url, "1", param);
+		break;
+	case "02":				//매출 거래명세표
+		param["popupW"] = "1000";
+		param["popupH"] = "690";
+		param["popupTg"] = "trgm_reg_selr";
+		url = "trgm_reg_selr.jsp";
+		setFormToTaxbill(url, "16", param);
+		break;
+	case "03":				//매입 거래 명세표
+		param["popupW"] = "1000";
+		param["popupH"] = "690";
+		param["popupTg"] = "trgm_reg_buyr";
+		url = "trgm_reg_buyr.jsp";
+		setFormToTaxbill(url, "16", param);
+		break;
+	case "04":				//견적서
+		param["popupW"] = "1000";
+		param["popupH"] = "690";
+		param["popupTg"] = "trgm_reg_etc";
+		url = "trgm_reg_etc.jsp";
+		setFormToTaxbill("trgm_reg_etc.jsp", "17",param);
+		break;
+	case "05":				//수주서
+		param["popupW"] = "1000";
+		param["popupH"] = "690";
+		param["popupTg"] = "trgm_reg_etc";
+		url = "trgm_reg_etc.jsp";
+		setFormToTaxbill("trgm_reg_etc.jsp", "18",param);
+		break;
+	case "06":			//발주서
+		param["popupW"] = "1000";
+		param["popupH"] = "690";
+		param["popupTg"] = "trgm_reg_etc";
+		url = "trgm_reg_etc.jsp";
+		setFormToTaxbill("trgm_reg_etc.jsp", "19",param);
+		break;
+	default:
+		break;
+	}
+}
+
+function fn_commonCellGrid(){
+	var isWebNonProfit = $('#WEB_NONPROFIT').val();
+	colOption = {
+		    menu_cd: 'TRCO',
+		    view_seup: 'VIEW_SEUP1',
+		    page_nm: 'trco_m001_01_v6',
+		    json_file_nm: isWebNonProfit != "Y" ? 'trco_m001_01_v6_col_setting.json' : 'trco_m001_01_v6_nonprofit_col_setting.json',
+		    front_input: {
+		    	type: 'checkbox',
+		    	prop: {name: 'class', val: 'chk'},
+		    	size: '30'
+		    },
+			icon: [{
+				html: '<td><div class="tac">'
+						+'<div class="ico_ly_wrap">'
+						+'<a class="ico_memo"><span class="blind">메모</span></a>'
+						+'<a class="ico_delete" href="#none" data="" title="삭제"><span class="blind">삭제</span></a>'
+						+'</div>'
+						+'</div></td>',
+				size: '80'
+			}],
+		    rec: [
+				{
+		            view_id: 'TRCO_BSNN_NM',
+					//html: '<td><div class="TRCO_BSNN_NM TRCO_INFO"><a href="#none" class="ellipsis" onclick="layerTrcoInfo(this)">{{= TRCO_BSNN_NM}}</a></div></td>'
+					html: '<td><div class="TRCO_BSNN_NM TRCO_INFO">'
+					     + '<!-- 텍스트영역 -->'
+						 + '<div class="combo_postbx flex">'
+						 + '<!-- 텍스트영역 -->'
+						 + '<div class="combo_post_bg no-bg">'
+						 + '<a href="#none" class="combo_txt" onclick="fn_moveTrcoDetail(this)">{{= TRCO_BSNN_NM}}</a>'
+						 + '<div class="btn">'
+						 + '<a class="sch" onclick="layerTrcoInfo(this)"><span class="blind">검색</span></a>'
+						 + '</div>'
+						 + '</div>'
+						 + '<!-- //텍스영역 -->'
+						 + '</div>'
+						 + '<!-- //텍스트박스 -->'					
+						 
+						 + '</div></td>'
+						
+		        },
+		        {
+		            view_id: 'TRCO_CMNM',
+					//html: '<td><div class="TRCO_CMNM TRCO_INFO"><a href="#none" class="ellipsis" onclick="layerTrcoInfo(this)">{{= TRCO_CMNM}}</a></div></td>'
+					html: '<td><div class="TRCO_CMNM TRCO_INFO">'
+					     + '<!-- 텍스트영역 -->'
+						 + '<div class="combo_postbx flex">'
+						 + '<!-- 텍스트영역 -->'
+						 + '<div class="combo_post_bg no-bg">'
+						 + '<a href="#none" class="combo_txt" onclick="fn_moveTrcoDetail(this)">{{= TRCO_CMNM}}</a>'
+						 + '<div class="btn">'
+						 + '<a class="sch" onclick="layerTrcoInfo(this)"><span class="blind">검색</span></a>'
+						 + '</div>'
+						 + '</div>'
+						 + '<!-- //텍스영역 -->'
+						 + '</div>'
+						 + '<!-- //텍스트박스 -->'					
+						 
+						 + '</div></td>'
+		        },
+		        {
+		            view_id: 'TRCO_BSNN_NO',
+					html: '<td><div class="TRCO_BSNN_NO">{{= TRCO_BSNN_NO}}</div></td>'
+		        },
+		        {
+		        	view_id: 'TRCO_RPPR_NM'
+		        },
+		        {
+		        	view_id: 'TRCO_RPRS_TLPH'
+		        },
+		        {
+		        	view_id: 'TRCO_RPRS_CELL'
+		        },
+		        {
+		        	view_id: 'TRCO_FXNO',
+					html: '<td><div class="TRCO_FXNO" id="TRCO_FXNO" onclick="event_layer(this)"><a href="#none" class="link">{{= TRCO_FXNO}}</a></div></td>'
+		        },
+		        {
+		        	view_id: 'ACVT_DTTM',
+					html: '<td><div id="trco_acvt_dttm">{{= ACVT_DTTM}}</div></td>'
+		        },
+		        {
+		        	view_id: 'TRCO_BSST_NM'
+		        },
+		        {
+		        	view_id: 'TRCO_TPBS_NM'
+		        },
+		        {
+		        	view_id: 'TRCO_MEMO',
+					html: '<td><div class="ellipsis" title="{{= TRCO_MEMO}}">{{= TRCO_MEMO}}</div></td>'
+		        },
+		        {
+		        	view_id: 'TRCO_RPRS_BSUN_POST_ADRS',
+					html: '<td class="btn_map"><div><a href="#none">{{= TRCO_RPRS_BSUN_POST_ADRS}}</a></div></td>'
+		        },
+		        {
+		        	view_id: 'TRCO_SPEC_BSNN_NO'
+		        },
+		        {
+		        	view_id: 'RGSN_DTTM'
+		        },
+		        {
+		        	view_id: 'RSPB_INFO',
+					html: '<td><div class="RSPB_INFO">{{= RSPB_INFO}}</div></td>'
+		        },
+		        {
+		        	view_id: 'ACCT_INFO',
+					html: '<td><div class="ACCT_INFO">{{= ACCT_INFO}}</div></td>'
+		        },
+		        {
+		        	view_id: 'DPST_ACCT_INFO',
+					html: '<td><div class="DPST_ACCT_INFO">{{= DPST_ACCT_INFO}}</div></td>'
+		        },
+		        {
+		        	view_id: 'WDRW_ACCT_INFO',
+					html: '<td><div class="WDRW_ACCT_INFO">{{= WDRW_ACCT_INFO}}</div></td>'
+		        },
+				{
+					view_id: 'GRP_CD',
+					html: '<td class="GRP_CD"></td>'
+				},
+				{
+					view_id: 'RCBL_AMT',
+					align: 'RIGHT',
+					html: '<td class=""><div class="RCBL_AMT cbpbx_pdr">'
+							+'<!-- 텍스트박스 -->'
+							+'<div class="combo_postbx">'
+							+'<!-- 텍스트영역 -->'
+							+'    <div class="combo_post_bg no-bg" style="display:none;">'
+							+'        <span class="combo_txt tar showInputBox"></span>'
+							+'        <div class="btn">'
+							+'            <a class="edit" style=""><span class="blind">수정</span></a>'
+							+'        </div>'
+							+'    </div>'
+							+'    <!-- //텍스트영역 -->'
+							+'</div>'
+							+'<!-- //텍스트박스 -->'
+							+'</div></td>'
+				},
+				{
+					view_id: 'UPAY_AMT',
+					align: 'RIGHT',
+					html: '<td class=""><div class="UPAY_AMT cbpbx_pdr">'
+							+'<!-- 텍스트박스 -->'
+							+'<div class="combo_postbx">'
+							+'<!-- 텍스트영역 -->'
+							+'    <div class="combo_post_bg no-bg" style="display:none;">'
+							+'        <span class="combo_txt tar showInputBox"></span>'
+							+'        <div class="btn">'
+							+'            <a class="edit" style=""><span class="blind">수정</span></a>'
+							+'        </div>'
+							+'    </div>'
+							+'    <!-- //텍스트영역 -->'
+							+'</div>'
+							+'<!-- //텍스트박스 -->'
+							+'</div></td>'
+				}
+		    ]
+		};
+}
+
+function fn_moveTrcoDetail(thisObj){
+	
+	//검색조건쿠키저장 - 상세화면에서 목록화면으로 되돌아올 경우 이값을 사용함
+	var sch_opt = encodeURIComponent(JSON.stringify(_searchList.getSearchJson()));  
+	$.cookie("search_option", sch_opt, { expires: 1  , path :"/" });
+	
+	var temp = JSON.parse(decodeURIComponent($(thisObj).closest("tr").find(".data-value").val()));
+	//console.log("temp: ", temp);
+	//거래처 상세정보 보기
+	$("#bsnn_no").val(temp.BSNN_NO);
+	$("#trco_key").val(temp.TRCO_KEY);
+	$("#inqy_dsnc").val(_searchList.getInqyDsnc());
+	$("#grp_code").val(_searchList.getGrpCd());
+	$("#srt_color").val(_searchList.getOrderColor());
+	$("#page_no").val(_searchList.getPageNo());
+	$("#s_cate_gory").val(category);
+	
+	//상호(법인명), 거래처명 보기설정 여부
+	$("#view_trco_nm").val('both'); //둘 다 표시
+	if ($('.TRCO_BSNN_NM').length == 0) { // 거래처명만
+		$("#view_trco_nm").val('cmnm'); 
+	}
+	
+	cf_submit(document.frm1,"/trco_m003_01.act");
+}
+
+function fn_commonViewColumn(){
+	// 데이터 세팅
+	_thisCommLayer.viewOption.setViewColumnSetting(function(colData){
+		_globalData.template = colData.ROW_TEMPLATE;
+		_globalData.excelGrid = colData.EXCEL_GRID;
+		_globalData.excelGrid.forEach((item, index)=> {
+			if(item.name === '') {
+			_globalData.excelGrid.splice(index, 1);
+			}
+		});
+		
+		$('#tableGroup colgroup, #tb_TRCO_LIST colgroup').empty().append(colData.COL_GROUP.children());
+		colData.TABLE_HEADER.find('div:contains("이월미수금")').addClass('cbpbx_pdr');
+		colData.TABLE_HEADER.find('div:contains("이월미지급금")').addClass('cbpbx_pdr');
+		$('#tableGroup thead > tr').empty().append(colData.TABLE_HEADER.children());
+		
+		//debugger;
+		drawTrcoList();
+
+	}, colOption);
+}
+
+//거래처 목록 표시
+function drawTrcoList(pageno,input){
+	_loading.start();
+	
+	//화면도움말 숨김
+	$(".before_platform").hide();
+	$(".guide_platform").hide();
+	
+	$('.title_opt_chkv').hide();
+	$('input#chk_all, input.chk').prop('checked', false);
+	$('.h1_title_wrap.top_content').css('visibility', 'visible');
+
+	if(pageno){
+		_searchList.setPageNo(pageno);
+	} else {
+		pageno = 1;
+		_searchList.setPageNo(pageno);
+	}
+
+	if(!input){
+		input = {};
+	}else{
+		if (!(input.TO_EXCEL || input.TO_PRINT)) {
+			$('#tbTbody_TRCO_LIST').hide();
+		}
+	}
+	
+	//스크롤 조회 테스트
+    if (pageno == 1 && !(input.TO_EXCEL || input.TO_PRINT)) {
+		_searchList.setPageNo("1");
+        $('#tbTbody_TRCO_LIST').empty();
+		_datTrcoList = [];
+	}
+	
+//	if(category){
+//		switch (category){
+//			case "sales" : //매입
+//				_searchList.setInqyDsnc("2");
+//				_searchList.setGrpCd("S");
+//				break;
+//			case "buy" :   //매출
+//				_searchList.setInqyDsnc("2");
+//				_searchList.setGrpCd("B");
+//				break;
+//			case "fnc" :   //금융
+//				_searchList.setInqyDsnc("2");
+//				_searchList.setGrpCd("F");
+//				break;
+//			case "etc" :   //ETC
+//				_searchList.setInqyDsnc("2");
+//				_searchList.setGrpCd("E");
+//				break;
+//			case "trash" : //휴지통
+//				_searchList.setInqyDsnc("4");
+//				break;
+//			case "usg" : //사용자 그룹
+//				_searchList.setInqyDsnc("3");
+//				break;
+//			default :      //전체조회
+//				_searchList.setInqyDsnc("1");
+//				break;
+//		}
+//	}
+
+	if(_searchList.getOrderColor() == ""){
+		var order_color_nm = null2void($("input[name=order_color]:eq(0)").parent().clone().find("input").remove().end().html()).replace("&nbsp;&nbsp;&nbsp;","");
+		$("#order_color_nm").html(order_color_nm + " 메모");
+		$("input[name=order_color]:eq(0)").attr("checked", true);
+	}
+		
+	if(!input.TO_PRINT) {
+		$(".list_scroll_top").parent().removeClass();
+	}
+	
+	var jexAjax = jex.createAjaxUtil("trco_0005_04_l001");
+	if (input.TO_PRINT || input.TO_EXCEL) {
+		jexAjax.set("PAGE_PER_CNT", _totlCnt);
+	} else {
+		jexAjax.set("PAGE_PER_CNT", _searchList.getPagePerCnt());
+	}
+	jexAjax.set("PAGE_NO", _searchList.getPageNo());
+	jexAjax.set("INQY_DSNC", _searchList.getInqyDsnc());
+	jexAjax.set("GRP_CD", _searchList.getGrpCd());
+	jexAjax.set("TRCO_CMNM", _searchList.getTrcoCmnm());
+	jexAjax.set("SRT_NM", _searchList.getOrderBy());
+	jexAjax.set("SRT_COLOR",_searchList.getOrderColor());
+	jexAjax.set("LNP_WAY",_searchList.getLnpWay());
+	
+	/*if(input.TO_PRINT){
+		var param={"_JSON_":encodeURIComponent(JSON.stringify(jexAjax.input))};
+		setFormToIFrame("trco_m001_02.act", param, function(){
+			_loading.stop();	
+		});
+		
+		return;
+	}*/
+	
+	jexAjax.execute(function(dat) {
+		//엑셀 다운
+		if (input.TO_EXCEL) {
+	   		 var gridOptions = smart.grid.getDefaultScardOption();
+	    	$('body').append('<div id="grid" style="display:none"></div>');		    
+		
+			//공통 엑셀
+	    	var excelGrid = $.extend([], _globalData.excelGrid);
+			
+			var EXCEL_REC = [];
+			
+			dat.TRCO_LIST.forEach(function(v, i){
+				//info 데이터 추가
+				var trco_bsnn_no = v.TRCO_PTRN=="1"?formatter.corpNum(null2void(v.TRCO_BSNN_NO,"")):formatter.ssn(null2void(v.TRCO_BSNN_NO,""));
+				v["data"]        = encodeURIComponent(JSON.stringify(v));
+				v["WDRW_BANK_CD"] = null2void(v["WDRW_ACCT_INFO"],"").split("|")[1];
+				v["WDRW_ACCT_NO"] = null2void(v["WDRW_ACCT_INFO"],"").split("|")[2];
+				v["TRCO_BSNN_NO"]= trco_bsnn_no;
+				v["TRCO_COLOR"] = 	null2void(v.TRCO_COLOR,"");
+				v["TRCO_RPRS_TLPH"]	 = getTel2(v.TRCO_RPRS_TLPH);
+				v["TRCO_RPRS_CELL"]	 = getTel2(v.TRCO_RPRS_CELL);
+				v["TRCO_FXNO"]	 = getTel2(v.TRCO_FXNO);
+				v["RSPB_INFO"]	 = null2void(v.RSPB_INFO,"");
+				v["ACCT_INFO"]	 = null2void(v.ACCT_INFO,"");
+				//v["RCBL_OVER_DATE"] = null2void(v.RCBL_OVER_STTS, "") == "1" ? "오류" : null2void(v.RCBL_OVER_DATE, "")+"일";
+				var rspb_info = null2void(v.RSPB_INFO,""); //flnm|jbcl_nm|dvsn_nm|chrg_tel|clph_no|eml|tax_rspb¶
+				if(rspb_info != ""){		
+					var rec = rspb_info.split("¶");
+					if(rec && rec.length > 0){
+						var flnm = rec[0].split("|")[0];
+						var jbcl_nm = rec[0].split("|")[1];
+						var dvsn_nm = rec[0].split("|")[2];
+						var chrg_tel = null2void(rec[0].split("|")[3], rec[0].split("|")[4]);
+						var eml = rec[0].split("|")[5];
+						v["RSPB_INFO"]	 = flnm;
+					}
+				}
+				
+				var acct_info = null2void(v.ACCT_INFO,""); //'10000003|기업|100000000001|홍길동|별칭1,10000003|기업|100000000002|홍길동|별칭2';
+				if(acct_info != ""){		
+					var rec = acct_info.split("¶");
+					if(rec && rec.length > 0){
+						var bank_nm = rec[0].split("|")[0];
+						var bank_cd = rec[0].split("|")[1];
+						var acct_no = rec[0].split("|")[2];
+						var owac_nm = rec[0].split("|")[3];
+						var acct_nick_nm = null2void(rec[0].split("|")[4]);
+						v["ACCT_INFO"]	 = bank_nm + " " + acct_no + " " + owac_nm + " " + acct_nick_nm;
+					}
+				}
+				
+				var excel_data = {};		
+				for(var i =0; i< excelGrid.length; i++){
+					var a = excelGrid[i].key
+					if('' === excelGrid[i].name){
+						continue;
+					}				
+					excel_data[a]  = v[a];
+				}
+				
+				EXCEL_REC.push(excel_data);
+			});
+				
+			//_thisExcelDown.downExcel({excelGrid:excelGrid, title:excel_dash_nm[_thisConst.DASH_NAME], data:EXCEL_REC})
+			
+			_grid = JGM.create('Grid', {container: document.getElementById('grid'), colDefs: excelGrid, options: gridOptions});				
+	
+	
+	        _grid.dataMgr.set(EXCEL_REC);
+	        _excelDownload(_grid, "거래처관리");
+			_loading.stop();
+	        return;
+        }
+
+		if(dat.COMMON_HEAD.ERROR){
+			_loading.stop();
+			malert("",dat.COMMON_HEAD.MESSAGE);
+			return;
+		}
+
+		/*if (!(input.TO_PRINT || input.TO_EXCEL)) {
+			_datTrcoList = dat.TRCO_LIST;
+		}*/
+		
+		$.map(dat.TRCO_LIST, function(v, i){
+			if (!(input.TO_PRINT || input.TO_EXCEL)) {
+				_datTrcoList.push(v);
+			}
+			if ((v.GRP_CD||"").indexOf("F") > -1) {
+				v.GRP_CD = v.GRP_CD.replace("F", "E");
+			}
+			var acvt_dttm = null2void(v.ACVT_DTTM,"").substr(1);
+			var trco_bsnn_no = v.TRCO_PTRN=="1"?formatter.corpNum(null2void(v.TRCO_BSNN_NO,"")):null2void(v.TRCO_BSNN_NO,"");
+			
+			v["WDRW_BANK_CD"] = null2void(v["WDRW_ACCT_INFO"],"").split("|")[1];
+			v["WDRW_ACCT_NO"] = null2void(v["WDRW_ACCT_INFO"],"").split("|")[2];
+			v["data"]        = encodeURIComponent(JSON.stringify(v));
+			v["TRCO_BSNN_NO"]= trco_bsnn_no;
+			v["TRCO_COLOR"] = 	null2void(v.TRCO_COLOR,"");
+			v["TRCO_RPRS_TLPH"]	 = getTel2(v.TRCO_RPRS_TLPH);
+			v["TRCO_RPRS_CELL"]	 = getTel2(v.TRCO_RPRS_CELL);
+			v["TRCO_FXNO"]	 = getTel2(v.TRCO_FXNO);
+			v["ACVT_DTTM"]	 = formatter.datetime(null2void(acvt_dttm,""), "yyyy-mm-dd");
+			v["RGSN_DTTM"]	 = formatter.datetime(v.RGSN_DTTM, "yyyy-mm-dd hh24:mi");
+			v["RSPB_INFO"]	 = null2void(v.RSPB_INFO,"");
+			v["ACCT_INFO"]	 = null2void(v.ACCT_INFO,"");
+			v["ACCT_INFO"]	 = null2void(v.ACCT_INFO,"");
+			v["ACCT_INFO"]	 = null2void(v.ACCT_INFO,"");
+			
+			var rspb_info = null2void(v.RSPB_INFO,""); //flnm|jbcl_nm|dvsn_nm|chrg_tel|clph_no|eml|tax_rspb¶
+			if(rspb_info != ""){		
+				var rec = rspb_info.split("¶");
+				if(rec && rec.length > 0){
+					var flnm = rec[0].split("|")[0];
+					var jbcl_nm = rec[0].split("|")[1];
+					var dvsn_nm = rec[0].split("|")[2];
+					var chrg_tel = null2void(rec[0].split("|")[3], rec[0].split("|")[4]);
+					var eml = rec[0].split("|")[5];
+					v["RSPB_INFO"]	 = flnm;
+				}
+			}
+			
+			var acct_info = null2void(v.ACCT_INFO,""); //'10000003|기업|100000000001|홍길동|별칭1,10000003|기업|100000000002|홍길동|별칭2';
+			if(acct_info != ""){		
+				var rec = acct_info.split("¶");
+				if(rec && rec.length > 0){
+					var bank_nm = rec[0].split("|")[0];
+					var bank_cd = rec[0].split("|")[1];
+					var acct_no = rec[0].split("|")[2];
+					var owac_nm = rec[0].split("|")[3];
+					var acct_nick_nm = null2void(rec[0].split("|")[4]);
+					v["ACCT_INFO"]	 = bank_nm + " " + acct_no + " " + owac_nm + " " + acct_nick_nm;
+				}
+			}
+			
+			var dpst_acct_info = null2void(v.DPST_ACCT_INFO,""); //'기업|10000003|100000000001';
+			if(dpst_acct_info != ""){		
+				var rec = dpst_acct_info.split("¶");
+				if(rec && rec.length > 0){
+					var bank_nm = rec[0].split("|")[0];
+					var bank_cd = rec[0].split("|")[1];
+					var acct_no = rec[0].split("|")[2];
+					v["DPST_ACCT_INFO"]	 = bank_nm + " " + acct_no;
+				}
+			}
+			
+			var wdrw_acct_info = null2void(v.WDRW_ACCT_INFO,""); //'기업|10000003|100000000001';
+			if(wdrw_acct_info != ""){		
+				var rec = wdrw_acct_info.split("¶");
+				if(rec && rec.length > 0){
+					var bank_nm = rec[0].split("|")[0];
+					var bank_cd = rec[0].split("|")[1];
+					var acct_no = rec[0].split("|")[2];
+					v["WDRW_ACCT_INFO"]	 = bank_nm + " " + acct_no;
+				}
+			}
+		});
+		
+        var $tbody = $('<tbody />');
+		var $printTbody = $('<tbody/>');
+        _datTrcoList.forEach(function(v){
+       		var $tr = $('<tr />', {html: $.tmpl(_globalData.template, v)});
+			$tr.find('td:eq(0)').append('<input type="hidden" class="data-value" id="data" value="' + v["data"] + '">');
+			$tr.find("td:eq(1)").addClass("ico_type");      		
+       		if(v.TRCO_PTRN == "1"){
+       			$tr.find("td:eq(1)>div").prepend('<span class="ico type1"><span class="blind">사업자</span></span>');
+       		}else if(v.TRCO_PTRN == "2"){
+       			$tr.find("td:eq(1)>div").prepend('<span class="ico type2"><span class="blind">개인</span></span>');
+       		}
+			if (input.TO_PRINT) {
+				var grpHtml = '';
+				if (null2void(v.GRP_CD,"").indexOf("S") > -1) {
+					grpHtml += '매출';
+					if (null2void(dat.ITIL_CROV_DT) == "") {
+						$tr.find('.RCBL_AMT').html('');
+					} else {
+						$tr.find('.RCBL_AMT').html(formatter.number(Math.floor(null2void(v.RCBL_AMT))));
+					}
+				} if (null2void(v.GRP_CD,"").indexOf("B") > -1) {
+					if (grpHtml != '') grpHtml += ', ';
+					grpHtml += '매입';
+					if (null2void(dat.ITIL_CROV_DT) == "") {
+						$tr.find('.UPAY_AMT').html('');
+					} else {
+						$tr.find('.UPAY_AMT').html(formatter.number(Math.floor(null2void(v.UPAY_AMT))));
+					}
+				}
+				$tr.find(".GRP_CD").html(grpHtml);
+				$printTbody.append($tr);
+			} else {
+				$tbody.append($tr);
+			}
+        });
+		
+		if (input.TO_PRINT) {
+			$('#TABLE_PRINT').empty().append($printTbody.children());
+		} else {
+			$('#tbTbody_TRCO_LIST').empty().append($tbody.children());
+		}
+		
+		if (input.TO_EXCEL) {
+			_grid.dataMgr.set(dat.TRCO_LIST);
+			_excelDownload(_grid, "거래처관리");
+            _loding.stop();
+			return;
+		}
+        
+        // 조회 결과가 없으면 tfoot 보여주기
+        var trlen = $('#tbTbody_TRCO_LIST').find("tr").length;
+        if(trlen == 0){
+            $(".list_table").find("tfoot").show();
+            if(dat.REG_YN == "N" && _cntsMngrYn == "Y"){
+            	//등록된 거래처 0건이고 관리자인경우 자동등록 버튼
+            	$("#AUTO_TRCO_REG").show();
+            	$("#tbTbody_TRCO_LIST").hide();
+                $(".list_table").find("tfoot").hide();
+                $("#AUTO_TRCO_REG td").attr("colspan", $(".list_scroll_top colgroup col").length);
+            }
+			if(input.TO_PRINT) {
+				alert("인쇄할 자료가 없습니다.");
+				_loading.stop();
+				return false;
+			}
+        }else{
+        	$("#tbTbody_TRCO_LIST").show();
+        	$("#AUTO_TRCO_REG").hide();
+            $(".list_table").find("tfoot").hide();
+        }
+        
+        //웹경리나라
+        if('WEB' == _ACS_DVC) {
+			$("#eseroBtn").hide();//홈택스 거래처 가져오기
+			$('.acs_dvc').hide();
+			$('#tbColgroup_TRCO_LIST').find('col:last').show();
+			$('#tbThead_TRCO_LIST').find('th:last').show();
+			$('.btn_billing').closest("td").show(); // 자료등록버튼
+		}
+        
+        // colgroup view 테이블과 List 테이블 똑같이 맞쳐주기	
+        $(".list_scroll colgroup").html($(".list_scroll_top colgroup").html());
+        
+        $.each($('#tbTbody_TRCO_LIST').find("tr"),function(i,v) {
+        	var temp = $(this).find("#data").val();
+            temp = decodeURIComponent(temp);
+            temp = JSON.parse(temp);
+ 			
+            var newAcvt = newAcvtmCheck(null2void(temp.ACVT_DTTM,""));
+ 			$(this).addClass((i==0?"fir ":"")+newAcvt.NEW_CLASS);
+			if ($(this).find("#trco_acvt_dttm").length != 0) {
+				var newHtml = $(this).find("#trco_acvt_dttm").html().substring(0,10);
+	            $(this).find("#trco_acvt_dttm").empty().append(newHtml+" "+newAcvt.NEW_IMG);
+			}
+ 			
+ 			$(this).find("a").addClass("link");//underline 표시
+ 			
+ 			//hidden 값 정의 
+ 			$(this).find("td:eq(0)").append("<input type=\"hidden\" name=\"GRP_CD\" value=\""+temp.GRP_CD+"\" />");
+ 			$(this).find("td:eq(0)").append("<input type=\"hidden\" name=\"TRCO_BSNN_NO\" value=\""+temp.TRCO_BSNN_NO+"\" />");
+ 			
+ 			//메모 등록 여부
+            var color = null2void(temp.TRCO_COLOR,"");
+            var memoYN = "";
+            if(temp.TRCO_MEMO != "" && temp.TRCO_MEMO != null){
+                //메모는 지정 되어있으나 color 가 없는 경우 -> blue 그외 지정 색
+                if(color == ""){
+                    //color = "blue";
+					color = "white";
+                }
+                memoYN = "memoY";
+            }else{
+                //메모가 없지만 색상만 지정한 경우 색상표시
+            	if(color == ""){
+                    color = "white";//메모가 없는 경우 white
+                }
+                memoYN = "memoN";
+            }
+            $(this).find(".ico_ly_wrap").find("a.ico_memo").attr("data", memoYN);
+            $(this).find(".ico_ly_wrap").find("a.ico_memo").attr("class", "ico_memo color_"+color);
+            $(this).find("div[class=TRCO_FXNO]").attr("onclick", "event_layer(this)");
+            
+            
+        	var temp = $(this).closest("tr").find("#data").val();
+        	temp = decodeURIComponent(temp);
+        	temp = JSON.parse(temp);
+
+        	var rspb_info = null2void(temp.RSPB_INFO,"");
+        	if(rspb_info != ""){
+        		var rec = rspb_info.split("¶");
+        		if(rec.length > 0){
+        			var html = '';
+        			html += '<div class="dslt_view">';
+        			html += '  <div class="top"><a href="#none"></a></div>';
+        			html += '</div>';
+        			$(this).find("div[class=RSPB_INFO]").html(html);
+        			$(this).find("div[class=RSPB_INFO]").find(".dslt_view").find("a:first").html(rec[0].split("|")[0]);
+        		}
+        	}
+        	var acct_info = null2void(temp.ACCT_INFO,"");
+        	if(acct_info != ""){
+        		var rec = acct_info.split("¶");
+        		if(rec.length > 0){
+        			var acctTxt = $(this).find("div[class=ACCT_INFO]").text();
+        			var html = '';
+        			html += '<div class="dslt_view">';
+        			html += '  <div class="top"><a href="#none"></a></div>';
+        			html += '</div>';
+        			$(this).find("div[class=ACCT_INFO]").html(html);
+        			$(this).find("div[class=ACCT_INFO]").find(".dslt_view").find("a:first").html(acctTxt);
+        		}
+        	}
+			var dpst_acct_info = null2void(temp.DPST_ACCT_INFO,"");
+			if(dpst_acct_info != ""){
+        		var rec = dpst_acct_info.split("¶");
+        		if(rec.length > 0){
+        			var acctTxt = $(this).find("div[class=DPST_ACCT_INFO]").text();
+        			var html = '';
+        			html += '<div class="">';
+        			html += '  <div class=""><a href="#none">'+acctTxt+'</a></div>';
+        			html += '</div>';
+        			$(this).find("div[class=DPST_ACCT_INFO]").html(html);
+        		}
+        	}
+			var wdrw_acct_info = null2void(temp.WDRW_ACCT_INFO,"");
+			if(wdrw_acct_info != ""){
+        		var rec = wdrw_acct_info.split("¶");
+        		if(rec.length > 0){
+        			var acctTxt = $(this).find("div[class=WDRW_ACCT_INFO]").text();
+        			var html = '';
+        			html += '<div class="">';
+        			html += '  <div class=""><a href="#none">'+acctTxt+'</a></div>';
+        			html += '</div>';
+        			$(this).find("div[class=WDRW_ACCT_INFO]").html(html);
+        		}
+        	}
+            $(this).find("div[class=RSPB_INFO]").find("a:first").attr("onclick", "layerRspbInfo(this)");
+            $(this).find("div[class=ACCT_INFO]").find("a:first").attr("onclick", "layerAcctInfo(this,'1')");
+            $(this).find("a[data-btn_trans]").attr("onclick", "layerAcctInfo(this,'2')");
+
+			var grpHtml = '';
+			if (null2void(temp.GRP_CD,"").indexOf("S") > -1) {
+				grpHtml += '<div class="btn_badge type_r no_hover"><span>매출</span></div> ';
+				if (null2void(dat.ITIL_CROV_DT) == "") {
+					$(this).find('.RCBL_AMT').html('');
+				} else {
+					itil_crov_dt = dat.ITIL_CROV_DT;
+					$(this).find('.RCBL_AMT').find('.tar').html(formatter.number(Math.floor(null2void(temp.RCBL_AMT))));
+					$(this).find('.RCBL_AMT').find('.edit').closest('div').parent().show();
+				}
+			} if (null2void(temp.GRP_CD,"").indexOf("B") > -1) {
+				grpHtml += '<div class="btn_badge type_b no_hover"><span>매입</span></div>';
+				if (null2void(dat.ITIL_CROV_DT) == "") {
+					$(this).find('.UPAY_AMT').html('');
+				} else {
+					itil_crov_dt = dat.ITIL_CROV_DT;
+					$(this).find('.UPAY_AMT').find('.tar').html(formatter.number(Math.floor(null2void(temp.UPAY_AMT))));
+					$(this).find('.UPAY_AMT').find('.edit').closest('div').parent().show();
+				}
+			}
+			$(this).find(".GRP_CD").html(grpHtml);
+        });
+		
+		getSetUp();
+        
+        drawGrpCheck(); //그룹지정박스 설정 (거래처목록조회시는 체크한 거래처가 없으므로 그룹지정박스는 초기화됨)
+
+        _searchList.setTotlPageNcnt(dat.TOTL_PAGE_NCNT);
+		_totlCnt = dat.TOTL_RSLT_CNT;
+		
+		//이월기준일
+		if (null2void(dat.ITIL_CROV_DT) == "") {
+			if ($('#WEB_NONPROFIT').val() != "Y") {
+				$('.dt_notiTxt').html('초기이월을 설정하면 미수금, 미지급금을 관리할 수 있어요.  <a href="#none" class="link btn_setCrovDt">[이월기준일 설정하기]</a>');
+			} else {
+				$('.dt_notiTxt').html('초기이월을 설정하면 미지급금을 관리할 수 있어요.  <a href="#none" class="link btn_setCrovDt">[이월기준일 설정하기]</a>');
+			}
+		} else {
+			$('.dt_notiTxt').html('이월기준일은 <a href="#none" class="link">'+formatter.datetime(dat.ITIL_CROV_DT, 'yyyy-mm-dd')+'</a> 입니다.');
+		}
+		//하단합계행
+		if ($('#WEB_NONPROFIT').val() == "Y") {
+			$('.totl_infm').html('총 ' + formatter.number(_totlCnt) + '건(이월미지급총액 : ' + formatter.number(Math.floor(null2void(dat.UPAY_SUM))) + '원)');
+		} else {
+			$('.totl_infm').html('총 ' + formatter.number(_totlCnt) + '건(이월미수총액 : ' + formatter.number(Math.floor(null2void(dat.RCBL_SUM))) + '원/이월미지급총액 : ' + formatter.number(Math.floor(null2void(dat.UPAY_SUM))) + '원)');
+		}
+		rcbl_sum = Math.floor(null2void(dat.RCBL_SUM));
+		upay_sum = Math.floor(null2void(dat.UPAY_SUM));
+		//serp_drawTablePaing("table_paging", drawTrcoList, dat.PAGE_NO, _searchList.getTotlPageNcnt());
+
+		if (input.TO_PRINT) {
+			fn_print();
+		}
+		
+    	/* 조회 테이블 TH, TD 동시 스크롤 컨트롤 */
+        fn_pageResize();
+
+		var scrollTopVal = $('.list_scroll').scrollTop();
+		
+		if (_searchList.getPageNo() != 1) {
+			$('.list_scroll').scrollTop(scrollTopVal);
+		}
+        
+        $(".list_scroll").scroll(function(){
+            $("#rspb_info_list").hide();	//담당자정보
+            $("#acct_info_list").hide();
+            $("#trco_acct_list").hide();
+            $(".layer_icobilling").hide();
+			$(".list_scroll_top").scrollLeft($(this).scrollLeft());
+        });
+		
+		// JEX 로딩 END
+		setTimeout(function() {
+			_loading.stop();
+		}, 100);
+	});
+}
+
+//거래처 담당자 다운로드
+function drawTrcoRspbList(pageno,input){
+	_loading.start();
+
+	//화면도움말 숨김
+	$(".before_platform").hide();
+	$(".guide_platform").hide();
+
+	$('.title_opt_chkv').hide();
+	$('input#chk_all, input.chk').prop('checked', false);
+	$('.h1_title_wrap.top_content').css('visibility', 'visible');
+
+	if(pageno){
+		_searchList.setPageNo(pageno);
+	} else {
+		pageno = 1;
+		_searchList.setPageNo(pageno);
+	}
+
+	if(!input){
+		input = {};
+	}else{
+		if (!(input.TO_EXCEL || input.TO_PRINT)) {
+			$('#tbTbody_TRCO_LIST').hide();
+		}
+	}
+
+	//스크롤 조회 테스트
+    if (pageno == 1 && !(input.TO_EXCEL || input.TO_PRINT)) {
+		_searchList.setPageNo("1");
+        $('#tbTbody_TRCO_LIST').empty();
+		_datTrcoList = [];
+	}
+
+	if(_searchList.getOrderColor() == ""){
+		var order_color_nm = null2void($("input[name=order_color]:eq(0)").parent().clone().find("input").remove().end().html()).replace("&nbsp;&nbsp;&nbsp;","");
+		$("#order_color_nm").html(order_color_nm + " 메모");
+		$("input[name=order_color]:eq(0)").attr("checked", true);
+	}
+
+	if(!input.TO_PRINT) {
+		$(".list_scroll_top").parent().removeClass();
+	}
+
+	var jexAjax = jex.createAjaxUtil("trco_0005_04_l001");
+	if (input.TO_PRINT || input.TO_EXCEL) {
+		jexAjax.set("PAGE_PER_CNT", _totlCnt);
+	} else {
+		jexAjax.set("PAGE_PER_CNT", _searchList.getPagePerCnt());
+	}
+	jexAjax.set("PAGE_NO", _searchList.getPageNo());
+	jexAjax.set("INQY_DSNC", _searchList.getInqyDsnc());
+	jexAjax.set("GRP_CD", _searchList.getGrpCd());
+	jexAjax.set("TRCO_CMNM", _searchList.getTrcoCmnm());
+	jexAjax.set("SRT_NM", _searchList.getOrderBy());
+	jexAjax.set("SRT_COLOR",_searchList.getOrderColor());
+	jexAjax.set("LNP_WAY",_searchList.getLnpWay());
+
+	jexAjax.execute(function(dat) {
+		if (input.TO_EXCEL) {
+			var gridOptions = smart.grid.getDefaultScardOption();
+			$('body').append('<div id="grid" style="display:none"></div>');
+
+			const excelGrid = [
+				{
+					name: "구분",
+					key: "TRCO_PTRN",
+					width: 162,
+					align: "",
+					renderer: false,
+					excelFormat: "string",
+				},
+				{
+					name: "상호(법인명)",
+					key: "TRCO_BSNN_NM",
+					width: 162,
+					align: "",
+					renderer: false,
+					excelFormat: "string",
+				},
+				{
+					name: "거래처별칭",
+					key: "TRCO_CMNM",
+					width: 162,
+					align: "",
+					renderer: false,
+					excelFormat: "string",
+				},
+				{
+					name: "등록번호",
+					key: "TRCO_BSNN_NO",
+					width: 162,
+					align: "",
+					renderer: false,
+					excelFormat: "string",
+				},
+				{
+					name: "담당자명",
+					key: "담당자명",
+					width: 162,
+					align: "",
+					renderer: false,
+					excelFormat: "string",
+				},
+				{
+					name: "담당자연락처",
+					key: "담당자연락처",
+					width: 162,
+					align: "",
+					renderer: false,
+					excelFormat: "string",
+				},
+				{
+					name: "담당자메일",
+					key: "담당자메일",
+					width: 162,
+					align: "",
+					renderer: false,
+					excelFormat: "string",
+				},
+				{
+					name: "비고",
+					key: "비고",
+					width: 162,
+					align: "",
+					renderer: false,
+					excelFormat: "string",
+				},
+				{
+					name: "계산서담당자",
+					key: "계산서담당자",
+					width: 162,
+					align: "center",
+					renderer: false,
+					excelFormat: "string",
+				}
+			];
+
+			var EXCEL_REC = [];
+
+			dat.TRCO_LIST.forEach(function (v, i) {
+				var trco_bsnn_no = v.TRCO_PTRN == "1" ? formatter.corpNum(null2void(v.TRCO_BSNN_NO, "")) : formatter.ssn(null2void(v.TRCO_BSNN_NO, ""));
+				v["data"]        = encodeURIComponent(JSON.stringify(v));
+				v["WDRW_BANK_CD"] = null2void(v["WDRW_ACCT_INFO"],"").split("|")[1];
+				v["WDRW_ACCT_NO"] = null2void(v["WDRW_ACCT_INFO"],"").split("|")[2];
+				v["TRCO_BSNN_NO"]= trco_bsnn_no;
+				v["TRCO_COLOR"] = 	null2void(v.TRCO_COLOR,"");
+				v["TRCO_RPRS_TLPH"]	 = getTel2(v.TRCO_RPRS_TLPH);
+				v["TRCO_RPRS_CELL"]	 = getTel2(v.TRCO_RPRS_CELL);
+				v["TRCO_FXNO"]	 = getTel2(v.TRCO_FXNO);
+				v["RSPB_INFO"]	 = null2void(v.RSPB_INFO,"");
+				v["ACCT_INFO"]	 = null2void(v.ACCT_INFO,"");
+				v["TRCO_PTRN"] = v.TRCO_PTRN == '1' ? "사업자" : "개인";
+
+				var baseRowData = {};
+				for(var i =0; i< excelGrid.length; i++){
+					var key = excelGrid[i].key
+					if('' === excelGrid[i].name){
+						continue;
+					}
+					baseRowData[key]  = v[key];
+				}
+
+				var rspb_info = null2void(v.RSPB_INFO, "");
+				const parts = rspb_info.split("¶").map(record => {
+					const p = record.split("|");
+					return {
+						담당자명: p[0] || "",
+						담당자연락처: p[4] || "",
+						담당자메일: p[5] || "",
+						비고: p[8] || "",
+						계산서담당자: p[6] == "Y" ? "Y" : ""
+					};
+				});
+
+				// Insert each part as a separate row
+				parts.forEach(part => {
+					var row = {...baseRowData};
+
+					// Fill columns starting from index 4
+					row["담당자명"] = part.담당자명;
+					row["담당자연락처"] = part.담당자연락처;
+					row["담당자메일"] = part.담당자메일;
+					row["비고"] = part.비고;
+					row["계산서담당자"] = part.계산서담당자;
+
+					EXCEL_REC.push(row);
+				});
+			});
+
+			_grid = JGM.create('Grid', {container: document.getElementById('grid'), colDefs: excelGrid, options: gridOptions});
+			_grid.dataMgr.set(EXCEL_REC);
+			_excelDownload(_grid, "담당자목록");
+			_loading.stop();
+			return;
+		}
+
+		if(dat.COMMON_HEAD.ERROR){
+			_loading.stop();
+			malert("",dat.COMMON_HEAD.MESSAGE);
+			return;
+		}
+
+		getSetUp();
+
+        drawGrpCheck(); //그룹지정박스 설정 (거래처목록조회시는 체크한 거래처가 없으므로 그룹지정박스는 초기화됨)
+
+        _searchList.setTotlPageNcnt(dat.TOTL_PAGE_NCNT);
+		_totlCnt = dat.TOTL_RSLT_CNT;
+
+    	/* 조회 테이블 TH, TD 동시 스크롤 컨트롤 */
+        fn_pageResize();
+
+		var scrollTopVal = $('.list_scroll').scrollTop();
+
+		if (_searchList.getPageNo() != 1) {
+			$('.list_scroll').scrollTop(scrollTopVal);
+		}
+
+        $(".list_scroll").scroll(function(){
+            $("#rspb_info_list").hide();	//담당자정보
+            $("#acct_info_list").hide();
+            $("#trco_acct_list").hide();
+            $(".layer_icobilling").hide();
+			$(".list_scroll_top").scrollLeft($(this).scrollLeft());
+        });
+
+		// JEX 로딩 END
+		setTimeout(function() {
+			_loading.stop();
+		}, 100);
+	});
+}
+
+function newAcvtmCheck(arg1){
+	var res = {};
+
+	//최근 수정일표시
+	var newGugn = null2void(arg1,"").substr(0,1);//new flag 
+	var acvt_dttm = null2void(arg1,"").substr(1);
+	var dttm = formatter.datetime(null2void(acvt_dttm,"") , "yyyy-mm-dd");
+	var toDayminus = addDate("d",-1,jex.date().getDate()+"000000","");
+	var newImg = "",newClass="";
+	
+	if(parseInt(toDayminus) <=  parseInt(dttm.replace(/-/gi,""))  && newGugn == "1"){
+		newImg = "<img src=\"../img/ico/ico_new2.png\" alt=\"New\" style=\"vertical-align:-2px;\">"
+		newClass = "new";
+	}
+	res["NEW_IMG"] =newImg;
+	res["NEW_CLASS"] = newClass;
+	return res;
+}
+
+//거래처 약식정보 표시
+function layerTrcoInfo(thisObj){
+	var layerBox = $("#trco_info_list");
+	
+	var temp = $(thisObj).closest("tr").find("#data").val();
+	temp = decodeURIComponent(temp);
+	temp = JSON.parse(temp);
+	var dv = null2void(temp.TRCO_PTRN,"");
+	var trco_bsnn_nm = null2void(temp.TRCO_BSNN_NM,"");
+	var trco_cmnm = null2void(temp.TRCO_CMNM,"");
+	var trco_bsnn_no = dv =="1"?formatter.corpNum(null2void(temp.TRCO_BSNN_NO,"")):formatter.ssn(null2void(temp.TRCO_BSNN_NO,""));
+	var name = null2void(temp.TRCO_RPPR_NM,"");
+	var tlph = null2void(temp.TRCO_RPRS_TLPH,"");
+	var cell = null2void(temp.TRCO_RPRS_CELL,"");
+	var fxno = null2void(temp.TRCO_FXNO,"");
+	var adr = null2void(temp.TRCO_RPRS_BSUN_POST_ADRS,"");
+	if (null2void(temp.TRCO_RPRS_BSUN_DTL_ADRS, "") != "") {
+		adr += ", " + null2void(temp.TRCO_RPRS_BSUN_DTL_ADRS, "");
+	}
+	var tpbs_nm = null2void(temp.TRCO_TPBS_NM, "");
+	var bsst_nm = null2void(temp.TRCO_BSST_NM, "");
+	var acct_info = null2void(temp.ACCT_INFO,"");
+	var acct = acct_info.split("¶")[0];
+	var rspb_info = null2void(temp.RSPB_INFO,"");
+	var rspb = rspb_info.split("¶")[0];
+
+	layerBox.remove();
+	
+	if (dv == "1") { //사업자
+		var html = '';
+		html += '<div id="trco_info_list" class="cust_s_inqbx" style="display:block;width:375px;">';
+		html += '   <div class="cust_s_top"><!-- 기본정보 -->';
+		html += '	<div class="row1">';
+		html += '	<span class="ico ico1"><span class="blind">사업자</span></span>';
+		html += '	<span class="nm2" title="'+trco_cmnm+'">'+trco_cmnm+'</span></div>';
+		html += '	<div class="row2">';
+		html += '	<span>'+trco_bsnn_no+'</span>';
+		html += '	<span class="name">'+name+'</span><!-- (modify)20230726 -->'
+		html += '	<span class="tel">'+getTel2(tlph)+'</span>';
+		html += '	<span class="fax">'+getTel2(fxno)+'</span></div>';
+		html += '	</div>';
+		html += '	<div class="cust_s_cn"><!-- 상세정보 -->';
+		html += '	<ul><li><i>주소</i><div>'+adr+'</div></li>';
+		html += '	<li><i>업태/종목</i><div><em>'+tpbs_nm+'</em><em>/</em><em>'+bsst_nm+'</em></div></li>';
+		html += '	<li><i>거래처계좌</i><div><em>' + null2void(acct.split("|")[2]) + '</em><em>' + null2void(acct.split("|")[3]) + '</em></div></li>';
+		html += '	<li><i>직원정보</i><div><em class="nm" title="' + null2void(rspb.split("|")[0]) + '">' + null2void(rspb.split("|")[0]) + '</em>';
+		html += '		<em>' + null2void(rspb.split("|")[3], rspb.split("|")[4]) + '</em><br><em>' + null2void(rspb.split("|")[5]) + '</em></div><li>';
+		html += '	</ul></div>';
+		html += '	<div class="cust_s_btn"><a href="#none" class="arr moveTrcoDetail" data="'+$(thisObj).closest("tr").find("#data").val()+'">상세보기</a></div>'
+		html += '</div>';
+	} else { //개인
+		var html = '';
+		html += '<div id="trco_info_list" class="cust_s_inqbx" style="display:block;width:375px;">';
+		html += '   <div class="cust_s_top"><!-- 기본정보 -->';
+		html += '	<div class="row1">';
+		html += '	<span class="ico ico2"><span class="blind">개인</span></span>';
+		html += '	<span class="nm2" title="'+trco_cmnm+'">'+trco_cmnm+'</span></div>';
+		html += '	<div class="row2">';
+		html += '	<span>'+trco_bsnn_no+'</span>';
+		html += '	<span class="name">'+name+'</span><!-- (modify)20230726 -->'
+		html += '	<span class="tel">'+getTel2(tlph)+'</span>';
+		html += '	<span class="fax">'+getTel2(fxno)+'</span></div>';
+		html += '	</div>';
+		html += '	<div class="cust_s_cn"><!-- 상세정보 -->';
+		html += '	<ul><li><i>주소</i><div>'+adr+'</div></li>';
+		html += '	<li><i>거래처계좌</i><div><em>' + null2void(acct.split("|")[2]) + '</em><em>' + null2void(acct.split("|")[3]) + '</em></div></li>';
+		html += '	<li><i>증빙담당자</i><div><em class="nm" title="' + null2void(rspb.split("|")[0]) + '">' + null2void(rspb.split("|")[0]) + '</em>';
+		html += '		<em>' + null2void(rspb.split("|")[3], rspb.split("|")[4]) + '</em><br><em>' + null2void(rspb.split("|")[5]) + '</em></div><li>';
+		html += '	</ul></div>';
+		html += '	<div class="cust_s_btn"><a href="#none" class="arr moveTrcoDetail" data="'+$(thisObj).closest("tr").find("#data").val()+'">상세보기</a></div>'
+		html += '</div>';
+	}
+		
+	$("body").append(html);
+	layerBox = $("#trco_info_list");
+	
+	var obj = $(thisObj).offset();
+
+	layerBox.css({"top":obj.top,"left": obj.left + 50});
+	if (layerBox.outerHeight() + obj.top > $(window).height()) {
+	    layerBox.css("top", obj.top - layerBox.outerHeight() < 0 ? "200px" : obj.top - layerBox.outerHeight());
+	}
+}
+
+//거래처 담당자정보 표시
+function layerRspbInfo(thisObj){
+
+	var layerBox = $("#rspb_info_list");
+	
+	var temp = $(thisObj).closest("tr").find("#data").val();
+	temp = decodeURIComponent(temp);
+	temp = JSON.parse(temp);
+	var rspb_info = null2void(temp.RSPB_INFO,"");
+
+	layerBox.remove();
+	
+	if(rspb_info == ""){
+		return;
+	}
+
+	var html = '';
+	html += '<div id="rspb_info_list" class="res_info_box" style="display:block;top:300px;left:340px;min-width:424px;" data="'+encodeURIComponent(JSON.stringify(temp))+'">';
+	html += '<div class="res_info_inn">';
+	html += '	<ul class="rspb_ul"></ul>';
+	html += '  </div>';
+	html += '</div>';
+	$("body").append(html);
+	layerBox = $("#rspb_info_list");
+
+	var objUl = $(layerBox).find(".rspb_ul");
+
+	var rec = rspb_info.split("¶");
+	$.each(rec, function(i,v){
+		var flnm = v.split("|")[0];
+		var chrg_tel = null2void(v.split("|")[3], v.split("|")[4]);
+		var eml = v.split("|")[5];
+		var key = v.split("|")[7];
+
+		var objLi = '';
+		objLi += '<li>';
+		objLi += '<span class="name" title="'+flnm+'">'+flnm+'</span>';
+		objLi += '<span class="tel" title="'+null2void(getTel2(chrg_tel),"&nbsp;")+'">'+null2void(getTel2(chrg_tel),"&nbsp;")+'</span>';
+		objLi += '<a href="#none" class="mail t_hover" title="'+eml+'" onclick="event_layer(this)" rspb-key="'+key+'">' +eml+ '</a>';
+		objLi += '</li>';
+
+		$(objUl).append(objLi);
+	});
+
+	var obj = $(thisObj).offset();
+
+	var top = obj.top + 15;
+	var left = obj.left + 50;
+	layerBox.css({"top":top,"left": left});
+
+	if (layerBox.outerHeight() + obj.top > $(window).height()) {
+		top = obj.top - layerBox.outerHeight() < 0 ? 200 : obj.top - layerBox.outerHeight();
+	}
+	var gnb_width = 210;
+	if($(thisObj).closest(".content_wrap").width()-10 < obj.left - gnb_width + $(layerBox).width()){
+		left = obj.left + 100 - $(layerBox).width();
+	}else{
+		left = obj.left;
+	}
+	layerBox.css({"top":top,"left": left});
+}
+
+//거래처 계좌정보 표시
+function layerAcctInfo(thisObj, gubun){
+	
+	var temp = $(thisObj).closest("tr").find("#data").val();
+	temp = decodeURIComponent(temp);
+	temp = JSON.parse(temp);
+	var ttrco_key = null2void(temp.TRCO_KEY,"");
+	var ttrco_cmnm = null2void(temp.TRCO_CMNM,"");
+	var t_ttrco_bsnn_no = null2void(temp.TRCO_BSNN_NO,"");
+	var ttrco_bsnn_no = temp.TRCO_PTRN=="1"?formatter.corpNum(null2void(temp.TRCO_BSNN_NO,"")):null2void(temp.TRCO_BSNN_NO,""); //개인사업자번호는 '-' 표시 X
+	var iinfo = ttrco_cmnm + ' ' + ttrco_bsnn_no;
+	var acct_info = null2void(temp.ACCT_INFO,"");
+	
+	//출금계좌정보
+	var wdrw_bank_cd = null2void(temp.WDRW_BANK_CD);
+	var wdrw_acct_no = null2void(temp.WDRW_ACCT_NO);
+	
+	$("#acct_info_list").remove();
+	if(gubun == "1"){
+		$("body").append('<div id="acct_info_list" class="layertype1 bulnone" style="display: block; top: 22px; z-index: 100007;"><ul></ul></div>');
+	}else{
+		$("body").append('<div id="acct_info_list" class="layertype1 bulnone" style="display: block; top: 22px; z-index: 100007;"><ul><li><a href="#none" style="padding-top:8px;padding-bottom:7px;cursor:default;">등록된 계좌가 없습니다.</a></li><li style="border-top:0;"><a id="regBtn_acct_info" href="#none" data-trco_cmnm="'+ttrco_cmnm+'" data-trco_key="'+ttrco_key+'"data-trco_bsnn_no="'+t_ttrco_bsnn_no+'"data-info="'+iinfo+'" class="txt_b" style="cursor: pointer; padding-top:8px;padding-bottom:7px;">[입금계좌등록]</a></li></ul></div>');
+	}
+	
+	if(acct_info != ""){
+		$("#acct_info_list").find("ul").html("");
+		var rec = acct_info.split("¶");
+		if(rec.length == 0) return;
+		
+		$.each(rec, function(i,v){
+			var bank_nm = v.split("|")[0];
+			var bank_cd = v.split("|")[1];
+			var acct_no = v.split("|")[2];
+			var owac_nm = v.split("|")[3];
+			var acct_nick_nm = null2void(v.split("|")[4]);
+			var rslt_cd = null2void(v.split("|")[5]);
+			var html = '';
+			if (rslt_cd == "0000" || rslt_cd == "") {
+				html += '\n		<li><a href="#none" style="cursor: default;"><img src="../img/serp/bank_ico/'+bank_cd+'.png" alt="" style="height:20px;min-width:20px;"> ('+bank_nm+') '+acct_no+' <span class="txt_b">'+owac_nm+'</span>&nbsp;</a></li>';
+			} else {
+				html += '\n		<li><a href="#none" style="cursor: default;"><img src="../img/serp/bank_ico/'+bank_cd+'.png" alt="" style="height:20px;min-width:20px;"> ('+bank_nm+') '+acct_no+' <span class="txt_r">예금주조회 오류</span>&nbsp;</a></li>';
+			}
+			$("#acct_info_list ul").append(html);
+			$("#acct_info_list").find("li:last").bind("click", function(){ moveTrans(bank_cd, acct_no, owac_nm, temp.TRCO_BSNN_NO, temp.TRCO_CMNM, wdrw_bank_cd, wdrw_acct_no, rslt_cd); });
+		});
+	}
+	
+	var gnb_width = 210;
+	var layerBox = $("#acct_info_list");
+	var obj = $(thisObj).offset();
+	
+	if(gubun == "1"){
+		if($(thisObj).closest(".content_wrap").width()-10 < obj.left - gnb_width + $(layerBox).width()){
+			layerBox.css({"top":obj.top + 22,"left": (obj.left + 200 - $(layerBox).width())});
+		}else{
+			layerBox.css({"top":obj.top + 22,"left": obj.left});
+		}
+	}else{
+		layerBox.css({"top":obj.top,"left": (obj.left - $(layerBox).width() - 10)});
+	}
+	layerBox.show();
+}
+
+//거래처 내 입금/출금 계좌정보 표시
+function layerMyAcctInfo(thisObj){
+	var temp = $(thisObj).closest("tr").find("#data").val();
+	temp = decodeURIComponent(temp);
+	temp = JSON.parse(temp);
+	var acct_info = "";
+	if ($(thisObj).closest('td').find('div:eq(0)').hasClass('DPST_ACCT_INFO')) {
+		acct_info = null2void(temp.DPST_ACCT_INFO,"");
+	} else if ($(thisObj).closest('td').find('div:eq(0)').hasClass('WDRW_ACCT_INFO')) {
+		acct_info = null2void(temp.WDRW_ACCT_INFO,"");
+	}
+	
+	$("#acct_info_list").remove();
+	$("body").append('<div id="acct_info_list" class="layertype1 bulnone" style="display: block; top: 22px; z-index: 100007;"><ul></ul></div>');
+	
+	if(acct_info != ""){
+		$("#acct_info_list").find("ul").html("");
+		
+		var bank_nm = acct_info.split("|")[0];
+		var bank_cd = acct_info.split("|")[1];
+		var acct_no = acct_info.split("|")[2];
+		var html = '\n		<li><a href="#none" style="cursor: default;"><img src="../img/serp/bank_ico/'+bank_cd+'.png" alt="" style="height:20px;min-width:20px;"> ('+bank_nm+') '+acct_no+' </a></li>';
+		$("#acct_info_list ul").append(html);
+	}
+	
+	var gnb_width = 210;
+	var layerBox = $("#acct_info_list");
+	var obj = $(thisObj).offset();
+	
+	if($(thisObj).closest(".content_wrap").width()-10 < obj.left - gnb_width + $(layerBox).width()){
+		layerBox.css({"top":obj.top + 22,"left": (obj.left + 200 - $(layerBox).width())});
+	}else{
+		layerBox.css({"top":obj.top + 22,"left": obj.left});
+	}
+	layerBox.show();
+}
+
+//건별이체화면으로 이동(cs)
+function moveTrans(bank_cd, acct_no, owac_nm, bzaq_no, bzaq_nm, wdrw_bank_cd, wdrw_acct_no, rslt_cd){
+	if('WEB' == _ACS_DVC && $('#WEB_KYUNGRI').val() != "Y") {
+		return;
+	}
+	
+	if (rslt_cd != "0000" && rslt_cd != "") {
+		if(confirm("선택하신 계좌번호는 예금주명이 확인되지 않은 계좌입니다.\n그래도 진행하시겠습니까?")) {
+			moveTrans(bank_cd, acct_no, owac_nm, bzaq_no, bzaq_nm, wdrw_bank_cd, wdrw_acct_no, "0000");
+		}
+	} else {
+		var result = {RSLT_CD:"0000"};
+		
+		if(result.RSLT_CD=="0000"){
+			var reqData = {};
+			var reqDatas   = [];
+			var input      = {};
+			reqData.APP_ID     = "";
+			reqData.MENU_ID    = "m5230";
+			reqData.MENU_TITLE = "건별이체";
+			var rec = [];
+			rec.push({"RCV_BANK_CD":bank_cd, "RCV_ACCT_NO":acct_no, "RCV_OWAC_NM":owac_nm, "BZAQ_NO":bzaq_no, "BZAQ_NM":bzaq_nm }); //입금계좌
+			if ($('#WEB_KYUNGRI').val() == "Y") {
+				reqData.MENU_PARAM = {"REC":rec , "BANK_CD":wdrw_bank_cd, "ACCT_NO":wdrw_acct_no, "TYPE":"T"}; 
+			} else {
+				reqData.MENU_PARAM = {"REC":rec , "BANK_CD":wdrw_bank_cd, "ACCT_NO":wdrw_acct_no}; 
+			}
+			reqDatas.push(reqData);
+			
+			input.TRAN_NO  = "SERP30_SVC_P010";
+			input.USER_ID  = _USER_ID;
+			input.DATETIME = moment().format('YYYYMMDDHHmmSS');
+			input.REQ_DATA = reqDatas;
+			
+			var JSonInp = JSON.stringify(input);
+			if( typeof(window.external) != "undefined" ) {
+				var result;
+				try{
+					result = window.external.RequestEmWebApi(JSonInp);
+					result = JSON.parse(result);
+				}catch(e) {
+					result = {RSLT_CD:"9999",RSLT_MSG:e};
+				}
+				if(result.RSLT_CD != "0000") {
+					alert(result.RSLT_MSG+"("+result.RSLT_CD+")");
+				}
+			}
+		} else {
+			alert(result.RSLT_MSG+"("+result.RSLT_CD+")");
+		}
+	}
+}
+
+function trashcanTrcoOne(bsnnNo, trcoKey) {
+	//선택한 거래처를 휴지통으로 보내시겠습니까?
+	if(!confirm(jexjs.getCode("RSPS_CD","WM0007"))){ 
+		return true;
+	}
+
+	var sendTrcoList = [];
+	
+	sendTrcoList.push({
+		"BSNN_NO":bsnnNo,	
+		"TRCO_KEY":trcoKey
+	});
+	
+	_loading.start();
+	var jexAjax = jex.createAjaxUtil("trco_0005_11_u001");
+	jexAjax.set("TRCO_LIST", sendTrcoList);
+	jexAjax.execute(function(dat) {
+		_loading.stop();
+		if(sendTrcoList.length > 0){
+			
+			malert("WM0004");//삭제완료
+			drawTrcoList();				//거래처 목록 표시
+		//	drawUserGrpList();	//사용자그룹 목록 표시
+			
+			if (delTrcoPopup != "none") {
+				delTrcoPopup.delPage = 1; //자식창 팝업 업데이트
+				delTrcoPopup.chkReDel = 1;
+				delTrcoPopup._searchList.setPageNo(1);
+				delTrcoPopup.drawTrcoList();
+			}
+			
+		}
+	});
+}
+
+//휴지통보내기
+function trashcanTrco(){
+	//휴지통으로 보낼 거래처를 선택하세요.
+	if($("input[class=chk]:checked").length == 0){
+		malert("WE0011");
+		return true;
+	}
+	//선택한 거래처를 휴지통으로 보내시겠습니까?
+	if(!confirm(jexjs.getCode("RSPS_CD","WM0007"))){ 
+		return true;
+	}
+
+	var sendTrcoList = [];
+	
+	//거래처목록 (체크 목록 가져오기)
+	$("input[class=chk]:checked").each(function(){
+		var trcoRec = _datTrcoList[$("input[class=chk]").index(this)];
+		sendTrcoList.push({
+			"BSNN_NO":trcoRec.BSNN_NO,	
+			"TRCO_KEY":trcoRec.TRCO_KEY
+		});
+	});
+	_loading.start();
+	var jexAjax = jex.createAjaxUtil("trco_0005_11_u001");
+	jexAjax.set("TRCO_LIST", sendTrcoList);
+	jexAjax.execute(function(dat) {
+		_loading.stop();
+		if(sendTrcoList.length > 0){
+			
+			malert("WM0004");//삭제완료
+			drawTrcoList();				//거래처 목록 표시
+		//	drawUserGrpList();	//사용자그룹 목록 표시
+			
+			if (delTrcoPopup != "none") {
+				delTrcoPopup.delPage = 1; //자식창 팝업 업데이트
+				delTrcoPopup.chkReDel = 1;
+				delTrcoPopup._searchList.setPageNo(1);
+				delTrcoPopup.drawTrcoList();
+			}
+			
+			$('.title_opt_chkv').hide();
+			
+		}
+	});
+}
+
+//휴지통 복원하기
+function restoreTrco(){
+	
+	//복원할 거래처를 선택하세요.  
+	if($("input[class=chk]:checked").length == 0){
+		parent.showPrintInfoMsg("WE0012");
+		return true;
+	}
+	//선택한 거래처를 복원 하시겠습니까?
+	if(!confirm(jexjs.getCode("RSPS_CD","WM0008"))){ 
+		return true;
+	}
+	
+	var sendTrcoList = [];
+	
+	//거래처목록 (체크 목록 가져오기)
+	$("input[class=chk]:checked").each(function(){
+		var trcoRec = _datTrcoList[$("input[class=chk]").index(this)];
+		sendTrcoList.push({
+			"BSNN_NO":trcoRec.BSNN_NO,	
+			"TRCO_KEY":trcoRec.TRCO_KEY,
+			"TRCO_BSNN_NO":trcoRec.TRCO_BSNN_NO,
+			"TRCO_CMNM":trcoRec.TRCO_CMNM
+		});
+	});
+	
+	var jexAjax = jex.createAjaxUtil("trco_0005_12_u001");
+	jexAjax.set("TRCO_LIST", sendTrcoList);
+	jexAjax.execute(function(dat) {
+		if(sendTrcoList.length > 0){
+			alert('복원 되었습니다.');
+			//parent.showPrintInfoMsg("WM0006");//복원완료
+			category = "trash";
+			_searchList.setPageNo(1);
+			drawTrcoList();				//거래처 목록 표시
+			//drawBscGrpList();			//기본그룹 목록 표시
+		//	drawUserGrpList();			//사용자그룹 목록 표시
+		}
+	});
+}
+
+//거래처삭제하기
+function deleteTrco(){
+	//삭제할 거래처를 선택하세요.
+	if($("input[name=trco]:checked").length == 0){
+		alert("삭제할 거래처를 선택하세요.");
+		return true;
+	}
+	
+	var sendTrcoList = [];
+	//거래처목록 (체크 목록 가져오기)
+	$("input[name=trco]:checked").each(function(){
+		var trcoRec = _datTrcoList[$("input[name=trco]").index(this)];
+		sendTrcoList.push({"TRCO_KEY":trcoRec.TRCO_KEY});
+	});
+	
+	if(!confirm("거래처를 영구삭제하시겠습니까? \n영구삭제된 거래처는 복원할 수 없습니다.")){
+		return;
+	}
+	
+	_loading.start();
+	//삭제전 데이타 체크 (해당 거래처에 자료등록건이 있는지 체크 )
+	var jexAjax = jex.createAjaxUtil("trco_m001_01_u001");
+	jexAjax.set("REC", sendTrcoList);
+	jexAjax.set("DEL_YN", "N"); //자료등록건 있는지 검사를 위해 N으로 설정
+	jexAjax.execute(function(dat) {
+		_loading.stop();
+
+		if(Number(dat.ERR_NCNT) > 0 && Number(dat.ERR_NCNT) == sendTrcoList.length){
+			alert("등록된 자료가 있는 거래처는 제외하고 삭제됩니다.");
+			return;
+		}else if(Number(dat.ERR_NCNT) > 0 && sendTrcoList.length != Number(dat.NCNT)){
+			alert("등록된 자료가 있는 거래처는 제외하고 삭제됩니다.");
+		}
+		_loading.start();
+		//삭제처리
+		var jexAjax = jex.createAjaxUtil("trco_m001_01_u001");
+		jexAjax.set("REC", sendTrcoList);
+		jexAjax.set("DEL_YN", "Y"); 
+		jexAjax.execute(function(dat) {
+			_loading.stop();
+			if(sendTrcoList.length > 0){
+				// 경리나라 6.1
+//				malert("WM0004");//삭제완료
+				drawTrcoList();		//거래처 목록 표시
+			//	drawUserGrpList();	//사용자그룹 목록 표시
+			}
+		});
+	});
+}
+
+//열린 레이어닫기
+function closeLayerBox(e){
+	var _target = $(e.target);
+	if (_target.attr('id') != 'grpPopupBtn' && _target.attr('id') != 'update_more_grp' && _target.attr('id') != 'span_update_more_grp') {
+		$('.ly_group_slbx').hide();		//그룹지정
+	}
+	if (_target.attr('id') != 'order_color_nm') {
+		$('#order_color_li').hide();	//범주(메모)
+	}
+	if (_target.attr('id') != 'order_group_nm') {
+		$('#order_group_li').hide();	//그룹
+	}
+	if (_target.attr('id') != 'order_nm') {
+		$('#order_li').hide();			//정렬
+	}
+	if (!_target.closest('td').hasClass('btn_map')) {
+		$("#trco_map").hide();			//지도
+	}
+	if (!_target.closest('td').find('div:eq(0)').hasClass('ACCT_INFO') && _target.parent().attr('title') != '계좌이체') {
+		$("#acct_info_list").hide();	//계좌정보
+	}
+	if (!_target.closest('td').find('div:eq(0)').hasClass('RSPB_INFO') && !_target.hasClass('mail')) {
+		$("#rspb_info_list").hide();	//담당자정보
+	}
+	if (_target.attr('title') != '자료등록') {
+		$('.layer_icobilling').hide();	//발행
+	}
+	if (_target.closest('div').attr('class') != 'btnDw hasImg') {
+		$('.layer_bupyPop').hide();		//미수미지급현황
+	}
+	if (!_target.parent().hasClass('TRCO_FXNO') && !_target.hasClass('mail')) {
+		$('#send_layer').hide();		//팩스전송 (문서종류선택레이어)
+	}
+	if (_target.parent().attr('id') != 'trco_add' && _target.attr('id') != 'trco_arrow') {
+		$('.ly_add_list').hide();		//거래처등록
+	}
+	if (_target.parent().attr('id') != 'btn_showLayer' && _target.attr('id') != 'btn_regExcelCrov') {
+		$('.ly_mnLst').hide();			//추가버튼(휴지통, 초기이월)
+	}
+	if (_target.parent().attr('id') != 'btn_total') {
+		//$('.ly_total').hide();		 //공통버튼(햄버거) 경리나라 6.1
+	}
+	if (!_target.closest('td').find('div:eq(0)').hasClass('TRCO_INFO')) {
+		$("#trco_info_list").hide();	//거래처정보
+	}
+	if (!_target.is('.edit') && !_target.is('.del') && !_target.is('.showInputBox') && !_target.is('.input_box_amt')) {
+		closeInputBox();
+	}
+}
+
+//----팩스보내기------------------------
+var _sendInfo = {
+		pop_gubn	: "",
+		title 		: "",
+		msg			: "",
+		type		: "",
+		AjaxUrl 	: "",
+		REC			: "",
+		BILL_SET	: "",
+		moreView 	: "1"
+}
+var _datList = {
+		TRCO_BSNN_NO : "",
+		TRCO_KEY : "",
+		TRCO_CMNM : "",
+		TRCO_FXNO : ""
+}
+
+function fileExce(file){
+	var res = "";
+	if(file.toLowerCase().indexOf("pdf") > -1){
+		res = ".pdf";
+	}else if(file.toLowerCase().indexOf("excel") > -1){
+		res = ".xlsx";
+	}else if(file.toLowerCase().indexOf("ppt") > -1){
+		res = ".pptx";
+	}else if(file.toLowerCase().indexOf("word") > -1){
+		res = ".docx";
+	}else if(file.toLowerCase().indexOf("hwp") > -1){
+		res = ".hwp";
+	}
+	return res;
+}
+
+function event_layer(_this){
+
+	var temp = '';
+	if ($(_this).attr('id') == "TRCO_FXNO") {
+		_datList.TRCO_BSNN_NO = JSON.parse(decodeURIComponent($(_this).parents("tr").find("input[id=data]").val())).TRCO_BSNN_NO.replace(/-/gi,"");
+		_datList.TRCO_KEY = JSON.parse(decodeURIComponent($(_this).parents("tr").find("input[id=data]").val())).TRCO_KEY;
+		_datList.TRCO_CMNM = JSON.parse(decodeURIComponent($(_this).parents("tr").find("input[id=data]").val())).TRCO_CMNM;
+		_datList.TRCO_FXNO = $(_this).text();
+
+		if(_datList.TRCO_FXNO == ""){
+			return;
+		}
+	} else {
+		temp = JSON.parse(decodeURIComponent($('#rspb_info_list').attr('data')));
+		_datList.TRCO_BSNN_NO = temp.TRCO_BSNN_NO.replace(/-/gi,"");
+		_datList.TRCO_KEY = temp.TRCO_KEY;
+		_datList.TRCO_CMNM = temp.TRCO_CMNM;
+		_datList.TRCO_FXNO = temp.TRCO_FXNO;
+		_eventNm = $(_this).parent().parent().parent().find('.name').html();
+		_eventEmail = $(_this).html();
+		_eventKey = $(_this).attr('rspb-key');
+	}
+		
+	var weauth = {};
+	try{
+		weauth = decodeURIComponent(_encodeData);
+		weauth = JSON.parse(weauth);
+		
+		var send_r004 = null2void(weauth.BSNN_RGSN_CERT_IMG,"");//사업자등록증이미지
+		if(send_r004.indexOf(null2void(weauth.BSNN_RGSN_CERT_IMG_IDNT_ID,""))<0){
+			send_r004 = $("#previewUrl").val()+null2void(weauth.BSNN_RGSN_CERT_IMG_IDNT_ID,"")+fileExce(send_r004);
+			send_r004 = "";
+		}
+		var send_r005 = null2void(weauth.MNRC_BNKB_IMG,"");		//입금통장이미지
+		if(send_r005.indexOf(null2void(weauth.MNRC_BNKB_IMG_IDNT_ID,""))<0){
+			send_r005 = $("#previewUrl").val()+null2void(weauth.MNRC_BNKB_IMG_IDNT_ID,"")+fileExce(send_r005);
+			send_r005 = "";
+		}
+		var send_r006	 = null2void(weauth.ETC_IMG1,"");		//기타이미지1
+		var send_r006_nm = null2void(weauth.ETC_IMG1_NM,"");		//기타이미지1이름
+		if(send_r006.indexOf(null2void(weauth.ETC_IMG1_IDNT_ID,""))<0){
+			send_r006 = $("#previewUrl").val()+null2void(weauth.ETC_IMG1_IDNT_ID,"")+fileExce(send_r006);
+			send_r006 = "";
+		}
+		var send_r007	 = null2void(weauth.ETC_IMG2,"");		//기타이미지2
+		var send_r007_nm = null2void(weauth.ETC_IMG2_NM,"");		//기타이미지2이름
+		if(send_r007.indexOf(null2void(weauth.ETC_IMG2_IDNT_ID,""))<0){
+			send_r007 = $("#previewUrl").val()+null2void(weauth.ETC_IMG2_IDNT_ID,"")+fileExce(send_r007);
+			send_r007 = "";
+		}
+		var send_r008	 = null2void(weauth.ETC_IMG3,"");		//기타이미지3
+		var send_r008_nm = null2void(weauth.ETC_IMG3_NM,"");		//기타이미지3이름
+		if(send_r008.indexOf(null2void(weauth.ETC_IMG3_IDNT_ID,""))<0){
+			send_r008 = $("#previewUrl").val()+null2void(weauth.ETC_IMG3_IDNT_ID,"")+fileExce(send_r008);
+			send_r008 = "";
+		}
+	    
+		if(send_r004 != ""){ $("#send_r004").parent().show(); $("#send_r004").data("img",send_r004); }
+		if(send_r005 != ""){ $("#send_r005").parent().show(); $("#send_r005").data("img",send_r005); }
+		if(send_r006 != ""){ $("#send_r006").parent().show(); $("#send_r006").data("img",send_r006); $("#send_r006").html(send_r006_nm); }
+		if(send_r007 != ""){ $("#send_r007").parent().show(); $("#send_r007").data("img",send_r007); $("#send_r007").html(send_r007_nm); }
+		if(send_r008 != ""){ $("#send_r008").parent().show(); $("#send_r008").data("img",send_r008); $("#send_r008").html(send_r008_nm); }
+	}catch(e){
+	}
+    
+	var $this = $(_this);
+	var eventGubn = "";
+	if($("#send_layer").css("display") == "block"){
+		$("#send_layer").hide();
+	}
+	$("#send_layer").show();
+	$("#send_layer").css({"top":$(_this).offset().top+20,"left":$(_this).offset().left - 0});
+	_eventId = null2void($this.attr("id")) == "" ? $this.attr('class') : $this.attr('id');
+	_eventThis = $this;
+}
+//팩스 ,메일 리스트 클릭시
+function fn_sendList(arg1,arg2){
+	//변수 선언
+	var flnm="";
+	var email ="";
+	var eventIdx,msg="";
+	if(!arg1){
+		callAction();
+		return; 
+	}else{
+		init(arg1,arg2); 
+	}
+	
+	if(_sendInfo.pop_gubn == "tax" ){ _sendInfo.title="세금계산서"; _sendInfo.AjaxUrl = "trgm_0002_01_r001"; _sendInfo.REC ="ETAX_LIST";}
+	if(_sendInfo.pop_gubn == "tran"){ _sendInfo.title="거래명세표"; _sendInfo.AjaxUrl = "trgm_0000_01_r001"; _sendInfo.REC ="LIST"; _sendInfo.BILL_SET = "16";}
+	if(_sendInfo.pop_gubn == "r001"){ _sendInfo.title="견적서"; _sendInfo.AjaxUrl = "trgm_0000_01_r001"; _sendInfo.REC ="LIST"; _sendInfo.BILL_SET = "17";}
+	if(_sendInfo.pop_gubn == "r002"){ _sendInfo.title="수주서"; _sendInfo.AjaxUrl = "trgm_0000_01_r001"; _sendInfo.REC ="LIST"; _sendInfo.BILL_SET = "18";}
+	if(_sendInfo.pop_gubn == "r003"){ _sendInfo.title="발주서"; _sendInfo.AjaxUrl = "trgm_0000_01_r001"; _sendInfo.REC ="LIST"; _sendInfo.BILL_SET = "19";}
+	if(_sendInfo.pop_gubn == "r004" || _sendInfo.pop_gubn == "r005" || _sendInfo.pop_gubn == "r006" || _sendInfo.pop_gubn == "r007" || _sendInfo.pop_gubn == "r008"){
+		var itemObj = $("#send_"+_sendInfo.pop_gubn); //사업자등록증,통장사본,기타1,기타2,기타3 이미지
+		_sendInfo.title = $(itemObj).text();
+		var connect_info =[{
+			"CONNECT_KEY" : _sendInfo.pop_gubn+"|"+$(itemObj).data("img"),
+			"CONNECT_AMT" :0
+		}];
+		var connect_rec = {"CONNECT_INFO" : connect_info}
+		var add_file_list = [];
+		var add_file_info = { "ADD_FILE_LIST" : add_file_list};
+		SendPopup(encodeURIComponent(JSON.stringify(connect_rec)),_sendInfo.pop_gubn,arg2,add_file_info);
+		return;
+	}
+	
+	$("#send_pop").show();
+	$("#pop_title").text(_sendInfo.title);
+	$("#title_code").val(_sendInfo.pop_gubn);
+	$("#pop_type").text(_sendInfo.title);
+	$(".send_type").text(_sendInfo.type);
+	$("#pop_buyr_info").text(_datList.TRCO_CMNM);
+	$("#pop_flnm_info").text(_sendInfo.msg);
+	if(_sendInfo.AjaxUrl !== ""){
+		callAction();
+	}
+	
+	//초기화 함수
+	function init(arg1,arg2){
+		_sendInfo.title = "";
+		_sendInfo.AjaxUrl = "";
+		_sendInfo.REC = "";
+		_sendInfo.moreView = "1";
+		_sendInfo.pop_gubn =arg1.split("send_")[1];
+		eventIdx = $('.rspb_ul').find('li').index(_eventThis.parent());
+
+		if(arg2 == "email"){
+			_sendInfo.msg = null2void(_eventThis.parent().find('.name').html(),"")+"("+null2void(_eventThis.html(),"")+") 님에게 ";
+			_sendInfo.type = "이메일"
+		}else{
+			_sendInfo.msg = getTel2(_datList.TRCO_FXNO)+" 번호로 ";
+			_sendInfo.type =  "팩스"
+		}
+		
+		$("#pop_title,#pop_type,#pop_buyr_info,#pop_flnm_info").text("");
+		$(".send_type").text("");
+		$("#allcheck").attr("checked",false);
+		$("#totl_msg").text("");
+		$("#send_no_list").show();
+		$("#send_ok_list").hide();
+	}
+	
+	function callAction(){
+		_loading.start();
+		var jexAjax = jex.createAjaxUtil(_sendInfo.AjaxUrl);
+		
+		jexAjax.set("PAGE_PER_CNT"	, "5");
+		jexAjax.set("PAGE_NO"		, _sendInfo.moreView+"");
+		jexAjax.set("TAX_GB"		, "02");
+		jexAjax.set("SRCH_WD"		, "");  					// 회사명 , 메모 (조회조건)
+		jexAjax.set("BILL_SET"		, _sendInfo.BILL_SET);
+		if(_sendInfo.pop_gubn == "tax"){
+			setDateRangePicker("#txtDtlSrcStartDt", "#txtDtlSrcEndDt", 6);
+			jexAjax.set("INQ_STR_DT",  $("#txtDtlSrcStartDt").val().replace(/-/g, ""));
+			jexAjax.set("INQ_END_DT",  $("#txtDtlSrcEndDt").val().replace(/-/g, ""));
+			jexAjax.set("BUYR_CORP_NO"  , _datList.TRCO_BSNN_NO);
+			jexAjax.set("DATE_TYPE", "0"); //0:발행일, 1:거래일
+			jexAjax.set("TAX_TYPE"  , "0,1,2");
+			jexAjax.set("RECP_CD"	, "0,1");
+			jexAjax.set("STAT_CODE"	, "0");
+			jexAjax.set("PROC_STAT",	"O"); 	
+		}else{
+			jexAjax.set("CORP_NO"  , _datList.TRCO_BSNN_NO);
+		}
+
+		// (상세조회조건)
+		jexAjax.set("STARTDATE", "");
+		jexAjax.set("ENDDATE", "");
+		
+		jexAjax.setErrTrx(false);
+		//jexAjax.setAsync(false);
+		jexAjax.execute(function(dat) {
+			var xHtml = '';
+			if(dat.COMMON_HEAD.ERROR){
+				_loading.stop(); 
+				malert("",dat.COMMON_HEAD.MESSAGE);
+				return;
+			}
+			if(dat[_sendInfo.REC].length == 0  && $("tbody#SEND_TYPE_REC").find("tr").length == 0 ){
+					$("#send_no_list").show();
+					$("#send_ok_list").hide();
+			}else{
+				$("#send_no_list").hide();
+				$("#send_ok_list").show();
+				if(dat[_sendInfo.REC].length != 0){
+					_sendInfo.moreView = parseInt(_sendInfo.moreView) + 1;
+				}
+			}
+			
+			for(var i=0;i<dat[_sendInfo.REC].length;i++){
+				xHtml += '<tr>';
+				xHtml += '<td class="t_center"><input type="checkbox">';
+				xHtml += '<input type="hidden" id="buyr_corp_no" value="'+dat[_sendInfo.REC][i].BUYR_CORP_NO+'"/>';
+				xHtml += '<input type="hidden" id="regs_date" value="'+dat[_sendInfo.REC][i].REGS_DATE+'"/>';
+
+				if(_sendInfo.pop_gubn == "tax") {	//세금계산일 경우
+					xHtml += '<input type="hidden" id="issu_id" value="'+dat[_sendInfo.REC][i].ISSU_ID+'"/>';
+				}else{	//그외는 trans_stat_seq 로 한다./*(_sendInfo.pop_gubn == "tran")*/  
+					xHtml += '<input type="hidden" id="issu_id" value="'+dat[_sendInfo.REC][i].TRANS_STAT_SEQ+'"/>';
+				}
+				xHtml += '</td>';
+				xHtml += '<td>'+formatter.date(dat[_sendInfo.REC][i].REGS_DATE.replace(/-/gi,''),"yyyy-mm-dd")+'</td>'; //등록일
+				xHtml += '<td><span class="ellipsis">'+dat[_sendInfo.REC][i].BUYR_CORP_NM+'</span></td>';	//업체명
+				xHtml += '<td class="t_right" monm="'+dat[_sendInfo.REC][i].TOTL_AMT +'">'+formatter.number(dat[_sendInfo.REC][i].TOTL_AMT )+'</td>';	//금액
+				xHtml += '<td><a class="link" onclick="fn_PopupCall('
+				if(_sendInfo.pop_gubn == "tax") { xHtml += "\'tax\',"+"\'"+dat[_sendInfo.REC][i].ISSU_ID+"\',\'fax\'" }				//세금계산서
+				else { xHtml += "'"+_sendInfo.pop_gubn+"',"+ "\'"+dat[_sendInfo.REC][i].TRANS_STAT_SEQ+"\',\'fax\'"}		//거래명세표
+				xHtml += ')">미리보기</a></td>';		//미리보기
+				xHtml += '</tr>'
+			}
+			if(_sendInfo.moreView == "" || _sendInfo.moreView == "1"){
+				$("tbody#SEND_TYPE_REC").empty();
+			}
+			$("tbody#SEND_TYPE_REC").append(xHtml);
+			_loading.stop();
+			
+			$("tbody#SEND_TYPE_REC").find("input[type='checkbox']").each(function(){
+				$(this).click(function(){
+					var checkBoxLength = $("tbody#SEND_TYPE_REC").find("input[type='checkbox']").length;
+					var checkedLength = $("tbody#SEND_TYPE_REC").find("input[type='checkbox']:checked").length;
+					
+					if( checkBoxLength == checkedLength ) {
+						$("#allcheck").attr("checked", true);
+					} else {
+						$("#allcheck").attr("checked", false);
+					}
+					totl_msg();
+				});
+			});
+			
+		});
+	}
+	$("#allcheck").click(function(){
+		if(!$(this).attr('checked')){
+			$("tbody#SEND_TYPE_REC").find("input[type='checkbox']").attr('checked',false);
+		}else{
+			$("tbody#SEND_TYPE_REC").find("input[type='checkbox']").attr('checked',true);
+		}
+		totl_msg();
+	});
+	
+	function totl_msg(){
+		var totl_cnt = 0,totl_amt = 0;
+		totl_cnt = $("tbody#SEND_TYPE_REC").find("input[type='checkbox']:checked").length;
+		$("tbody#SEND_TYPE_REC").find("input[type='checkbox']:checked").each(function(){
+			totl_amt = parseInt(totl_amt) + parseInt( $(this).parent().parent().find(".t_right").attr("monm"));
+		});
+		if(totl_cnt !== 0 ){
+			$("#totl_msg").empty().text("총 "+totl_cnt+"건에 "+formatter.number(totl_amt)+"원을 선택하셨습니다.");
+			$("#totl_amt").val(totl_amt);
+		}else{
+			$("#totl_msg").empty();
+		}
+	}
+}
+
+/* 첨부파일목록 가져오기 */
+function fn_getAddFileList(transStatSeq, element){
+	var result = [];
+	var jexAjax = jex.createAjaxUtil("trgm_0000_01_r006");
+	jexAjax.set("ISSU_ID", transStatSeq);
+	jexAjax.setErrTrx(false);
+	jexAjax.setAsync(false);
+	
+	jexAjax.execute(function(dat) {
+		result = dat.REC;
+	});
+	
+	return result;
+}
+
+function SendPopup(connect_rec,type,sendType,add_file_info){
+	//코드값 셋팅
+	acvtCodeSet();
+	var req = {};
+	req["TRCO_BSNN_NO"] = _datList.TRCO_BSNN_NO;
+	req["DVSN_CODE"] 	= $("#dvsn_code" ).val();
+	req["TASK_CODE"] 	= $("#task_code" ).val();
+	req["TOTL_AMT"] 	= $("#totl_amt" ).val();
+	req["REGS_DATE"]    = $("#regs_date").val();
+	req["TRCO_KEY"]		= _datList.TRCO_KEY;
+	
+	//선택된 담당자 정보
+	if(sendType !== "fax"){
+		req["RSPB_KEY"]	=_eventThis.attr('rspb-key');
+	}
+	var call_url = "",callcode="";
+	
+	if(type == "tran"){
+		call_url = "trgm_buyr_captur.jsp";
+		callcode = "16";
+	 }else if(type == "r001"){
+		 call_url  = "trgm_etc_capture.jsp";
+		 callcode = "17";
+	 }else if(type == "r002"){
+		 call_url  = "trgm_etc_capture.jsp";
+		 callcode = "18";
+	 }else if(type == "r003"){
+		 call_url  = "trgm_etc_capture.jsp";
+		 callcode = "19";
+	 }else{	//세금계산서
+		 call_url = "trgm_0001_01_20.jsp";
+	 }
+	
+	var param = {"SESSION_DATA"	: _encodeData,
+			//"CONNECT_KEY" 	: connect_key,
+			"CONNECT_REC" 	: connect_rec,
+			"PRI_MY_IMG"	: $("#s_pri_my_img").val(),
+			"SEND_TYPE" 	: type,
+			"CALL_URL"		: call_url,
+//			"BSNN_NO"		: s_bsnn_no,
+			"BSNN_NO"		: "",
+			"TRCO_INFO"		:encodeURIComponent(JSON.stringify(req)),
+			"ADD_FILE_INFO"	:encodeURIComponent(JSON.stringify(add_file_info))
+	};
+	
+	if(sendType == "fax"){
+		url = "trco_fax_popup1.jsp";
+	}else{
+		url = "trco_mail_popup1.jsp";
+	}
+	setFormToTaxbill(url, callcode, param);
+}
+//코드값 셋팅
+function acvtCodeSet(){
+	var dvsn_code="",task_code="";
+	if(_sendInfo.pop_gubn == "tran"){
+		dvsn_code = "S";
+		task_code = "S001";
+	}else if(_sendInfo.pop_gubn == "tax"){
+		dvsn_code = "S";
+		task_code = "S002";
+	}else{
+		dvsn_code = "R";
+		if(_sendInfo.pop_gubn == "r001"){ task_code = "R001"; }
+		if(_sendInfo.pop_gubn == "r002"){ task_code = "R002"; }
+		if(_sendInfo.pop_gubn == "r003"){ task_code = "R003"; }
+	}
+	
+	$("#dvsn_code").val(dvsn_code);
+	$("#task_code").val(task_code);
+}
+
+var task_code ={
+		"R001" : "r001", "R002" : "r002", "R003" : "r003", 
+		"S001" : "tran", "S002" : "tax", "S003" : "tax",
+		"B001" : "tran", "B002" : "tax" ,
+		"D001" : "수납",
+		"G001" : "지급","G002" : "건별지급"	};
+/**
+ * 팝업호출
+ * @returns
+ */
+function fn_PopupCall(arg,code,type){
+	if(arg == undefined || arg == null || arg == ""){
+		return;
+	}
+	
+	if(arg.indexOf("TRSC_SETUP") > -1){
+		//...
+	}else{
+		var param = {};
+		var gubn = null2void(task_code[arg],arg);
+		param["SESSION_DATA"] =  _encodeData;
+		if(gubn == "tax"){			//매출 세금계산서 상세 
+			//...
+		}
+		else{
+		var url = "",callcode = "";
+			param["TRANS_STAT_SEQ"] = code;
+			param["BSNN_NO"] = _bsnnNo;//s_bsnn_no;
+			param["SEND_INFO"] = gubn;
+			
+			 if(gubn == "tran"){
+				 url = "trgm_srch_selr.jsp";
+				 callcode = "16";
+			 }else if(gubn == "r001"){
+				 url  = "trgm_srch_etc.jsp";
+				 callcode = "17";
+				 param["popupW"] = "920";
+			 }else if(gubn == "r002"){
+				 url  = "trgm_srch_etc.jsp";
+				 callcode = "18";
+				 param["popupW"] = "920";
+			 }else if(gubn == "r003"){
+				 url  = "trgm_srch_etc.jsp";
+				 callcode = "19";
+				 param["popupW"] = "920";
+			 }else{
+				 return;
+			 }
+			 setFormToTaxbill(url, callcode, param);
+		}
+	}
+}
+//----//팩스보내기------------------------
+
+/**
+ * 페이지 리사이징
+ */
+function fn_pageResize(){
+	var height = ($(window).height()-$(".h1_title_wrap").height()-$(".title_wrap").height()-154)+"px";
+	
+	$(".list_scroll").attr("style", "min-width: 100%; overflow-x:auto; overflow-y: auto; height:" + height + " !important; min-height:" + height+";");
+	
+	var $listClassNm = $(".list_scroll");
+    /*$listClassNm.scrollTop(1);
+    if($listClassNm.scrollTop() == 1){
+        $listClassNm.scrollTop(0);
+    }*/
+    /*$listClassNm.unbind("scroll").scroll(function(){
+        $(".list_scroll_top").scrollLeft($(this).scrollLeft());
+
+		//무한스크롤 조회
+		if ($('#tbTbody_TRCO_LIST').find("tr").length == 0) {
+			return;
+		}
+	    var el = $(this);
+	    if(((el[0].scrollHeight - el.scrollTop() - el.outerHeight()) == -1) || ((el[0].scrollHeight - el.scrollTop() - el.outerHeight()) == -18)) {
+	        //console.log(el[0].scrollHeight - el.scrollTop() - el.outerHeight());
+	        if (_searchList.getTotlPageNcnt() != _searchList.getPageNo()) {
+	            _searchList.setPageNo(_searchList.getPageNo() + 1);
+	            drawTrcoList(_searchList.getPageNo());
+	        }
+	    }
+    });*/
+    
+    if($listClassNm.hasHorizontalScrollBar() && $listClassNm.hasScrollBar()){ // 가로 & 세로
+    	if(!$(".list_scroll_top").hasClass("pdr")){
+    		$(".list_scroll_top").addClass("pdr");
+        	$(".list_scroll_top").find("colgroup").append('<col style="width:17px;" nm="decoCol">');
+            $(".list_scroll_top").find("tr").append('<th scope="col" nm="decoTh"><div></div></th>');	
+        }
+    }else if ($listClassNm.hasScrollBar()){ // 세로만
+        $(".list_scroll_top").addClass("pdr");
+    }else if(!$listClassNm.hasHorizontalScrollBar() && !$listClassNm.hasScrollBar()){
+        $(".list_scroll_top").removeClass("pdr");
+        $(".list_scroll_top").find("col[nm='decoCol']").remove();
+        $(".list_scroll_top").find("th[nm='decoTh']").remove();
+    }
+}
+
+// 이월기준일 등록
+function setCrovDt(date) {
+	var jexAjax = jex.createAjaxUtil('trco_m013_01_c001');
+	jexAjax.set("CROV_DT", date)
+    jexAjax.execute(function(dat) {
+	    if (dat.RSLT_CD == "0000") {
+			drawTrcoList();
+		} else {
+			alert(dat.RSLT_MSG);
+		}
+	});
+}
+
+// 이월미수금/미지급금 엑셀 등록
+function regExcelCrov(tab) {
+	var dt = $('.dt_notiTxt').find('a').html().replaceAll('-','');
+	if (isNaN(Number(dt))) {
+		alert('이월기준일을 설정하신 다음 초기이월 일괄등록을 진행해주세요.'); 
+	} else {
+		location.href=`/trco_m013_03.act?tab=${tab}&CROV_DT=${dt}`
+	}
+}
+
+// 초기이월 증빙등록 유무 확인
+function evdcRegChek(bzaq_key, gb, tx_cd){
+    var result = false;
+    
+    var jexAjax = jex.createAjaxUtil('evst_0003_03_r004');
+    //jexAjax.set("BSNN_NO" , bsnn_no);
+    jexAjax.set("BZAQ_KEY" , bzaq_key);
+    jexAjax.set("GB"      , gb);
+    
+    if(tx_cd == 1){
+        //미수금
+        jexAjax.set("EVDC_DV" , '91');
+    }else{
+        //미지급 초기이월
+        jexAjax.set("EVDC_DV" , '90');
+    }
+    jexAjax.set('_LODING_BAR_YN_', 'Y');
+    jexAjax.setAsync(false);
+    jexAjax.execute(function(dat) {
+        if(dat.RSLT_CD == '0000'){
+            result = true;
+        }
+        max_trsc_dt = dat.TRSC_DT
+    });
+    return result;
+}
+
+// 입력 창 닫기 (이월미수금/이월미지급금)
+function closeInputBox() {
+	if ($('input.input_box_amt').length == 0) return;
+	var className = $('input.input_box_amt').closest('td').find('div:eq(0)').attr('class').substr(4);
+	var amt = $('input.input_box_amt').val();
+	if (amt == '' || amt == '-') amt = '0';
+	before_amt = $('input.input_box_amt').attr('beforeamt');
+	var data = JSON.parse(decodeURIComponent($('input.input_box_amt').closest('tr').find('td:eq(0)').find('#data').val()));
+	
+	let dataList = [];
+	dataList.push({
+		BZAQ_NO		:	common.app.null2void(data.TRCO_BSNN_NO),
+		BZAQ_NM		:	common.app.null2void(data.TRCO_CMNM),
+		BIZ_NO		:	common.app.null2void(data.BSNN_NO),
+		BZAQ_KEY	:	common.app.null2void(data.TRCO_KEY),
+		AMT 		:	amt.replaceAll(',','')
+	})
+	
+	var jexAjax = jex.createAjaxUtil('trco_m013_01_c002');
+    // 초기이월일자
+    jexAjax.set("ITM_CROV_DT" , itil_crov_dt);
+    jexAjax.set("PROC_DAT"    , dataList);
+    jexAjax.set("TX_CD"       , className == "RCBL_AMT" ? "1" : "2");
+    jexAjax.setAsync(false);
+    jexAjax.execute(function(dat) {
+		if(dat.RSLT_CD == '0000'){
+			if (className == "RCBL_AMT") {
+				rcbl_sum = rcbl_sum - Number(before_amt.replaceAll(',','')) + Number(amt.replaceAll(',',''));
+			} else {
+				upay_sum = upay_sum - Number(before_amt.replaceAll(',','')) + Number(amt.replaceAll(',',''));
+			}
+			$('.totl_infm').html('총 '+_totlCnt+'건(이월미수총액 : '+formatter.number(rcbl_sum)+'원/이월미지급총액 : '+formatter.number(upay_sum)+'원)');
+			toastr.success('내용이 저장되었습니다.');
+        }else{
+			amt = before_amt;
+            alert("처리중 오류가 발생하였습니다.");
+        }
+		var html = '';
+		html += '<div class="'+className+' cbpbx_pdr">'
+				+'<!-- 텍스트박스 -->'
+				+'<div class="combo_postbx">'
+				+'<!-- 텍스트영역 -->'
+				+'    <div class="combo_post_bg no-bg" style="">'
+				+'        <span class="combo_txt tar showInputBox">'+amt+'</span>'
+				+'        <div class="btn">'
+				+'            <a class="edit"><span class="blind">수정</span></a>'
+				+'        </div>'
+				+'    </div>'
+				+'    <!-- //텍스트영역 -->'
+				+'</div>'
+				+'<!-- //텍스트박스 -->'
+				+'</div>';
+		$('input.input_box_amt').closest('td').empty().append(html);
+    });
+}
+
+// 초기이월 초기화
+function fn_reset() {
+	_loading.start();
+	var jexAjax = jex.createAjaxUtil('trco_m013_01_d001');
+	jexAjax.execute(function(dat) {
+		_loading.stop();
+		if(dat.RSLT_CD == "0000") {
+			drawTrcoList();
+		}
+	});
+}
+
+function fn_print() {
+	for(var i = 0; i < sessionStorage.length; i++ ) {
+	    var key = sessionStorage.key(i);
+	    //인쇄용 sessionStorage 값 비우기(용량늘려줌)
+	    if(key.indexOf('print')>-1){
+	    	sessionStorage.removeItem(key);
+	    }
+	}
+	var html 	=  $("#TABLE_PRINT").html();
+	var colhtml =  $("#tableGroup").find('colgroup').html();
+	var thhtml 	=  $("#tableGroup").find('thead').html();
+	var colLength = $("#tableGroup").find('colgroup').length;
+	console.log('aaaa');
+	try{
+		sessionStorage.setItem(_thisConst.PAGE_NAME + "_tmphtml_print", html);
+		sessionStorage.setItem(_thisConst.PAGE_NAME + "_colhtml_print", colhtml);
+		sessionStorage.setItem(_thisConst.PAGE_NAME + "_thhtml_print", thhtml);
+		print_iframe.location.href = "/trco_m001_06.act?PAGE_NAME="+_thisConst.PAGE_NAME+"&colLength="+colLength;
+	}catch(e){
+		print_iframe.location.href = "/trco_m001_06.act?PAGE_NAME="+_thisConst.PAGE_NAME+"&colLength="+colLength+"&bigData="+"Y";
+	}
+}
+
+// 보고서 조회
+function fn_openPop (id, url) {
+    var sizeW = 1070;
+    var sizeH = 611;
+    var nLeft = screen.width/2 - sizeW/2 ;
+    var nTop  = screen.height/2- sizeH/2 ;
+    var option= ",toolbar=no,menubar=no,location=no,scrollbars=yes,status=no,resizable=yes";
+    var winObj= window.open(url, id, "left='" + nLeft + "',top='" +  nTop + "',width=" + sizeW + ",height=" + sizeH  + option );
+    winObj.focus();
+}
+
+function callBackExcelDownload() {
+	if ($('#tbTbody_TRCO_LIST > tr').length == 0) {
+		alert('조회된 거래처가 없습니다.');
+		return;
+	}
+	drawTrcoList("1", {"TO_EXCEL" : true});
+}
+
+function callBackExcelDownloadCusContactInfo() {
+	if ($('#tbTbody_TRCO_LIST > tr').length == 0) {
+		alert('조회된 거래처가 없습니다.');
+		return;
+	}
+	drawTrcoRspbList("1", {"TO_EXCEL" : true});
+}
+
+function callBackExcelDownloadSimp() {
+	excelDown(1);
+}
+
+function callBackExcelDownloadCorp() {
+	excelDown(2);
+}
+
+function callBackExcelDownloadIndv() {
+	excelDown(3);
+}
+
+function callBackPrint() {
+	if ($('#tbTbody_TRCO_LIST > tr').length == 0) {
+		alert('조회된 거래처가 없습니다.');
+		return;
+	}
+	drawTrcoList("1", {"TO_PRINT" : true});
+}
+
+function callBackBizEnvSetting(){
+    var $form = $("<form method='post'></form>");
+    $form.append('<input name="MENU_CD"  value="prch_unpy">');
+    $form.append('<input name="CALL_BKFN"  value="drawTrcoList">');
+    open_smartPop({ href: "tkst_0006_01.act", width: 1000, height: 526, scrolling: false, target: window, frm: $form });
+}
+
+function updateTrcoGrp(){
+	
+	//그룹으로 지정할 거래처를 선택하세요.
+	if($("input[class=chk]:checked").length == 0){
+		alert("거래처 그룹 지정하기는 선택된 거래처에 관리 그룹을 설정합니다.\n\n거래처 선택 후 다시 진행해주시기 바랍니다.");
+		return true;
+	}
+	
+	var isUpdate = true;
+	if(isUpdate == false){
+		return;
+	}
+	
+	var sendGrpTrcoList = [];
+	
+	// 경리나라 6.1
+	//거래처목록 (체크 목록 가져오기)
+	$("input[class=chk]:checked").each(function(){
+		var _this = this;
+		var trcoRec = _datTrcoList[$("input[class=chk]").index(_this)];
+		console.log("trcoRec: ", trcoRec);
+
+		//기본그룹,사용자그룹 목록에서 체크
+		$(".chk_js_list.all_chk_update_type li").each(function(){
+			var updateStatus = "";
+			var grp_cd = "," + $(this).find("a").attr("val-grpcd") + ",";
+			
+			//grp_cd_list value of row GRP 
+			var grp_cd_list = ","+ $(_this).parent().parent().find("input[name=GRP_CD]").val() + ",";
+
+			//기존에 그룹으로 지정되어 있었으면 등록과정 건너뛰기
+			if(grp_cd_list.indexOf(grp_cd) > -1 && $(this).find("a").hasClass('active')){
+				return true;
+			}
+			
+			//기존에 그룹으로 없었으면 삭제과정 건너뛰기
+			if(grp_cd_list.indexOf(grp_cd) == -1 && $(this).find("a").hasClass('default')){
+				return true;
+			}
+			
+			
+			if( $(this).find("a").hasClass('active')){//그룹에 거래처 등록
+				updateStatus = "I";
+			}else if( $(this).find("a").hasClass('default')){ //그룹에서 거래처 삭제
+				updateStatus = "D";
+			}else{ //기존과 그룹이 동일하다면 건너뛰기
+				return true;
+			}
+
+			sendGrpTrcoList.push({
+				"BSNN_NO":trcoRec.TRCO_BSNN_NO.replace(/-/gi,""), 
+				"USER_ID":"",
+				"GRP_CD":$(this).find("a").attr("val-grpcd"),
+				"TRCO_KEY":trcoRec.TRCO_KEY,
+				"GRP_DSNC":updateStatus
+			});
+		});
+	});
+
+	var jexAjax = jex.createAjaxUtil("trco_0005_09_u001");
+
+	jexAjax.set("GRP_LIST", sendGrpTrcoList);
+
+	jexAjax.execute(function(dat) {
+		common.app.success("저장되었습니다.");
+		/*malert("WM0002");*///등록완료
+
+		$(".ly_group_slbx").fadeOut();
+		// 경리나라 6.1
+		$("#grpList .filter_tit").html("거래처 그룹 지정하기 <a href=\"#none\" class=\"btn_popset\" style=\"display:block;top:8px;right:7px;\"><img src=\"../img/serp/ico/icon_btnset_off.png\" alt=\"그룹설정\"></a>");
+		
+		if(sendGrpTrcoList.length > 0){
+			drawTrcoList();				//거래처 목록 표시
+			//drawBscGrpList();			//기본그룹 목록 표시
+			drawUserGrpList();			//사용자그룹 목록 표시
+		}
+		
+		$('.title_opt_chkv').hide();
+		$('input#chk_all, input.chk').prop('checked', false);
+		$('.h1_title_wrap.top_content').css('visibility', 'visible');
+	});
+}
+
+function initGroupManager(selectedGrpTypes) {
+
+    function resetGroupUI() {
+        $('#editGrp, .slbx_btn, #updateGrp').hide();
+        $('#GRP_NM').closest('.input_type').remove();
+        $('.ly_group_slbx.setgp_on, #filterGrp, .btn_popset').show();
+		$(".ly_group_slbx.setgp_on div .filter_tit").text('거래처 그룹');
+        var $inputType = $(".input_type");
+        $inputType.find('input, button').remove();
+        $inputType.find('.gpNm, .util_bt').show();
+        $inputType.removeClass("input_type");
+        $('.n_btn.cancel, .n_btn.save').hide();
+        $('.n_btn.plus').show();
+    }
+
+    function switchToEditMode() {
+		$(".ly_group_slbx.setgp_on div .filter_tit").text('거래처 그룹 설정');
+		$('#editGrp .input_type#grp_create').remove();
+		clearEditingState();
+        $(".btn_popset, #filterGrp").hide();
+        $('.n_btn.cancel').hide();
+        $('.n_btn.save').hide();
+        $('.n_btn.plus').show();
+        $('#editGrp, .slbx_btn').show();
+        $('#updateGrp').hide();
+    }
+
+    function clearEditingState() {
+        $('#editGrp .input_type').each(function () {
+            var $block = $(this);
+            $block.removeClass('input_type');
+            $block.find('input').remove();
+            $block.find('.ok_bt.ok_edit_bt').remove();
+            $block.find('.gpNm, .util_bt').show();
+        });
+    }
+
+    function handleModifyGroup(e) {
+        e.preventDefault();
+        $('.n_btn.cancel').show();
+        $('.n_btn.save').hide();
+        $('.n_btn.plus').hide();
+        $('.btn_addgp').closest('p.input_type').remove();
+        clearEditingState();
+        var $p = $(this).closest('p');
+        var $gpNm = $p.find('.gpNm');
+        var currentText = $gpNm.text().trim();
+        var currentGrpCd = $gpNm.attr('val-grpcd');
+        $gpNm.hide();
+        $p.find('.util_bt').hide();
+        $p.addClass('input_type').append(`
+            <input type="text" class="EDT_GRP_NM" 
+                   placeholder="그룹 추가 (최대 10자)" 
+                   value="${currentText}" 
+                   val-grpcd="${currentGrpCd}" 
+                   maxlength="10">
+            <button type="button" class="ok_bt ok_edit_bt" style="vertical-align: middle;"></button>
+        `);
+    }
+
+    function handleDeleteGroup(e) {
+        e.preventDefault();
+        var $content = $(this).closest('p').find('.gpNm');
+        var groupName = $content.val() || $content.text();
+        var groupCode = $content.attr('val-grpcd');
+        var confirmMsg = `'${groupName}' 그룹을 삭제하시겠습니까?`;
+        if (!confirm(confirmMsg)) return;
+
+        var jexAjax = jex.createAjaxUtil("trco_0005_08_d001");
+        jexAjax.set("GRP_CD", groupCode);
+        jexAjax.execute(function (dat) {
+            if (dat.CNT === "1") {
+                malert("WE0101");
+                $("#layer_popup_wrapGrpDel").fadeOut();
+            } else {
+				var grpTypes = ""
+				$('.ly_group_slbx').hide();
+				$("#grpPopupBtn").text(`전체 그룹`);
+				common.app.success("삭제되었습니다.");
+                webCrudUserGrpList(grpTypes);
+				_searchList.setInqyDsnc("1");
+			    _searchList.setGrpCd(grpTypes);
+			    drawTrcoList();
+            }
+        });
+    }
+
+    function showGroupCreateInput(e) {
+        e.preventDefault();
+        $('.n_btn.cancel').show();
+        $('.n_btn.save').hide();
+        $('.n_btn.plus').hide();
+        $('#editGrp .input_type#grp_create').remove();
+        $('#editGrp').append(`
+            <p class="input_type" id="grp_create">
+                <input id="GRP_NM" type="text" placeholder="그룹 추가 (최대 10자)" maxlength="10">
+                <button type="button" class="ok_bt btn_addgp"></button>
+            </p>
+        `);
+        $('#GRP_NM').focus();
+    }
+
+    function handleCreateGroup(e) {
+        e.preventDefault();
+        var $btn = $(this);
+        var $input = $("#GRP_NM");
+        var grpName = $input.val().trim();
+        if (!grpName) {
+            $input.focus();
+            malert("WE0034");
+            return;
+        }
+
+        var jexAjax = jex.createAjaxUtil("trco_0005_05_c001");
+        jexAjax.set("GRP_NM", grpName);
+        jexAjax.set("GRP_ICON", "6_1");
+        jexAjax.execute(function (dat) {
+			common.app.success("수정되었습니다.");
+            webCrudUserGrpList(jexjs.null2Void(selectedGrpTypes));
+            $btn.closest('p').remove();
+            $('.n_btn.cancel, .n_btn.save').hide();
+            $('.n_btn.plus').show();
+        });
+    }
+
+    function handleEditGroupSave(e) {
+        e.preventDefault();
+        var $inputWrap = $(this).closest('.input_type');
+        var $editInput = $inputWrap.find('.EDT_GRP_NM');
+        var groupCode = $editInput.attr('val-grpcd');
+        var newGroupName = $editInput.val();
+        if (!newGroupName) {
+            $editInput.focus();
+            malert("WE0034");
+            return;
+        }
+
+        var jexAjax = jex.createAjaxUtil("trco_0005_06_u001");
+        jexAjax.set("GRP_CD", groupCode);
+        jexAjax.set("GRP_ICON", "6_1");
+        jexAjax.set("GRP_NM", newGroupName);
+        jexAjax.execute(function (dat) {
+            common.app.success("수정되었습니다.");
+            webCrudUserGrpList(jexjs.null2Void(selectedGrpTypes));
+            clearEditingState();
+            $('.n_btn.cancel, .n_btn.save').hide();
+            $('.n_btn.plus').show();
+        });
+    }
+
+    function webCrudUserGrpList(types) {
+        var jexAjax = jex.createAjaxUtil("trco_0005_02_l001");
+        jexAjax.execute(function (dat) {
+            appendBodyForView(dat, types);
+            appendBodyForEdit(dat);
+            appendBodyForUpdate(dat, types);
+        });
+    }
+
+    function appendBodyForUpdate(dat, types) {
+        var html = `
+            <li><a href="javascript:void(0);" class="update-toggle toggle-button ${types == "S" ? 'active' : 'default'}" data-type="S" val-grpcd="S"><span>매출</span></a></li>
+            <li><a href="javascript:void(0);" class="update-toggle toggle-button ${types == "B" ? 'active' : 'default'}" data-type="B" val-grpcd="B"><span>매입</span></a></li>
+            <li><a href="javascript:void(0);" class="update-toggle toggle-button ${types == "E" ? 'active' : 'default'}" data-type="E" val-grpcd="E"><span>기타</span></a></li>
+        `;
+        if (dat?.GRP_LIST?.length) {
+            for (const grp of dat.GRP_LIST) {
+                html += `
+                    <li>
+                        <a href="javascript:void(0);" class="update-toggle toggle-button ${types == grp.GRP_CD ? 'active' : 'default'}" data-type="${grp.GRP_CD}" val-grpcd="${grp.GRP_CD}">
+                            <span>${grp.GRP_NM}</span>
+                        </a>
+                    </li>
+                `;
+            }
+        }
+        $('#group_layer #updateGrp .chk_js_list').empty().append(html);
+    }
+
+    function appendBodyForView(dat, types) {
+        var selectedList = types ? types.split(",") : [];
+        var html = `
+            <li>
+                <a href="javascript:void(0);" class="${selectedList.length === 0 ? 'on' : ''}">
+                    <strong>전체</strong>
+                </a>
+            </li>
+            <li>
+                <a href="javascript:void(0);" class="filter-toggle toggle-button ${selectedList.includes("S") ? 'active' : 'default'}" data-type="S" val-grpcd="S"><span>매출</span></a>
+            </li>
+            <li>
+                <a href="javascript:void(0);" class="filter-toggle toggle-button ${selectedList.includes("B") ? 'active' : 'default'}" data-type="B" val-grpcd="B"><span>매입</span></a>
+            </li>
+            <li>
+                <a href="javascript:void(0);" class="filter-toggle toggle-button ${selectedList.includes("E") ? 'active' : 'default'}" data-type="E" val-grpcd="E"><span>기타</span></a>
+            </li>
+        `;
+        if (dat?.GRP_LIST?.length) {
+            for (const grp of dat.GRP_LIST) {
+                html += `
+                    <li>
+                        <a href="javascript:void(0);" class="filter-toggle toggle-button ${selectedList.includes(grp.GRP_CD) ? 'active' : 'default'}" data-type="${grp.GRP_CD}" val-grpcd="${grp.GRP_CD}">
+                            <span>${grp.GRP_NM}</span>
+                        </a>
+                    </li>
+                `;
+            }
+        }
+        $('#group_layer #filterGrp .chk_js_list').empty().append(html);
+    }
+
+    function appendBodyForEdit(dat) {
+        var html = `
+            <p><span class="gpNm dim" title="매출">매출</span></p>
+            <p><span class="gpNm dim" title="매입">매입</span></p>
+            <p><span class="gpNm dim" title="기타">기타</span></p>
+        `;
+        if (Array.isArray(dat?.GRP_LIST)) {
+            html += dat.GRP_LIST.map(grp => `
+                <p>
+                    <span class="gpNm" data-type="${grp.GRP_CD}" val-grpcd="${grp.GRP_CD}" title="${grp.GRP_NM}">${grp.GRP_NM}</span>
+                    <span class="util_bt">
+                        <a href="#" class="mod_bt">수정</a>
+                        <a href="#" class="del_bt">삭제</a>
+                    </span>
+                </p>
+            `).join('');
+        }
+        $('#editGrp').html(html);
+    }
+	
+	function sf_webDrawGrpCheckAll() {
+	    $(".chk_js_list.all_chk_update_type li").each(function () {
+	        sf_webDrawGrpCheck(this);
+	    });
+	}
+
+	function sf_webDrawGrpCheck(objGrp) {
+	    var grp_cd = "," + $(objGrp).find("a").attr("val-grpcd") + ",";
+	    var grpChkCnt = 0;
+	    $("input[class=chk]:checked").each(function () {
+	        var grp_cd_list = "," + $(this).parent().parent().find("input[name=GRP_CD]").val() + ",";
+	        if (grp_cd_list.indexOf(grp_cd) > -1) {
+	            grpChkCnt++;
+	        }
+	    });
+
+	    if (grpChkCnt === 0) {
+	        $(objGrp).find("a").removeClass('active minus').addClass('default');
+	        $(objGrp).find("a").attr("val-checkstatus", "3");
+	    } else if (grpChkCnt === $("input[class=chk]:checked").length) {
+	        $(objGrp).find("a").removeClass('default').addClass('active');
+	        $(objGrp).find("a").attr("val-checkstatus", "1");
+	    } else {
+	        $(objGrp).find("a").removeClass('default').addClass('minus');
+	        $(objGrp).find("a").attr("val-checkstatus", "2");
+	    }
+	}
+	
+	// 전체 / 개별 그룹 선택
+	$(document).on('click', '.chk_js_list.all_chk_type a', function () {
+	    var $clicked = $(this);
+	    var isAll = $clicked.find('strong').length > 0;
+	    var inqyType = "";
+		var grpCdLenght = $('.chk_js_list.all_chk_type li a').length - 1
+		selectedGrpTypesDisplay = []
+	    if (isAll) {
+	        $('.chk_js_list .toggle-button').removeClass('active').addClass('default');
+	        $('.chk_js_list a').removeClass('on disabled');
+	        $clicked.addClass('on');
+	        selectedGrpTypes = '';
+	        inqyType = "1";
+			
+			selectedGrpTypesDisplay = []
+	    } else {
+	        $clicked.toggleClass('active default');
+			$('.chk_js_list a').first().addClass('on disabled');
+
+	        var types = [];
+	        $('.chk_js_list .filter-toggle.active').each(function () {
+	            types.push($(this).attr('data-type'));
+				selectedGrpTypesDisplay.push($(this).text());
+	        });
+	        selectedGrpTypes = types.join(',');
+	        inqyType = "2";
+			
+			if (types.length === 0 || types.length === grpCdLenght) {
+				$('.chk_js_list.all_chk_type li a.filter-toggle').removeClass('active').addClass('default');
+		    	$('.chk_js_list.all_chk_type li a').first().removeClass('on disabled').addClass('on');
+				inqyType = "1";
+		    }
+	    }
+		
+		var count = selectedGrpTypesDisplay.length;
+		var first = selectedGrpTypesDisplay[0] || "전체";
+
+		var text =
+		  count > 1 ? `${first} 외 ${count - 1}` :
+		  count === 1 ? `${first}` :
+		  `전체 그룹`;
+
+		$("#grpPopupBtn").text(text);
+
+	    _searchList.setInqyDsnc(inqyType);
+	    _searchList.setGrpCd(selectedGrpTypes);
+	    drawTrcoList();
+	});
+
+	// 그룹 설정 진입 (add_more_grp)
+	$(".add_more_grp").on("click", function () {
+	    $('#filterGrp').hide();
+	    $('.n_btn.cancel').hide();
+	    $('#editGrp').hide();
+	    $('.n_btn.plus').hide();
+	    $('.btn_popset').hide();
+	    $('.ly_group_slbx.setgp_on').show();
+		$(".ly_group_slbx.setgp_on div .filter_tit").text('거래처 그룹 지정');
+	    $('.slbx_btn').show();
+	    $('#updateGrp').show();
+	    $('.n_btn.save').show();
+		$(".chk_js_list.all_chk_update_type li a").removeClass('minus , active').addClass('default')
+	    sf_webDrawGrpCheckAll();
+	});
+
+	// 체크박스 상태 변경
+	$(document).on('change', 'input.chk , input#chk_all', function () {
+	    const checkedCount = $("input.chk:checked").length;
+
+	    if (checkedCount > 0) {
+	        $(".txt_b.fwb").text(checkedCount);
+	        $('.title_opt_chkv').show();
+			$('.h1_title_wrap.top_content').css('visibility', 'hidden');
+	    } else {
+	        $('.title_opt_chkv').hide();
+			$('.h1_title_wrap.top_content').css('visibility', 'visible');
+	    }
+	});
+
+	// 전체 해제
+	$(document).on('click', '.align.txt_ip .close_bt', function (e) {
+	    e.preventDefault();
+	    $('.title_opt_chkv').hide();
+	    $('input#chk_all, input.chk').prop('checked', false);
+		$('.h1_title_wrap.top_content').css('visibility', 'visible');
+	});
+
+	// 설정 그룹 클릭 시 상태 반영
+	$(document).on('click', '.chk_js_list.all_chk_update_type a', function () {
+	    const $clicked = $(this);
+	    if ($clicked.hasClass('minus')) {
+			$clicked.removeClass('minus').addClass('default');
+	    } else if ($clicked.hasClass('active')) {
+	        $clicked.removeClass('active').addClass('default');
+	    } else if ($clicked.hasClass('default')) {
+	        $clicked.removeClass('default').addClass('active');
+	    }
+	});
+
+	// 저장
+	$(document).on('click', '.n_btn.save', function (e) {
+	    updateTrcoGrp();
+	});
+	
+	// Enter key on group name create
+	$(document).on("keydown", "#GRP_NM", function (e) {
+	    if (e.key === "Enter") {
+	        e.preventDefault();
+	        $(this).siblings(".btn_addgp").trigger("click");
+	    }
+	});
+
+	// Enter key event When Edit
+	$(document).on("keydown", ".EDT_GRP_NM", function (e) {
+	    if (e.key === "Enter") {
+	        e.preventDefault();
+	        $(this).siblings(".ok_edit_bt").trigger("click");
+	    }
+	});
+
+    // ✅ Event Bindings
+    $(".btn_popset").on("click", switchToEditMode);
+    $("#grpPopupBtn").on("click", resetGroupUI);
+    $(".n_btn.plus").on("click", showGroupCreateInput);
+	$(document).on('click', '.n_btn.cancel' , switchToEditMode); 
+    $(document).on("click", ".mod_bt", handleModifyGroup);
+    $(document).on("click", ".del_bt", handleDeleteGroup);
+    $(document).on("click", ".btn_addgp", handleCreateGroup);
+	$(document).on("click", ".ok_edit_bt", handleEditGroupSave);
+
+    // ✅ Initial Group Load
+    webCrudUserGrpList(jexjs.null2Void(selectedGrpTypes));
+}

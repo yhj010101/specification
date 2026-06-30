@@ -1,0 +1,220 @@
+/**
+ * 
+ */
+$(document).ready(function(){
+	try{
+		var excelDownloadHtml="<div style='display:none' id='rptr_jexGridExcelDown'>";
+		excelDownloadHtml+="<form method='post' enctype='multipart/form-data' name='rptr_jexGridDownloadForm' id='rptr_jexGridDownloadForm' action='/js/jexGrid/file/rptr.downloadProc.jsp' target='rptr_jexGridDownloadIfrm'>";
+		excelDownloadHtml+="<textarea  name='rptr_json' id='rptr_json'></textarea>";
+		excelDownloadHtml+="</form>";
+		excelDownloadHtml+="<iframe name='rptr_jexGridDownloadIfrm' id='rptr_jexGridDownloadIfrm_test' style='width:0px;height:0px;display:none'/>";
+		excelDownloadHtml+="</div>";	
+		$("body").append(excelDownloadHtml);
+	}catch(e){};
+});
+
+function rptr_excelDownload(data, columns, title){
+	//원본 그리드 정보읽기
+	var orgGrid = data;
+	var orgColDef  = columns;
+	var jgridDownload = {};
+	jgridDownload.fileTitle = {
+		title: jexjs.null2Void(title,"")
+		,details:[]
+	};
+	
+	var _datalist = orgGrid;
+	var _datalistLength = _datalist.length;
+
+	if(_datalist.length==0)
+	{
+		alert("저장 할 항목이 없습니다. 저장항목을 확인해주세요.");
+		return false;
+	}
+	
+	
+	var _colDefList = [];
+	for(var i=0 ; i<orgColDef.length ; i++)
+	{
+		_colDefList.push({
+			name : orgColDef[i].name
+			,key : orgColDef[i].key
+			,width: orgColDef[i].width
+			,align: orgColDef[i].align
+		});
+	}
+	var _colDefLength = _colDefList.length;
+	var _saveDatalist = [];
+	var _saveDatarow;
+	var pattern = /(<([^>]+)>)/gi;	// 컬럼안에 태그 있을경우 내용까지 공백으로 변환되어 변경 by lsh
+	
+	var result = {
+		colDef:_colDefList,
+		data:_datalist,
+		title:jgridDownload.fileTitle
+	};
+	$("#rptr_jexGridDownloadForm").find("#rptr_json").val( encodeURI(JSON.stringify(result)) );
+
+	document.getElementById("rptr_jexGridDownloadForm").submit();
+
+};
+
+function rptr_print(obj, type, headnum) {
+
+	var printDivClone = obj.clone(true); //Cone Table
+
+	var $header = printDivClone.find(".sum_wrap").clone().wrapAll("<div/>").parent().html(); 
+	var table = printDivClone.find("table tbody tr");
+	var $colgroup = printDivClone.find("table colgroup").clone().wrapAll("<div/>").parent().html();
+	var $thead = printDivClone.find("table thead").clone().wrapAll("<div/>").parent().html();
+	var $tbody = printDivClone.find("table tbody").clone().wrapAll("<div/>").parent().html();
+	
+	var strTableCloser = "</tbody></table></div>";
+
+	var strTable = "";
+	var rows = table.length;
+	
+	var maxRows = 28;
+	var pages, remainRows;
+	var closeDiv = false;
+	var firstPageRows = 24;
+	var rowspanNum = 0;
+	var rowspanData = "";
+	
+	if (headnum =="2") {
+		maxRows--;
+		firstPageRows--;
+	}
+					
+	if(rows > firstPageRows){ //@@ More than one page
+		pages = Math.ceil((rows-firstPageRows)/maxRows);  //parseInt(rows/maxRows);
+		
+		var x = 0;
+		var bdt0 = "";
+		
+		while(x < pages){
+			
+			if(x == 0){//First page
+				strTable += "<div style='page-break-after:always'>"
+	        				+ $header
+						 	+"<table class='tbl_result' summary=''>"
+						 	+ $colgroup
+						 	+ $thead
+						 	+"<tbody>";
+				
+				for(var i=0;i<firstPageRows;i++){
+					if(i==2) bdt0 = "class='bdt0'";
+					else bdt0 = "";
+					
+					strTable += '<tr '+bdt0+'>'+table.eq(i).html()+'</tr>';
+					
+					if (undefined != type) {
+						if (table.eq(i).find('td[rowspan]').attr('rowspan') != null) {
+							rowspanNum = parseInt(table.eq(i).find('td[rowspan]').attr('rowspan'), 10);
+							rowspanData = table.eq(i).find('td[rowspan]').html();
+						}
+						rowspanNum--;
+					}
+				}
+				
+				strTable += "</tbody>"
+						    +"</table>"
+						    +"</div>";
+				
+			}else{// Not first page 
+				strTable += "<div style='page-break-after:always'>"
+					 	+"<table class='tbl_result' summary=''>"
+					 	+ $colgroup
+					 	+ $thead
+					 	+"<tbody>";
+				
+				for(var j=firstPageRows;firstPageRows<(j+maxRows);firstPageRows++){
+					if(firstPageRows==j) {
+						bdt0 = "class='bdt0'";
+						
+						if (undefined != type) {
+							if (rowspanNum > 0) {
+								table.eq(firstPageRows).prepend('<td class=\"v_top\">'+rowspanData+'</td>');
+								table.eq(firstPageRows).find('td:eq(0)').attr('rowspan',rowspanNum.toString());
+							}
+						}
+					}
+					else {
+						bdt0 = "";
+					}
+					
+					if (undefined != type) {
+						if (table.eq(firstPageRows).find('td[rowspan]').attr('rowspan') != null) {
+							rowspanNum = parseInt(table.eq(firstPageRows).find('td[rowspan]').attr('rowspan'), 10);
+							rowspanData = table.eq(firstPageRows).find('td[rowspan]').html();
+						}
+						rowspanNum--;	
+					}
+					
+					strTable += '<tr class='+bdt0+'>'+table.eq(firstPageRows).html()+'</tr>';
+					
+					if(firstPageRows==(j+maxRows)-1){
+						strTable += "</tbody>"
+							    +"</table>"
+							    +"</div>";
+					}
+				 }
+			 }
+			 x++;
+			 
+		  } // while
+		
+		remainRows = rows - firstPageRows;
+		
+		// Remain rows
+		if(remainRows > 0){
+			
+			strTable += "<div style='page-break-after:always'>"
+					 	+"<table class='tbl_result' summary=''>"
+					 	+ $colgroup
+					 	+ $thead
+					 	+"<tbody>";
+			
+			for(var j = firstPageRows;firstPageRows<rows;firstPageRows++){
+				if(firstPageRows ==j){
+					if (undefined != type) {
+						if (rowspanNum > 0) {
+							table.eq(firstPageRows).prepend('<td class=\"v_top\">'+rowspanData+'</td>');
+							table.eq(firstPageRows).find('td:eq(0)').attr('rowspan',rowspanNum.toString());
+						}
+					}
+					strTable += '<tr class="bdt0">'+table.eq(firstPageRows).html()+'</tr>';
+				}else{
+					strTable += '<tr>'+table.eq(firstPageRows).html()+'</tr>';
+				}
+				
+			}
+			strTable += "</tbody>"
+					    +"</table>"
+					    +"</div>";
+		}
+	
+	}else{ //@@ Only one page
+		strTable += "<div style='page-break-after:always'>"
+					+ $header
+				 	+"<table class='tbl_result' summary=''>"
+				 	+ $colgroup
+				 	+ $thead
+				 	+"<tbody>";
+
+		for(var i=0;i<rows;i++){
+			strTable += '<tr>'+table.eq(i).html()+'</tr>';
+		}
+		
+		strTable += "</tbody>"
+			    +"</table>"
+			    +"</div>";
+
+	}
+	
+	return strTable;
+};
+
+function check_rowspan(obj) {
+	return obj;
+};

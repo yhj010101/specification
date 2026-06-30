@@ -1,0 +1,664 @@
+/**
+ * Created by admin on 2017-10-20.
+ */
+var _serpTemplate={
+
+    /* 거래처 거래관리 메뉴 */
+    trco_collByOption_td : function (viewNm, colId) { 
+        var returnHtml = '';
+
+        /**
+         * 매입 거래명세표
+         */
+        if (viewNm == "trgm_m003_01_VIEW") {
+            switch (colId) {
+                case "REGS_DATE":
+                    returnHtml = '<td><div>{{= REGS_DATE}}</div></td>';
+                    break;
+                case "SELR_CORP_NM":
+                    returnHtml = '<td><div><span class="ellipsis popupcall">{{= SELR_CORP_NM}}</span></div></td>';
+                    break;
+                case "CHRG_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= CHRG_AMT}}</div></td>';
+                    break;
+                case "TAX_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= TAX_AMT}}</div></td>';
+                    break;
+                case "TOTL_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= TOTL_AMT}}</div></td>';
+                    break;
+                case "SELR_CORP_NO":
+                    returnHtml = '<td><div>{{= SELR_CORP_NO}}</div></td>';
+                    break;
+                case "SELR_CEO":
+                    returnHtml = '<td><div>{{= SELR_CEO}}</div></td>';
+                    break;
+                case "BUYR_CHRG_NM1":
+                    returnHtml = '<td><div>{{= BUYR_CHRG_NM1}}</div></td>';
+                    break;
+                case "NOTE5":
+                    returnHtml = '<td><div>{{= NOTE5}}</div></td>';
+                    break;
+                case "TAX_REGS_DATE":
+                    returnHtml = '<td><div>{{= TAX_REGS_DATE}}</div></td>';
+                    break;
+                case "PRJT_NO":
+                    returnHtml = '<td><div>{{= PRJT_NO}}</div></td>';
+                    break;
+                case "PRJT_NM":
+                    returnHtml = '<td><div>{{= PRJT_NM}}</div></td>';
+                    break;
+                case "MEMO":
+                    returnHtml = '<td><div class="ellipsis" title="{{= MEMO}}">{{= MEMO}}</div></td>';
+                    break;
+                case "ITEM_NM_INFM":
+                    returnHtml = '<td><div><span class="ellipsis">{{= ITEM_NM_INFM}}</span></div></td>';
+                    break;
+				case "BZAQ_NM":
+                    returnHtml = '<td><div class="BZAQ_NM"><span class="ellipsis popupcall">{{= BZAQ_NM}}</span></div></td>';
+                    break;
+            }
+        }
+        
+        /**
+         * 매출 거래명세표
+         */
+        if (viewNm == "trgm_m002_01_VIEW") {
+            switch (colId) {
+                case "REGS_DATE":
+                    returnHtml = '<td><div>{{= REGS_DATE}}</div></td>';
+                    break;
+                case "BUYR_CORP_NM":
+                    returnHtml = '<td><div><span class="ellipsis popupcall">{{= BUYR_CORP_NM}}</span></div></td>';
+                    break;
+                case "CHRG_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= CHRG_AMT}}</div></td>';
+                    break;
+                case "TAX_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= TAX_AMT}}</div></td>';
+                    break;
+                case "TOTL_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= TOTL_AMT}}</div></td>';
+                    break;
+                case "BUYR_CORP_NO":
+                    returnHtml = '<td><div>{{= BUYR_CORP_NO}}</div></td>';
+                    break;
+                case "BUYR_CEO":
+                    returnHtml = '<td><div>{{= BUYR_CEO}}</div></td>';
+                    break;
+                case "ISSU_ID":
+                    returnHtml = '<td><div>{{= ISSU_ID}}</div></td>';
+                    break;
+                case "SELR_CHRG_NM":
+                    returnHtml = '<td><div>{{= SELR_CHRG_NM}}</div></td>';
+                    break;
+                case "LAST_PRINT_DATE":
+                	returnHtml = '<td><div class="LAST_PRINT_DATE">{{= LAST_PRINT_DATE}}</div></td>';
+                	break;
+                case "LAST_MAIL_DATE":
+                	returnHtml = '<td><div class="LAST_MAIL_DATE">{{= LAST_MAIL_DATE}}</div></td>';
+                	break;
+                case "LAST_FAX_DATE":
+                	returnHtml = '<td><div class="LAST_FAX_DATE">{{= LAST_FAX_DATE}}</div></td>';
+                	break;
+                case "TAX_ISSU_DATE":
+                	returnHtml = '<td><div>{{= TAX_ISSU_DATE}}</div></td>';
+                	break;
+                case "TAX_REGS_DATE":
+                	returnHtml = '<td><div>{{= TAX_REGS_DATE}}</div></td>';
+                	break;	    
+                case "NOTE5":
+                    returnHtml = '<td><div>{{= NOTE5}}</div></td>';
+                    break;
+                case "PRJT_NO":
+                    returnHtml = '<td><div>{{= PRJT_NO}}</div></td>';
+                    break;
+                case "PRJT_NM":
+                    returnHtml = '<td><div>{{= PRJT_NM}}</div></td>';
+                    break;
+                case "MEMO":
+                    returnHtml = '<td><div class="ellipsis" title="{{= MEMO}}">{{= MEMO}}</div></td>';
+                    break;
+                case "ITEM_NM_INFM":
+                    returnHtml = '<td><div><span class="ellipsis">{{= ITEM_NM_INFM}}</span></div></td>';
+                    break;
+				case "BZAQ_NM":
+                    returnHtml = '<td><div class="BZAQ_NM"><span class="ellipsis popupcall">{{= BZAQ_NM}}</span></div></td>';
+                    break;
+            }
+        }
+
+        /**
+         * 발주서
+         */
+        if (viewNm == "trgm_m006_01_VIEW") {
+            switch (colId) {
+                case "REGS_DATE":
+                    returnHtml = '<td><div>{{= REGS_DATE}}</div></td>';
+                    break;
+                case "BUYR_CORP_NM":
+                    returnHtml = '<td><div><span class="ellipsis popupcall">{{= BUYR_CORP_NM}}</span></div></td>';
+                    break;
+                case "CHRG_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= CHRG_AMT}}</div></td>';
+                    break;
+                case "TAX_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= TAX_AMT}}</div></td>';
+                    break;
+                case "TOTL_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= TOTL_AMT}}</div></td>';
+                    break;
+                case "INVOICE_NO":
+                    returnHtml = '<td><div>{{= INVOICE_NO}}</div></td>';
+                    break;
+                case "BUYR_CORP_NO":
+                    returnHtml = '<td><div>{{= BUYR_CORP_NO}}</div></td>';
+                    break;
+                case "BUYR_CEO":
+                    returnHtml = '<td><div>{{= BUYR_CEO}}</div></td>';
+                    break;
+                case "SUBJECT":
+                    returnHtml = '<td><div><span class="ellipsis" title="{{= SUBJECT}}">{{= SUBJECT}}</span></div></td>';
+                    break;
+                case "ORDER_DATE":
+                    returnHtml = '<td><div>{{= ORDER_DATE}}</div></td>';
+                    break;
+                case "NOTE2":
+                    returnHtml = '<td><div>{{= NOTE2}}</div></td>';
+                    break;
+                case "NOTE3":
+                    returnHtml = '<td><div>{{= NOTE3}}</div></td>';
+                    break;
+                case "NOTE4":
+                    returnHtml = '<td><div>{{= NOTE4}}</div></td>';
+                    break;
+                case "SELR_CHRG_NM":
+                    returnHtml = '<td><div>{{= SELR_CHRG_NM}}</div></td>';
+                    break;  
+                case "LAST_PRINT_DATE":
+                	returnHtml = '<td><div>{{= LAST_PRINT_DATE}}</div></td>';
+                	break;
+                case "LAST_MAIL_DATE":
+                	returnHtml = '<td><div>{{= LAST_MAIL_DATE}}</div></td>';
+                	break;
+                case "LAST_FAX_DATE":
+                	returnHtml = '<td><div>{{= LAST_FAX_DATE}}</div></td>';
+                	break;
+                case "NOTE5":
+                    returnHtml = '<td><div>{{= NOTE5}}</div></td>';
+                    break;
+                case "PRJT_NO":
+                    returnHtml = '<td><div>{{= PRJT_NO}}</div></td>';
+                    break;
+                case "PRJT_NM":
+                    returnHtml = '<td><div>{{= PRJT_NM}}</div></td>';
+                    break;
+                case "MEMO":
+                    returnHtml = '<td><div class="ellipsis" title="{{= MEMO}}">{{= MEMO}}</div></td>';
+                    break;
+                case "ITEM_NM_INFM":
+                    returnHtml = '<td><div><span class="ellipsis">{{= ITEM_NM_INFM}}</span></div></td>';
+                    break;
+				case "BZAQ_NM":
+                    returnHtml = '<td><div class="BZAQ_NM"><span class="ellipsis popupcall">{{= BZAQ_NM}}</span></div></td>';
+                    break;
+				case "NOTE1":
+                    returnHtml = '<td><div class="ellipsis" title="{{= NOTE1}}">{{= NOTE1}}</div></td>';
+                    break;
+            }
+        }
+
+        /**
+         * 수주서
+         */
+        if (viewNm == "trgm_m005_01_VIEW") {
+            switch (colId) {
+                case "REGS_DATE":
+                    returnHtml = '<td><div>{{= REGS_DATE}}</div></td>';
+                    break;
+                case "BUYR_CORP_NM":
+                    returnHtml = '<td><div><span class="ellipsis popupcall">{{= BUYR_CORP_NM}}</span></div></td>';
+                    break;
+                case "CHRG_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= CHRG_AMT}}</div></td>';
+                    break;
+                case "TAX_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= TAX_AMT}}</div></td>';
+                    break;
+                case "TOTL_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= TOTL_AMT}}</div></td>';
+                    break;
+                case "INVOICE_NO":
+                    returnHtml = '<td><div>{{= INVOICE_NO}}</div></td>';
+                    break;
+                case "BUYR_CORP_NO":
+                    returnHtml = '<td><div>{{= BUYR_CORP_NO}}</div></td>';
+                    break;
+                case "BUYR_CEO":
+                    returnHtml = '<td><div>{{= BUYR_CEO}}</div></td>';
+                    break;
+                case "SUBJECT":
+                    returnHtml = '<td><div><span class="ellipsis" title="{{= SUBJECT}}">{{= SUBJECT}}</span></div></td>';
+                    break;
+                case "ORDER_DATE":
+                    returnHtml = '<td><div>{{= ORDER_DATE}}</div></td>';
+                    break;
+                case "NOTE2":
+                    returnHtml = '<td><div>{{= NOTE2}}</div></td>';
+                    break;
+                case "NOTE3":
+                    returnHtml = '<td><div>{{= NOTE3}}</div></td>';
+                    break;
+                case "NOTE4":
+                    returnHtml = '<td><div>{{= NOTE4}}</div></td>';
+                    break;
+                case "SELR_CHRG_NM":
+                    returnHtml = '<td><div>{{= SELR_CHRG_NM}}</div></td>';
+                    break;
+                case "LAST_PRINT_DATE":
+                	returnHtml = '<td><div>{{= LAST_PRINT_DATE}}</div></td>';
+                	break;
+                case "LAST_MAIL_DATE":
+                	returnHtml = '<td><div>{{= LAST_MAIL_DATE}}</div></td>';
+                	break;
+                case "LAST_FAX_DATE":
+                	returnHtml = '<td><div>{{= LAST_FAX_DATE}}</div></td>';
+                	break;
+                case "NOTE5":
+                    returnHtml = '<td><div>{{= NOTE5}}</div></td>';
+                    break;
+                case "PRJT_NO":
+                    returnHtml = '<td><div>{{= PRJT_NO}}</div></td>';
+                    break;
+                case "PRJT_NM":
+                    returnHtml = '<td><div>{{= PRJT_NM}}</div></td>';
+                    break;
+                case "MEMO":
+                    returnHtml = '<td><div class="ellipsis" title="{{= MEMO}}">{{= MEMO}}</div></td>';
+                    break;
+                case "ITEM_NM_INFM":
+                    returnHtml = '<td><div><span class="ellipsis">{{= ITEM_NM_INFM}}</span></div></td>';
+                    break;
+				case "BZAQ_NM":
+                    returnHtml = '<td><div class="BZAQ_NM"><span class="ellipsis popupcall">{{= BZAQ_NM}}</span></div></td>';
+                    break;
+				case "NOTE1":
+                    returnHtml = '<td><div class="ellipsis" title="{{= NOTE1}}">{{= NOTE1}}</div></td>';
+                    break;
+            }
+        }
+
+        /**
+         * 견적서
+         */
+        if (viewNm == "trgm_m004_01_VIEW") {
+            switch (colId) {
+                case "REGS_DATE":
+                    returnHtml = '<td><div>{{= REGS_DATE}}</div></td>';
+                    break;
+                case "BUYR_CORP_NM":
+                    returnHtml = '<td><div><span class="ellipsis popupcall">{{= BUYR_CORP_NM}}</span></div></td>';
+                    break;
+                case "CHRG_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= CHRG_AMT}}</div></td>';
+                    break;
+                case "TAX_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= TAX_AMT}}</div></td>';
+                    break;
+                case "TOTL_AMT":
+                    returnHtml = '<td><div class="tar popupcall">{{= TOTL_AMT}}</div></td>';
+                    break;
+                case "INVOICE_NO":
+                    returnHtml = '<td><div>{{= INVOICE_NO}}</div></td>';
+                    break;
+                case "BUYR_CORP_NO":
+                    returnHtml = '<td><div>{{= BUYR_CORP_NO}}</div></td>';
+                    break;
+                case "BUYR_CEO":
+                    returnHtml = '<td><div>{{= BUYR_CEO}}</div></td>';
+                    break;
+                case "SUBJECT":
+                    returnHtml = '<td><div><span class="ellipsis" title="{{= SUBJECT}}">{{= SUBJECT}}</span></div></td>';
+                    break;
+                case "ORDER_DATE":
+                    returnHtml = '<td><div>{{= ORDER_DATE}}</div></td>';
+                    break;
+                case "NOTE2":
+                    returnHtml = '<td><div>{{= NOTE2}}</div></td>';
+                    break;
+                case "NOTE3":
+                    returnHtml = '<td><div>{{= NOTE3}}</div></td>';
+                    break;
+                case "NOTE4":
+                    returnHtml = '<td><div>{{= NOTE4}}</div></td>';
+                    break;
+                case "SELR_CHRG_NM":
+                    returnHtml = '<td><div>{{= SELR_CHRG_NM}}</div></td>';
+                    break;
+                case "LAST_PRINT_DATE":
+                	returnHtml = '<td><div>{{= LAST_PRINT_DATE}}</div></td>';
+                	break;
+                case "LAST_MAIL_DATE":
+                	returnHtml = '<td><div>{{= LAST_MAIL_DATE}}</div></td>';
+                	break;
+                case "LAST_FAX_DATE":
+                	returnHtml = '<td><div>{{= LAST_FAX_DATE}}</div></td>';
+                	break;
+                case "NOTE5":
+                    returnHtml = '<td><div>{{= NOTE5}}</div></td>';
+                    break;
+                case "PRJT_NO":
+                    returnHtml = '<td><div>{{= PRJT_NO}}</div></td>';
+                    break;
+                case "PRJT_NM":
+                    returnHtml = '<td><div>{{= PRJT_NM}}</div></td>';
+                    break;
+                case "MEMO":
+                    returnHtml = '<td><div class="ellipsis" title="{{= MEMO}}">{{= MEMO}}</div></td>';
+                    break;
+                case "ITEM_NM_INFM":
+                    returnHtml = '<td><div><span class="ellipsis">{{= ITEM_NM_INFM}}</span></div></td>';
+                    break;
+				case "BZAQ_NM":
+                    returnHtml = '<td><div class="BZAQ_NM"><span class="ellipsis popupcall">{{= BZAQ_NM}}</span></div></td>';
+                    break;
+				case "NOTE1":
+                    returnHtml = '<td><div class="ellipsis" title="{{= NOTE1}}">{{= NOTE1}}</div></td>';
+                    break;
+            }
+        }
+
+        /**
+         * 매출 세금계산서
+         */
+        if (viewNm == "trgm_m001_01_VIEW") {
+            switch (colId) {
+                case "ISSU_DATE":
+                    returnHtml = '<td><div>{{= ISSU_DATE}}</div></td>';
+                    break;
+                case "TAX_DIV":
+                	returnHtml = '<td><div>{{= TAX_DIV}}</div></td>';
+                    break;
+                case "REGS_DATE":
+                	returnHtml = '<td><div>{{= REGS_DATE}}</div></td>';
+                    break;
+                case "CORP_NM":
+                    returnHtml = '<td><div><span class="ellipsis" title="{{= BUYR_CORP_NM}}">{{= BUYR_CORP_NM}}</span></div></td>';
+                    break;
+                case "CEO_NM":
+                    returnHtml = '<td><div>{{= BUYR_CEO_NM}}</div></td>';
+                    break;                    
+                case "CORP_NO":
+                	returnHtml = '<td><div>{{= BUYR_CORP_NO}}</div></td>';
+                    break;
+                case "AREA_CODE":
+                	returnHtml = '<td><div>{{= BUYR_AREA_CODE}}</div></td>';
+                    break;
+                case "CHRG_AMT":
+                    returnHtml = '<td><div class="tar">{{= CHRG_AMT}}</div></td>';
+                    break;                    
+                case "TAX_AMT":
+                    returnHtml = '<td><div class="tar">{{= TAX_AMT}}</div></td>';
+                    break;                    
+                case "TOTL_AMT":
+                    returnHtml = '<td><div class="tar">{{= TOTL_AMT}}</div></td>';
+                    break;
+                case "BUSS_CONS":
+                    returnHtml = '<td><div><span class="ellipsis">{{= BUYR_BUSS_CONS}}</span></div></td>';
+                    break;
+                case "BUSS_TYPE":
+                    returnHtml = '<td><div><span class="ellipsis">{{= BUYR_BUSS_TYPE}}</span></div></td>';
+                    break;                    
+                case "ISSU_ID":
+                    returnHtml = '<td><div><a href="#none" class="txt_uline" onclick="fn_PopupCall(\'{{= ISSU_ID}}\', \'{{= ISSU_DATE}}\')">{{= ISSU_ID}}</a></div></td>';
+                    break;
+                case "STAT_CODE":
+                    returnHtml = '<td><div class="tac"><a href="#none" class="statTx">{{= STAT_CODE}}</a></div></td>';
+                    break;
+                case "ERR_MSG":
+                    returnHtml = '<td><div>{{= ERR_MSG}}</div></td>';
+                    break;
+                case "TAX_CODE":
+                    returnHtml = '<td><div>{{= TAX_CODE}}</div></td>';
+                    break;
+                case "POPS_CODE":
+                    returnHtml = '<td><div>{{= POPS_CODE}}</div></td>';
+                    break;
+                case "MULT_ISSU_ID":
+                    returnHtml = '<td><div>{{= MULT_ISSU_ID}}</div></td>';
+                    break;
+                case "SELR_EMAIL":
+                    returnHtml = '<td><div><span class="ellipsis" title="{{= SELR_EMAIL}}">{{= SELR_EMAIL}}</span></div></td>';
+                    break;                    
+                case "CHRG_NM1":
+                    returnHtml = '<td><div>{{= CHRG_NM1}}</div></td>';
+                    break;
+                case "CHRG_EMAIL1":
+                    returnHtml = '<td><div><span class="ellipsis" title="{{= CHRG_EMAIL1}}">{{= CHRG_EMAIL1}}</span></div></td>';
+                    break;
+                case "CHRG_NM2":
+                    returnHtml = '<td><div>{{= CHRG_NM2}}</div></td>';
+                    break;
+                case "CHRG_EMAIL2":
+                    returnHtml = '<td><div><span class="ellipsis" title="{{= CHRG_EMAIL2}}">{{= CHRG_EMAIL2}}</span></div></td>';
+                    break;
+                case "STS_SUM":
+                	returnHtml = '<td><div>{{= STS_SUM}}</div></td>';
+                	break;
+                case "SELR_CHRG_NM":
+                    returnHtml = '<td><div>{{= SELR_CHRG_NM}}</div></td>';
+                    break;
+				case "BZAQ_NM":
+                    returnHtml = '<td><div><span class="ellipsis" title="{{= BZAQ_NM}}">{{= BZAQ_NM}}</span></div></td>';
+                    break;
+                
+            }
+        }
+       
+        /**
+         * 거래처 조회
+         */
+        if (viewNm == "trco_m001_01_VIEW") {
+            switch (colId) {
+                case "TRCO_CMNM":
+                    returnHtml = '<td><div class="TRCO_CMNM"><a href="#none" class="ellipsis">{{= TRCO_CMNM}}</a></div></td>';
+                    break;
+                case "TRCO_BSNN_NO":
+                    returnHtml = '<td><div class="TRCO_BSNN_NO"><a href="#none" class="">{{= TRCO_BSNN_NO}}</a></div></td>';
+                    break;
+                case "TRCO_RPPR_NM":
+                    returnHtml = '<td><div>{{= TRCO_RPPR_NM}}</div></td>';
+                    break;
+                case "TRCO_RPRS_TLPH":
+                    returnHtml = '<td><div >{{= TRCO_RPRS_TLPH}}</div></td>';
+                    break;
+                case "TRCO_RPRS_CELL":
+                    returnHtml = '<td><div >{{= TRCO_RPRS_CELL}}</div></td>';
+                    break;
+                case "ACVT_DTTM":
+                    returnHtml = '<td><div id="trco_acvt_dttm">{{= ACVT_DTTM}}</div></td>';
+                    break;
+                case "TRCO_FXNO":
+                    returnHtml = '<td><div class="TRCO_FXNO"><a href="#none" class="">{{= TRCO_FXNO}}</a></div></td>';
+                    break;
+                case "TRCO_BSST_NM":
+                    returnHtml = '<td><div>{{= TRCO_BSST_NM}}</div></td>';
+                    break;
+                case "TRCO_TPBS_NM":
+                    returnHtml = '<td><div>{{= TRCO_TPBS_NM}}</div></td>';
+                    break;
+                case "TRCO_RPRS_BSUN_POST_ADRS":
+//                경리나라 6.1
+                    returnHtml = '<td class="btn_map"><div><a href="#none">{{= TRCO_RPRS_BSUN_POST_ADRS}}</a></div></td>';
+                    break;
+                case "TRCO_SPEC_BSNN_NO":
+                    returnHtml = '<td><div>{{= TRCO_SPEC_BSNN_NO}}</div></td>';
+                    break;
+                case "RGSN_DTTM":
+                    returnHtml = '<td><div>{{= RGSN_DTTM}}</div></td>';
+                    break;
+                case "RSPB_INFO":
+                    returnHtml = '<td><div class="RSPB_INFO">{{= RSPB_INFO}}</div></td>';
+                    break;
+                case "ACCT_INFO":
+                    returnHtml = '<td><div class="ACCT_INFO">{{= ACCT_INFO}}</div></td>';
+                    break;
+                case "DPST_ACCT_INFO":
+                    returnHtml = '<td><div class="DPST_ACCT_INFO">{{= DPST_ACCT_INFO}}</div></td>';
+                    break;
+                case "WDRW_ACCT_INFO":
+                    returnHtml = '<td><div class="WDRW_ACCT_INFO">{{= WDRW_ACCT_INFO}}</div></td>';
+                    break;
+				case "TRCO_BSNN_NM":
+                    returnHtml = '<td><div class="TRCO_BSNN_NM"><a href="#none" class="ellipsis">{{= TRCO_BSNN_NM}}</a></div></td>';
+                    break;
+                case "RCBL_AMT":
+                    returnHtml = '<td style="padding-left:10px; padding-right:10px;"><div class="tar RCBL_AMT">{{= RCBL_AMT}}</div></td>';
+                    break;
+                case "UPAY_AMT":
+                    returnHtml = '<td style="padding-left:10px; padding-right:10px;"><div class="tar UPAY_AMT">{{= UPAY_AMT}}</div></td>';
+                    break;
+                case "BF_AMT":
+                    returnHtml = '<td style="padding-left:10px; padding-right:10px;"><div class="tar BF_AMT">{{= BF_AMT}}</div></td>';
+                    break;
+                case "SALE_AMT":
+                    returnHtml = '<td style="padding-left:10px; padding-right:10px;"><div class="tar SALE_AMT">{{= SALE_AMT}}</div></td>';
+                    break;
+                case "CTMN_AMT":
+                    returnHtml = '<td style="padding-left:10px; padding-right:10px;"><div class="tar CTMN_AMT">{{= CTMN_AMT}}</div></td>';
+                    break;
+                case "BUY_AMT":
+                    returnHtml = '<td style="padding-left:10px; padding-right:10px;"><div class="tar BUY_AMT">{{= BUY_AMT}}</div></td>';
+                    break;
+                case "PAYM_AMT":
+                    returnHtml = '<td style="padding-left:10px; padding-right:10px;"><div class="tar PAYM_AMT">{{= PAYM_AMT}}</div></td>';
+                    break;
+				case "TRCO_MEMO":
+                    returnHtml = '<td><div class="ellipsis" title="{{= TRCO_MEMO}}">{{= TRCO_MEMO}}</div></td>';
+                    break;
+            }
+        }
+        /**
+         * 대량발행 리스트 조회
+         */
+        if (viewNm == "trgm_m001_05_VIEW") {
+            switch (colId) {
+                case "FILE_NM":
+                    returnHtml = '<td><div><a href="#none" class="tx_ellipsis_max txt_uline file_nm" title="{{= FILE_NM}}">{{= FILE_NM}}</a></div></td>';
+                    break;
+                case "TOTL_CNT":
+                    returnHtml = '<td><div class="tar">{{= TOTL_CNT}}</div></td>';
+                    break;
+                case "TOTL_CHRG_AMT":
+                    returnHtml = '<td><div class="tar">{{= TOTL_CHRG_AMT}}</div></td>';
+                    break;
+                case "TOTL_TAX_AMT":
+                    returnHtml = '<td><div class="tar">{{= TOTL_TAX_AMT}}</div></td>';
+                    break;
+                case "TOTL_SUM_AMT":
+                    returnHtml = '<td><div class="tar">{{= TOTL_SUM_AMT}}</div></td>';
+                    break;
+                case "SIGN_DATETIME":
+                    returnHtml = '<td><div>{{= SIGN_DATETIME}}</div></td>';
+                    break;
+                case "STAT_CODE_00":
+                    returnHtml = '<td><div class="tar"><a href="#none" class="txt_uline stat_code_00">{{= STAT_CODE_00}}</a></div></td>';
+                    break;
+                case "SND_STAT":
+                    returnHtml = '<td><div><a class="t_hover stat_code_00_2">{{= STAT_CODE_00}}</a> | <a class="t_hover stat_code_07"><span class="txt_b">{{= STAT_CODE_07}}</span></a> | <a class="t_hover stat_code_99"><span class="txt_r">{{= STAT_CODE_99}}</span></a></div></td>';
+                    break;
+                case "REGS_DATETIME":
+                    returnHtml = '<td><div>{{= REGS_DATETIME}}</div></td>';
+                    break;
+                case "REG_USER_NM":
+                    returnHtml = '<td><div>{{= REG_USER_NM}}</div></td>';
+                    break;
+            }
+        }
+        /**
+         * CMS발행 리스트 조회
+         */
+        if (viewNm == "trgm_m001_05_CMS_VIEW") {
+            switch (colId) {
+                case "FILE_NM":
+                    returnHtml = '<td><div><a href="#none" class="tx_ellipsis_max txt_uline file_nm" title="{{= FILE_NM}}">{{= FILE_NM}}</a></div></td>';
+                    break;
+                case "TOTL_CNT":
+                    returnHtml = '<td><div class="tar">{{= TOTL_CNT}}</div></td>';
+                    break;
+                case "TOTL_CHRG_AMT":
+                    returnHtml = '<td><div class="tar">{{= TOTL_CHRG_AMT}}</div></td>';
+                    break;
+                case "TOTL_TAX_AMT":
+                    returnHtml = '<td><div class="tar">{{= TOTL_TAX_AMT}}</div></td>';
+                    break;
+                case "TOTL_SUM_AMT":
+                    returnHtml = '<td><div class="tar">{{= TOTL_SUM_AMT}}</div></td>';
+                    break;
+                case "SIGN_DATETIME":
+                    returnHtml = '<td><div>{{= SIGN_DATETIME}}</div></td>';
+                    break;
+                case "STAT_CODE_00":
+                    returnHtml = '<td><div class="tar"><a href="#none" class="txt_uline stat_code_00">{{= STAT_CODE_00}}</a></div></td>';
+                    break;
+                case "SND_STAT":
+                    returnHtml = '<td><div><a class="t_hover stat_code_00_2">{{= STAT_CODE_00}}</a> | <a class="t_hover stat_code_07"><span class="txt_b">{{= STAT_CODE_07}}</span></a> | <a class="t_hover stat_code_99"><span class="txt_r">{{= STAT_CODE_99}}</span></a></div></td>';
+                    break;
+                case "REGS_DATETIME":
+                    returnHtml = '<td><div>{{= REGS_DATETIME}}</div></td>';
+                    break;
+                case "REG_USER_NM":
+                    returnHtml = '<td><div>{{= REG_USER_NM}}</div></td>';
+                    break;
+            }
+        }
+        return returnHtml;
+    },
+	/* 카페24 */
+	cafe_collByOption_td : function(viewNm, colId) {
+		
+		var returnHtml = '';
+
+        if (viewNm == "cafe_0001_01_VIEW") {
+            switch (colId) {
+            case "ORDER_DATE":
+                returnHtml = '<td class="" name="ORDER_DATE"><div class="tac">{{= ORDER_DATE}}</div></td>';
+                break;
+            case "ORDER_ID":
+                returnHtml = '<td class="" name="ORDER_ID"><div class="tac">{{= ORDER_ID}}</div></td>';
+                break;
+            case "BUYER_NAME":
+                returnHtml = '<td class="" name="BUYER_NAME"><div><span class="ellipsis">{{= BUYER_NAME}}</span></div></td>';
+                break;
+            case "PRODUCT_NAME":
+                returnHtml = '<td class="" name="PRODUCT_NAME"><div style="position: relative;"><a class="ellipsis txt_uline_hover product_name">{{= PRODUCT_NAME}}</a></div></td>';
+                break;
+            case "TOTAL_SUPPLY_PRICE":
+                returnHtml = '<td class="" name="TOTAL_SUPPLY_PRICE"><div class="tar">{{= TOTAL_SUPPLY_PRICE}}</div></td>';
+                break;
+            case "ORDER_STATUS":
+                returnHtml = '<td class="" name="ORDER_STATUS"><div class="tac">{{= ORDER_STATUS}}</div></td>';
+                break;
+            case "TRGM_YN":
+                returnHtml = '<td class="" name="TRGM_YN"><div class="tac popupcall">{{= TRGM_YN}}</div></td>';
+                break;
+            }
+		}else if (viewNm == "cafe_0002_01_VIEW") {
+            switch (colId) {
+            case "ITEM_CD":
+                returnHtml = '<td class="" name="ITEM_CD"><div>{{= ITEM_CD}}</div></td>';
+                break;
+            case "ITEM_NM":
+                returnHtml = '<td class="" name="ITEM_NM"><div><span class="ellipsis">{{= ITEM_NM}}</span></div></td>';
+                break;
+            case "PRODUCT_CODE":
+                returnHtml = '<td class="" name="PRODUCT_CODE"><div>{{= PRODUCT_CODE}}</div></td>';
+                break;
+            case "PRODUCT_NAME":
+                returnHtml = '<td class="" name="PRODUCT_NAME"><div><span class="ellipsis">{{= PRODUCT_NAME}}</span></div></td>';
+                break;
+            }
+		}
+		return returnHtml;	
+	}
+};

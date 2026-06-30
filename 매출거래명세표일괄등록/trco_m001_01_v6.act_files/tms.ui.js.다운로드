@@ -1,0 +1,1338 @@
+var tms;
+var contentId = location.search.split("=")[1];
+
+if(!tms) tms={};
+
+if(!tms.ui) {
+    tms.ui={};
+
+    // datepicker 날짜 셋팅
+    tms.ui.setDateRangePicker = function(targetStart, targetEnd, limit, toYearRange, datepickerCssOption) {
+    	if(toYearRange == null || toYearRange == undefined) toYearRange = 1; //[2024.12.18] cwb 1년 연장 
+        $(targetStart).val(dateUtil.month_minus(moment().format("YYYYMMDD"), 1)); //기본값 : 전월
+        $(targetStart).datepicker({
+            changeMonth 	: true
+            , dateFormat  	: 'yy-mm-dd'
+            //, maxDate		: moment().format("YYYY-MM-DD")
+            ,showButtonPanel: true
+            ,currentText: '오늘'
+            , beforeShow	: function(){
+                var today	  = new Date();
+                var startYear = today.getFullYear();
+                //var suffix    = "년";
+
+                $.datepicker.regional['ko'] = {
+                    closeText: '닫기',
+                    prevText: '이전달',
+                    nextText: '다음달',
+                    currentText: '오늘',
+                    monthNames: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    monthNamesShort: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    dayNames: ['일','월','화','수','목','금','토'],
+                    dayNamesShort: ['일','월','화','수','목','금','토'],
+                    dayNamesMin: ['일','월','화','수','목','금','토'],
+                    weekHeader: 'Wk',
+                    dateFormat: 'yy-mm-dd',
+                    firstDay: 0,
+                    isRTL: false,
+                    showMonthAfterYear: true,
+                    //yearSuffix: suffix,
+                    changeYear: true,
+                    changeMonth: true,
+                    yearRange: (startYear-10)+':'+(startYear+toYearRange)
+                };
+                $.datepicker.setDefaults($.datepicker.regional['ko']);
+                $.datepicker._gotoToday = function(id) {
+                    this._setDate(this._getInst($(id)[0]), new Date());
+                    this._hideDatepicker();
+                    this._getInst($(id)[0]).input.trigger("change");
+                }
+            },
+            onClose: function (dateText, inst) {
+                // 일자 선택된 후 이벤트 발생
+                dateText = dateText.replace(/[^0-9]/g,'');
+                if(dateText.length != 8){
+                    $(targetStart).val(dateUtil.day_minus(moment().format("YYYYMMDD"), 7));
+                }
+            }
+        });
+
+        $(targetEnd).val(moment().format("YYYY-MM-DD"));
+        $(targetEnd).datepicker({
+            //maxDate:  moment().format("YYYY-MM-DD"),
+            changeMonth: true
+            ,dateFormat: 'yy-mm-dd'
+            ,showButtonPanel: true
+            ,currentText: '오늘'
+            ,beforeShow	: function(){
+                var today	  = new Date();
+                var startYear = today.getFullYear();
+                //var suffix    = "년";
+                $.datepicker.regional['ko'] = {
+                    closeText: '닫기',
+                    prevText: '이전달',
+                    nextText: '다음달',
+                    currentText: '오늘',
+                    monthNames: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    monthNamesShort: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    dayNames: ['일','월','화','수','목','금','토'],
+                    dayNamesShort: ['일','월','화','수','목','금','토'],
+                    dayNamesMin: ['일','월','화','수','목','금','토'],
+                    weekHeader: 'Wk',
+                    dateFormat: 'yy-mm-dd',
+                    firstDay: 0,
+                    isRTL: false,
+                    showMonthAfterYear: true,
+                    //yearSuffix: suffix,
+                    changeYear: true,
+                    changeMonth: true,
+                    yearRange: (startYear-10)+':'+(startYear+toYearRange)
+                };
+                $.datepicker.setDefaults($.datepicker.regional['ko']);
+                $.datepicker._gotoToday = function(id) {
+                    this._setDate(this._getInst($(id)[0]), new Date());
+                    this._hideDatepicker();
+                    this._getInst($(id)[0]).input.trigger("change");
+                }
+                
+                if(datepickerCssOption != undefined) {
+	                setTimeout(function(){
+	     		       $('#ui-datepicker-div').css(datepickerCssOption);
+	                });
+                }
+            }
+            , onClose: function (selectedDate, instance) {
+                var endDate = selectedDate.replace(/[^0-9]/g,'');
+
+                if (endDate.length == 8) {
+                    var date = $.datepicker.parseDate(instance.settings.dateFormat, selectedDate, instance.settings);
+                    date.setMonth(date.getMonth() - limit);
+//	                $(targetStart).datepicker("option", "minDate", date);
+//                    $(targetStart).datepicker("option", "maxDate", selectedDate);
+                }else{
+                    $(targetEnd).val(moment().format("YYYY-MM-DD"));
+                }
+            }
+        });
+        $(targetStart).mask("9999-99-99");
+        $(targetEnd).mask("9999-99-99");
+    };
+    
+    // 23.07 test --
+    // 시작일과 종료일을 설정하면서 종료일자에 최소일 설정
+    tms.ui.setDynamicMinDateRangePicker = function(targetStart, targetEnd, minDateVal, limit, toYearRange, datepickerCssOption) {
+    	if(toYearRange == null || toYearRange == undefined) toYearRange = 0;
+        $(targetStart).val(dateUtil.month_minus(moment().format("YYYYMMDD"), 1)); //기본값 : 전월
+        $(targetStart).datepicker({
+            changeMonth 	: true
+            , dateFormat  	: 'yy-mm-dd'
+            //, maxDate		: moment().format("YYYY-MM-DD")
+            ,showButtonPanel: true
+            ,currentText: '오늘'
+            , beforeShow	: function(){
+                var today	  = new Date();
+                var startYear = today.getFullYear();
+                //var suffix    = "년";
+
+                $.datepicker.regional['ko'] = {
+                    closeText: '닫기',
+                    prevText: '이전달',
+                    nextText: '다음달',
+                    currentText: '오늘',
+                    monthNames: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    monthNamesShort: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    dayNames: ['일','월','화','수','목','금','토'],
+                    dayNamesShort: ['일','월','화','수','목','금','토'],
+                    dayNamesMin: ['일','월','화','수','목','금','토'],
+                    weekHeader: 'Wk',
+                    dateFormat: 'yy-mm-dd',
+                    firstDay: 0,
+                    isRTL: false,
+                    showMonthAfterYear: true,
+                    //yearSuffix: suffix,
+                    changeYear: true,
+                    changeMonth: true,
+                    yearRange: (startYear-10)+':'+(startYear+toYearRange)
+                };
+                $.datepicker.setDefaults($.datepicker.regional['ko']);
+                $.datepicker._gotoToday = function(id) {
+                    this._setDate(this._getInst($(id)[0]), new Date());
+                    this._hideDatepicker();
+                    this._getInst($(id)[0]).input.trigger("change");
+                }
+            },
+            onClose: function (dateText, inst) {
+                // 일자 선택된 후 이벤트 발생
+                dateText = dateText.replace(/[^0-9]/g,'');
+//                if(dateText.length != 8){
+//                    $(targetStart).val(dateUtil.day_minus(moment().format("YYYYMMDD"), 7));
+//                }
+            }
+        });
+
+        $(targetEnd).val(moment().format("YYYY-MM-DD"));
+        $(targetEnd).datepicker({
+            changeMonth: true
+            ,dateFormat: 'yy-mm-dd'
+            ,showButtonPanel: true
+            ,currentText: '오늘'
+            ,minDate: new Date(minDateVal)
+            ,beforeShow	: function(){
+                var today	  = new Date();
+                var startYear = today.getFullYear();
+                $.datepicker.regional['ko'] = {
+                    closeText: '닫기',
+                    prevText: '이전달',
+                    nextText: '다음달',
+                    currentText: '오늘',
+                    monthNames: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    monthNamesShort: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    dayNames: ['일','월','화','수','목','금','토'],
+                    dayNamesShort: ['일','월','화','수','목','금','토'],
+                    dayNamesMin: ['일','월','화','수','목','금','토'],
+                    weekHeader: 'Wk',
+                    dateFormat: 'yy-mm-dd',
+                    firstDay: 0,
+                    isRTL: false,
+                    showMonthAfterYear: true,
+                    //yearSuffix: suffix,
+                    changeYear: true,
+                    changeMonth: true,
+                    yearRange: (startYear-10)+':'+(startYear+toYearRange)
+                };
+                $.datepicker.setDefaults($.datepicker.regional['ko']);
+                $.datepicker._gotoToday = function(id) {
+                    this._setDate(this._getInst($(id)[0]), new Date());
+                    this._hideDatepicker();
+                    this._getInst($(id)[0]).input.trigger("change");
+                }
+            }
+            , onClose: function (selectedDate, instance) {
+                var endDate = selectedDate.replace(/[^0-9]/g,'');
+                if (endDate.length == 8) {
+                    var date = $.datepicker.parseDate(instance.settings.dateFormat, selectedDate, instance.settings);
+                    date.setMonth(date.getMonth() - limit);
+//	                $(targetStart).datepicker("option", "minDate", date);
+//                    $(targetStart).datepicker("option", "maxDate", selectedDate);
+                }else{
+                    $(targetEnd).val(moment().format("YYYY-MM-DD"));
+                }
+            }
+        });
+        $(targetStart).mask("9999-99-99");
+        $(targetEnd).mask("9999-99-99");
+    };
+     // 최소일을 설정하는 datepicker
+     tms.ui.setMinDatePicker = function (dateObj, minDateVal, limit, toYearRange) {
+        $(dateObj).datepicker({
+            changeMonth: true
+            ,dateFormat: 'yy-mm-dd'
+            ,showButtonPanel: true
+            ,currentText: '오늘'
+            ,minDate: new Date(minDateVal)
+            ,maxDate: null
+            ,beforeShow	: function(){
+                var today	  = new Date();
+                var startYear = today.getFullYear();
+                $.datepicker.regional['ko'] = {
+                    closeText: '닫기',
+                    prevText: '이전달',
+                    nextText: '다음달',
+                    currentText: '오늘',
+                    monthNames: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    monthNamesShort: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    dayNames: ['일','월','화','수','목','금','토'],
+                    dayNamesShort: ['일','월','화','수','목','금','토'],
+                    dayNamesMin: ['일','월','화','수','목','금','토'],
+                    weekHeader: 'Wk',
+                    dateFormat: 'yy-mm-dd',
+                    firstDay: 0,
+                    isRTL: false,
+                    showMonthAfterYear: true,
+                    //yearSuffix: suffix,
+                    changeYear: true,
+                    changeMonth: true,
+                    yearRange: (startYear-10)+':'+(startYear+toYearRange)
+                };
+                $.datepicker.setDefaults($.datepicker.regional['ko']);
+                $.datepicker._gotoToday = function(id) {
+                    this._setDate(this._getInst($(id)[0]), new Date());
+                    this._hideDatepicker();
+                    this._getInst($(id)[0]).input.trigger("change");
+                }
+            }
+        });
+    };
+    // -- 23.07 test
+
+    tms.ui.setDatePicker = function (dateObj) {
+        var today	  = new Date();
+        var startYear = today.getFullYear();
+        $(dateObj).datepicker({
+            dateFormat: 'yy-mm-dd', // 데이터는 yyyy-MM-dd로 나옴
+            closeText: '닫기',
+            prevText: '이전달',
+            nextText: '다음달',
+            currentText: '오늘',
+            monthNames: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+            monthNamesShort: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+            dayNames: ['일', '월', '화', '수', '목', '금', '토'],
+            dayNamesShort: ['일', '월', '화', '수', '목', '금', '토'],
+            dayNamesMin: ['일', '월', '화', '수', '목', '금', '토'],
+            weekHeader: 'Wk',
+            firstDay: 0,
+            isRTL: false,
+            duration: 200,
+            showAnim: 'show',   // 애니메이션
+            changeMonth: true,
+            changeYear: true,
+            //yearRange: 'c-10:c',
+            showMonthAfterYear: true,
+            //yearSuffix: '년',
+            showOtherMonths: true, // 나머지 날짜도 화면에 표시
+            selectOtherMonths: true, // 나머지 날짜에도 선택을 하려면 true
+            showButtonPanel: true,
+            showOn: "both", // 버튼과 텍스트 필드 모두 캘린더를 보여준다.
+            buttonImage: "/img/ico/ico_calendar.png", // 버튼 이미지
+
+            onChangeMonthYear: function (year, month, inst) {
+                // 년 또는 월이 변경시 이벤트 발생
+            },
+            beforeShow: function (input, inst) {
+                // 일자 선택되기전 이벤트 발생
+            },
+            onSelect: function (dateText, inst) {
+                // 일자 선택된 후 이벤트 발생
+            },
+            yearRange: (startYear-70)+':'+(startYear+10)
+        });
+    };
+    // 종이세금계산서 등록 팝업 달력 세팅
+    tms.ui.setDatePicker2 = function (dateObj) {
+        var today	  = new Date();
+        var startYear = today.getFullYear();
+        $(dateObj).datepicker({
+            dateFormat: 'yy-mm-dd', // 데이터는 yyyy-MM-dd로 나옴
+            closeText: '닫기',
+            prevText: '이전달',
+            nextText: '다음달',
+            currentText: '오늘',
+            monthNames: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+            monthNamesShort: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+            dayNames: ['일', '월', '화', '수', '목', '금', '토'],
+            dayNamesShort: ['일', '월', '화', '수', '목', '금', '토'],
+            dayNamesMin: ['일', '월', '화', '수', '목', '금', '토'],
+            weekHeader: 'Wk',
+            firstDay: 0,
+            isRTL: false,
+            duration: 200,
+            showAnim: 'show',   // 애니메이션
+            changeMonth: true,
+            changeYear: true,
+            //yearRange: 'c-10:c',
+            showMonthAfterYear: true,
+            //yearSuffix: '년',
+            buttonImageOnly: true,
+            showOtherMonths: true, // 나머지 날짜도 화면에 표시
+            selectOtherMonths: true, // 나머지 날짜에도 선택을 하려면 true
+            showOn: "both", // 버튼과 텍스트 필드 모두 캘린더를 보여준다.
+            buttonImage: "/img/ico/ico_calendar.png", // 버튼 이미지
+
+
+            onChangeMonthYear: function (year, month, inst) {
+                // 년 또는 월이 변경시 이벤트 발생
+            },
+            beforeShow: function (input, inst) {
+                // 일자 선택되기전 이벤트 발생
+            },
+            onSelect: function (dateText, inst) {
+                // 일자 선택된 후 이벤트 발생
+                $("#RMRK1").focus();            // 비고탭에 focus
+
+            },
+            yearRange: (startYear-70)+':'+(startYear+10)
+        });
+    };
+
+    // 종이세금계산서0918 등록 팝업 달력 세팅
+    tms.ui.setDatePicker3 = function(targetStart, limit, toYearRange) {
+    	if(toYearRange == null || toYearRange == undefined) toYearRange = 0;
+        $(targetStart).val(moment().format("YYYYMMDD")); //기본값 : 전월
+        $(targetStart).datepicker({
+            changeMonth 	: true
+            , dateFormat  	: 'yy-mm-dd'
+            //, maxDate		: moment().format("YYYY-MM-DD")
+            ,showButtonPanel: true
+            ,currentText: '오늘'
+            , beforeShow	: function(){
+                var today	  = new Date();
+                var startYear = today.getFullYear();
+                //var suffix    = "년";
+
+                $.datepicker.regional['ko'] = {
+                    closeText: '닫기',
+                    prevText: '이전달',
+                    nextText: '다음달',
+                    currentText: '오늘',
+                    monthNames: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    monthNamesShort: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    dayNames: ['일','월','화','수','목','금','토'],
+                    dayNamesShort: ['일','월','화','수','목','금','토'],
+                    dayNamesMin: ['일','월','화','수','목','금','토'],
+                    weekHeader: 'Wk',
+                    dateFormat: 'yy-mm-dd',
+                    firstDay: 0,
+                    isRTL: false,
+                    showMonthAfterYear: true,
+                    //yearSuffix: suffix,
+                    changeYear: true,
+                    changeMonth: true,
+                    yearRange: (startYear-70)+':'+(startYear+10)
+                };
+                $.datepicker.setDefaults($.datepicker.regional['ko']);
+                $.datepicker._gotoToday = function(id) {
+                    this._setDate(this._getInst($(id)[0]), new Date());
+                    this._hideDatepicker();
+                    this._getInst($(id)[0]).input.trigger("change");
+                }
+            },
+            onClose: function (dateText, inst) {
+                // 일자 선택된 후 이벤트 발생
+                dateText = dateText.replace(/[^0-9]/g,'');
+                if(dateText.length != 8){
+                    $(targetStart).val(dateUtil.day_minus(moment().format("YYYYMMDD"), 7));
+                }
+               $("input[name='BUY_DATE_MM1']").val(dateText.substring(4, 6));
+               $("input[name='BUY_DATE_DD1']").val(dateText.substring(6, 8));
+               $("#RMRK1").focus();            // 비고탭에 focus
+            }
+        });
+        $(targetStart).mask("9999-99-99");
+    };
+    tms.ui.setDatePicker4 = function(targetStart, limit, toYearRange) {
+    	if(toYearRange == null || toYearRange == undefined) toYearRange = 0;
+        $(targetStart).val(moment().format("YYYYMMDD")); //기본값 : 전월
+        $(targetStart).datepicker({
+            changeMonth 	: true
+            , dateFormat  	: 'yy-mm-dd'
+            //, maxDate		: moment().format("YYYY-MM-DD")
+            ,showButtonPanel: true
+            ,currentText: '오늘'
+            , beforeShow	: function(){
+                var today	  = new Date();
+                var startYear = today.getFullYear();
+                //var suffix    = "년";
+
+                $.datepicker.regional['ko'] = {
+                    closeText: '닫기',
+                    prevText: '이전달',
+                    nextText: '다음달',
+                    currentText: '오늘',
+                    monthNames: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    monthNamesShort: ['1월','2월','3월','4월','5월','6월',
+                        '7월','8월','9월','10월','11월','12월'],
+                    dayNames: ['일','월','화','수','목','금','토'],
+                    dayNamesShort: ['일','월','화','수','목','금','토'],
+                    dayNamesMin: ['일','월','화','수','목','금','토'],
+                    weekHeader: 'Wk',
+                    dateFormat: 'yy-mm-dd',
+                    firstDay: 0,
+                    isRTL: false,
+                    showMonthAfterYear: true,
+                    //yearSuffix: suffix,
+                    changeYear: true,
+                    changeMonth: true,
+                    yearRange: (startYear-70)+':'+(startYear+10)
+                };
+                $.datepicker.setDefaults($.datepicker.regional['ko']);
+                $.datepicker._gotoToday = function(id) {
+                    this._setDate(this._getInst($(id)[0]), new Date());
+                    this._hideDatepicker();
+                    this._getInst($(id)[0]).input.trigger("change");
+                }
+            },
+            onClose: function (dateText, inst) {
+                // 일자 선택된 후 이벤트 발생
+                dateText = dateText.replace(/[^0-9]/g,'');
+                if(dateText.length != 8){
+                    $(targetStart).val(dateUtil.day_minus(moment().format("YYYYMMDD"), 7));
+                }
+                _thisPage.getDispNo();
+            }
+        });
+        $(targetStart).mask("9999-99-99");
+    };
+    // UI 컴포넌트 셋팅
+    tms.ui.setUiComponent = function(target, json) {
+        if(!json) json = {};
+
+        //사용법: data-ui-component="select"
+        if(json.component == "select") {
+            var _target = $(target);
+            var _selected = _target.find("a:first");
+            var _thisUl = _target.find("ul").parent(".layer_combo2");
+
+            _target.attr("data-generated", "component");
+
+            //toggle select ui
+            _target.find(".combo2_bg > div, a.selected_item:first, a.arrow").click(function() {
+                $(this).focus();
+                $(".layer_combo2").not(_thisUl).hide();
+                _thisUl.toggle();
+
+            }).parents("body").click(function(e){
+                var _target = $(e.target);
+                if(!_target.parents().is('.card_combo2') && !_target.is('.card_combo2')){
+                    $(".layer_combo2").hide();
+                }
+            });			//select event
+            _target.find("ul > li[data-generated] > a").click(function() {
+                _selected.text($(this).text())
+                    .val($(this).parent().attr("id"));
+                _selected.show().next().hide().find("a:first").text($(this).text());
+                $(this).focus();
+                _thisUl.toggle();
+            });
+            //사용법: data-generated="pin"
+            if(_target.find("ul > li").attr("data-generated") == "pin"){
+
+                var ck = location.pathname.replaceAll("\\/","");
+                ck = ck.replaceAll(".act","");
+
+                var cookieNm =  "cookie"+ck+_target.attr("id");
+                if(parent.$('.on').length>0){
+                    //	cookieNm += parent.$('.on').text(); 리얼에서 쿠키명에 한글들어가서 주석
+                }
+                var _cookied = $.cookie(cookieNm);
+                if(_cookied){
+                    _target.find("ul > li[data-generated] > a.btn_pin").removeClass("on");
+                    _target.find("ul > li[id='"+_cookied+"'] > a.btn_pin").addClass("on");
+                    _selected.text(_target.find("ul > li[id='"+_cookied+"']").find("a:first").text())
+                        .val(_target.find("ul > li[id='"+_cookied+"']").attr("id"));
+                    _selected.hide().next().show().find("a:first")
+                        .text(_target.find("ul > li[id='"+_cookied+"']").find("a:first").text());
+                }
+                _target.find("ul > li[data-generated] > a.btn_pin").click(function() {
+                    var tempPin;
+                    if($(this).hasClass("on"))
+                        tempPin = true;
+                    else
+                        tempPin = false;
+                    $(this).parents("ul").find("a.btn_pin").removeClass("on");
+                    if(!tempPin){
+                        $(this).addClass("on");
+                        _selected.text($(this).prev().text()).val($(this).parent().attr("id"));
+                        _selected.hide().next().show().find("a:first").text($(this).prev().text());
+
+                        $.cookie(cookieNm, $(this).parents("li").attr("id"),{expires:20*365});
+                    }else{
+                        _selected.text($(this).prev().text()).val($(this).parent().attr("id"));
+                        _selected.show().next().hide().find("a:first").text($(this).prev().text());
+                        $.cookie(cookieNm, null);
+                    }
+                });
+            }
+        }
+
+        //사용법: data-ui-component="select"
+        if(json.component == "selectV2") {
+            var _target = $(target);
+            var _selected = _target.find("a:first");
+            var _thisUl = _target.find("ul").parent(".layer_combo3");
+
+            _target.attr("data-generated", "component");
+
+            //toggle select ui
+            _target.find(".combo3_bg > div, a.selected_item:first, a.arrow").click(function() {
+                $(this).focus();
+                $(".layer_combo3").not(_thisUl).hide();
+                _thisUl.toggle();
+
+            }).parents("body").click(function(e){
+                var _target = $(e.target);
+                if(!_target.parents().is('.card_combo3') && !_target.is('.card_combo3')){
+                    $(".layer_combo3").hide();
+                }
+            });			//select event
+            _target.find("ul > li[data-generated] > a").click(function() {
+                _selected.text($(this).text())
+                    .val($(this).parent().attr("id"));
+                _selected.show().next().hide().find("a:first").text($(this).text());
+//				_select.trigger("change");
+                $(this).focus();
+                _thisUl.toggle();
+            });
+            //사용법: data-generated="pin"
+            if(_target.find("ul > li").attr("data-generated") == "pin"){
+
+                var ck = location.pathname.replaceAll("\\/","");
+                ck = ck.replaceAll(".act","");
+
+                var cookieNm =  "cookie"+ck+_target.attr("id");
+
+                if(parent.$('.on').length>0){
+                    //	cookieNm += parent.$('.on').text(); 리얼에서 쿠키명에 한글들어가서 주석
+                }
+                var _cookied = $.cookie(cookieNm);
+                if(_cookied){
+                    _target.find("ul > li[data-generated] > a.btn_pin").removeClass("on");
+                    _target.find("ul > li[id='"+_cookied+"'] > a.btn_pin").addClass("on");
+                    _selected.text(_target.find("ul > li[id='"+_cookied+"']").find("a:first").text())
+                        .val(_target.find("ul > li[id='"+_cookied+"']").attr("id"));
+                    _selected.hide().next().show().find("a:first")
+                        .text(_target.find("ul > li[id='"+_cookied+"']").find("a:first").text());
+                }
+                _target.find("ul > li[data-generated] > a.btn_pin").click(function() {
+                    var tempPin;
+                    if($(this).hasClass("on"))
+                        tempPin = true;
+                    else
+                        tempPin = false;
+                    $(this).parents("ul").find("a.btn_pin").removeClass("on");
+                    if(!tempPin){
+                        $(this).addClass("on");
+                        _selected.text($(this).prev().text()).val($(this).parent().attr("id"));
+                        _selected.hide().next().show().find("a:first").text($(this).prev().text());
+
+                        $.cookie(cookieNm, $(this).parents("li").attr("id"),{expires:20*365});
+                    }else{
+                        _selected.text($(this).prev().text()).val($(this).parent().attr("id"));
+                        _selected.show().next().hide().find("a:first").text($(this).prev().text());
+                        $.cookie(cookieNm, null);
+                    }
+                   /* $("#showDataGbLayer").html(_selected.hide().next().show().find("a:first").text());
+                    console.log("END" + $("#showDataGbLayer").html());*/
+                });
+            }
+        }
+
+
+
+
+        if(json.component == "select-autocomplete") {
+            var _target = $(target);
+//			var _select = _target.find("select");
+            var _selected = _target.find("a:first");
+
+//
+            var _thisUl = _target.find("ul").parent(".layer_combo2");
+            _target.attr("data-generated", "component");
+
+            //toggle select ui
+            _target.find(".combo2_bg > div, a.selected_item:first, a.arrow").click(function() {
+                $(this).focus();
+                $(".layer_combo2").not(_thisUl).hide();
+                _thisUl.toggle();
+
+            }).parents("body").click(function(e){
+                var _target = $(e.target);
+                if(!_target.parents().is('.card_combo2') && !_target.is('.card_combo2')){
+                    $(".layer_combo2").hide();
+                }
+            });			//select event
+            _target.find("ul > li[data-generated]").click(function() {
+                _selected.text($(this).find("a:first").text());
+                $(this).focus();
+                _thisUl.toggle();
+            });
+//			}
+
+        }
+        //사용자 auto complete
+        //사용법: data-ui-component="user-autocomplete"
+        else if(json.component == "user-autocomplete") {
+            if(_userRec == null){
+                var jexAjax = jex.createAjaxUtil('scomm_0011_01_l001'); //select user from USER_LDGR
+                jexAjax.set('DV'		,	$("#ADMIN_YN").val());
+                jexAjax.set('PTL_ID'		,$("#PTL_ID").val());
+                jexAjax.set('USE_INTT_ID'	,$("#USE_INTT_ID").val());
+                jexAjax.set('CHNL_ID'		,$("#CHNL_ID").val());
+                jexAjax.setAsync(false);
+                jexAjax.execute(function(dat) {
+                    $.map(dat.REC, function(v, i){
+                        v['uid'] = v.USER_ID;
+                        v['value'] = v.USER_NM;
+                        v['image'] = v.IMG_FILE;
+                        v['corpnm'] = v.EML;
+                        v['dvsnnm'] = v.CLPH_NO;
+                        return v;
+                    });
+                    _userRec = dat.REC;
+                });
+            }
+
+            setTimeout(function(){ // Problem with IE need to set timeout
+                $(target).autocomplete({
+                    source: _userRec,
+                    multiselect: true,
+                    userImg: true,
+                    minLength: 0
+                    //				,appendTo: "#user_div"
+                });
+            }, 1000);
+        }
+        //사업부문 auto complete
+        //사용법: data-ui-component="bsnn-autocomplete"
+        else if(json.component == "bsnn-autocomplete") {
+            $(target).parent().append("<ul class='srch_a_etc'></ul>");
+
+            // 이용기관 상관없이 사업자번호만 같으면 승인 내역 보여줌으로써
+            // 승인내역별로 구분/용도 선택하도록 변경
+            var jexAjax = jex.createAjaxUtil('ecom_ui_r002');
+            jexAjax.set('PTL_ID'		,	json.PTL_ID		);
+            jexAjax.set('USE_INTT_ID'	,	json.USE_INTT_ID);
+            jexAjax.set('CHNL_ID'		,	json.CHNL_ID	);
+            jexAjax.set('ACT_YN'		, 	"Y"				);
+            jexAjax.set('DV'			,	""				);
+            jexAjax.setAsync(false);
+            jexAjax.execute(function(data) {
+                $.each(data.REC,function(i,v){
+                    $(target).parent().find("ul").append("<li><a href='javascript:' class='cmb_item' title='"+v.BSNS_DSNC_NM+"'>"+v.BSNS_DSNC_NM+"</a></li>");
+                    $(target).parent().find("ul").find("li:last").data("BSNS_DSNC_CD",v.BSNS_DSNC_CD);
+                    $(target).parent().find("ul").find("li:last").data("BSNS_DSNC_NM",v.BSNS_DSNC_NM);
+                });
+            });
+            //}
+
+            $(target).remove();
+        }
+        //거래종류 auto complete
+        //사용법: data-ui-component="trand-autocomplete"
+        else if(json.component == "trand-autocomplete") {
+            $(target).parent().append("<ul class='srch_a_etc'></ul>");
+
+            var jexAjax = jex.createAjaxUtil('ecom_ui_r003');
+            jexAjax.set('PTL_ID'		,	json.PTL_ID		);
+            jexAjax.set('USE_INTT_ID'	,	json.USE_INTT_ID);
+            jexAjax.set('CHNL_ID'		,	json.CHNL_ID	);
+            jexAjax.set('CNTS_ID'		,	json.CNTS_ID	);
+            jexAjax.set('DV'			,	""				);
+            jexAjax.setAsync(false);
+            jexAjax.execute(function(data) {
+                $.each(data.REC,function(i,v){
+                    $(target).parent().find("ul").append("<li><a href='javascript:' class='cmb_item' title='"+v.TRAN_KIND_NM+"'>"+v.TRAN_KIND_NM+"</a></li>");
+                    $(target).parent().find("ul").find("li:last").data("TRAN_KIND_CD",v.TRAN_KIND_CD);
+                    $(target).parent().find("ul").find("li:last").data("TRAN_KIND_NM",v.TRAN_KIND_NM);
+                });
+            });
+            //}
+            $(target).remove();
+        }
+    };
+
+    /**
+     * 페이징처리
+     * @param div_id        페이징 표시할 요소 id
+     * @param callback        페이징 표시 후 실행될 함수
+     * @param curPageNo    현재페이지 번호
+     * @param totRec
+     * @param recPerPage
+     * @param detailInput
+     */
+    tms.ui.drawTablePaing = function( div_id, callback, curPageNo, totRec/*totPage*/, recPerPage/*input_page_size*/,detailInput) {
+        var page_size = 10; //표시할 페이지 수
+        var totPage = Math.ceil(totRec/recPerPage);
+        var currentPage  = (curPageNo)?curPageNo:1;
+        if(parseInt(currentPage) < 1) currentPage = 1;
+        if(parseInt(currentPage) > parseInt(totPage)) currentPage = totPage;
+        var lastBlock    = Math.ceil(totPage/page_size);
+        var currentBlock = Math.ceil(currentPage/page_size);
+        var firstPage     = currentBlock*page_size-page_size+1;
+        var lastPage      = currentBlock*page_size;
+
+        $("#"+div_id).children().remove();
+        $("#"+div_id).prev(".combo_wrap").show();
+        if(totPage > 0){
+
+            var firstHtml = "<a id='paging_first' href='javascript:' class='btn_pag_cntr first'><span class='blind'>first</span></a>";
+            var prevHtml  = "<a id='paging_pre' href='javascript:' class='btn_pag_cntr prev'><span class='blind'>previous</span></a>";
+            var nextHtml  = "<a id='paging_next' href='javascript:' class='btn_pag_cntr next'><span class='blind'>next</span></a>";
+            var lastHtml  = "<a id='paging_last' href='javascript:' class='btn_pag_cntr last'><span class='blind'>last</span></a>";
+            var pageHtml  = "<span class='pag_num'>";
+            var countNum=0;
+
+            for(var i = firstPage; i <= lastPage && i <= totPage;  i++){
+                if(currentPage == i){
+                    pageHtml += "<a class='on'>"+i+"</a>";
+                }else{
+                    pageHtml += "<a>"+i+"</a>";
+                }
+            }
+            pageHtml += " </span>";
+
+            $("#"+div_id).append(firstHtml);
+            $("#"+div_id).append(prevHtml);
+            $("#"+div_id).append(pageHtml);
+            $("#"+div_id).append(nextHtml);
+            $("#"+div_id).append(lastHtml);
+			
+			
+			//페이징 div 여러개일때 안먹혀서 수정 (선택한 div에서 찾기) [2023.02.28] cwb
+            if(currentBlock != 1){
+                $("#"+div_id).find("#paging_first").addClass("on");
+            }
+
+            if(currentBlock != lastBlock){
+                $("#"+div_id).find("#paging_last").addClass("on");
+            }
+
+            if(currentPage != 1){
+                $("#"+div_id).find("#paging_pre"  ).addClass("on");
+            }
+
+            if(currentPage != totPage){
+                $("#"+div_id).find("#paging_next").addClass("on");
+            }
+
+        }else{
+            $("#"+div_id).prev(".combo_wrap").hide();
+        }
+
+
+        var input = {};
+        $("#"+div_id).find("#paging_first").click(function(){
+            $(".layertype1").hide();
+            if($(this).hasClass("on")==false){ return false;}
+
+            if($.isFunction(callback)){
+                if(detailInput==null) {
+                    input["PG_NO"] = "1";
+                    input["PAGE_NO"] = "1";
+                    callback(input);
+                }else{
+                    detailInput["PG_NO"] = "1";
+                    detailInput["PAGE_NO"] = "1";
+                    callback(detailInput);
+                }
+            }
+        });
+        $("#"+div_id).find("#paging_pre").click(function(){
+            $(".layertype1").hide();
+            if($(this).hasClass("on")==false){ return false;}
+
+            currentPage = Number(currentPage)-1;
+
+            if(currentPage < 0) currentPage = 1;
+            if($.isFunction(callback)){
+                if(detailInput==null) {
+                    input["PG_NO"] = currentPage.toString();
+                    input["PAGE_NO"] = currentPage.toString();
+                    callback(input);
+                }else{
+                    detailInput["PG_NO"] = currentPage.toString();
+                    detailInput["PAGE_NO"] = currentPage.toString();
+                    callback(detailInput);
+                }
+            }
+        });
+        $("#"+div_id).find("#paging_next").click(function(){
+            $(".layertype1").hide();
+            if($(this).hasClass("on")==false){ return false;}
+
+            currentPage = Number(currentPage)+1;
+
+            if(currentPage > totPage){
+                currentPage = totPage;
+            }
+
+            if($.isFunction(callback)){
+                if(detailInput==null) {
+                    input["PG_NO"] = currentPage.toString();
+                    input["PAGE_NO"] = currentPage.toString();
+                    callback(input);
+                }else{
+                    detailInput["PG_NO"] = currentPage.toString();
+                    detailInput["PAGE_NO"] = currentPage.toString();
+                    callback(detailInput);
+                }
+            }
+        });
+        $("#"+div_id).find("#paging_last").click(function(){
+            $(".layertype1").hide();
+            if($(this).hasClass("on")==false){ return false;}
+
+            if($.isFunction(callback)){
+                if(detailInput==null) {
+                    input["PG_NO"] = totPage.toString();
+                    input["PAGE_NO"] = totPage.toString();
+                    callback(input);
+                }else{
+                    detailInput["PG_NO"] = totPage.toString();
+                    detailInput["PAGE_NO"] = totPage.toString();
+                    callback(detailInput);
+                }
+            }
+        });
+        $("#"+div_id).find(".pag_num a").click(function(){
+            $(".layertype1").hide();
+            if($(this).hasClass("on")==true){ return false;}
+
+            currentPage = $(this).html();
+
+            if($.isFunction(callback)){
+                if(detailInput==null) {
+                    input["PG_NO"] = currentPage;
+                    input["PAGE_NO"] = currentPage;
+                    callback(input);
+                }else{
+                    detailInput["PG_NO"] = currentPage;
+                    detailInput["PAGE_NO"] = currentPage;
+                    callback(detailInput);
+                }
+            }
+        });
+
+        $("#"+div_id).prev(".combo_wrap").find(".combo_style").click(function(e){
+            $(this).find("ul").toggle();
+            //Keeps the rest of the handlers from being executed
+            e.stopImmediatePropagation();
+        });
+
+        $("#"+div_id).prev(".combo_wrap").find("ul li").click(function(e){
+            $("#"+div_id).parents(".paging_wrap").find(".combo_style ul").hide();
+            if($(".paging_wrap").find(".btn_combo_down span").text() != $(this).text()){
+                $(".paging_wrap").find(".btn_combo_down span").text($(this).text());
+                if(!(contentId == 'undefined' || contentId == null || contentId == "" || contentId == undefined)) {
+                    $.cookie("PAGE_SIZE_"+contentId, Number($.trim($(this).text()).replace(/[^0-9]/gi, '')) ,{expires:20*365});
+                }
+                callback();
+            }
+            e.stopImmediatePropagation();
+        });
+
+        $("body").click(function(e){
+            var _target = $(e.target);
+            if(!_target.parents().is('.combo_wrap') && !_target.is('.btn_combo_down')){
+                $("#"+div_id).parents(".paging_wrap").find(".combo_style ul").hide();
+            }
+        });
+    };
+
+    tms.ui.tableEmpty = function(tableId, msgType){
+        $(tableId).find("#empty_layer").remove();
+        var msg = "";
+        if(msgType == "1"){
+            msg = "<b>[조회]</b> 버튼을 눌러 내용을 검색하여 주십시오";
+        }else if(msgType == "2"){
+            msg = "조회된 결과가 존재 하지 않습니다.";
+        }else if(msgType == "3"){
+            msg = "FROM 매핑 항목을 선택하여 주십시오.";
+        }else if(msgType == "4"){
+            msg = "그룹코드를 선택하여 주십시오.";
+        }else{
+            msg = "내용이 없습니다.";
+        }
+        var template = '<tr id="empty_layer" class="no_hover" style="display:table-row;"><td colspan="'+$(tableId).find("th").length+'" class="no_info"><div class="t_center">'+msg+' </div></td></tr>';
+        if($(tableId).find("tbody tr").length == 0) $(tableId).find("tbody").append(template);
+        else $(tableId).find("#empty_layer").remove();
+    };
+
+    tms.ui.leftFolderCtl = function () {
+        if($("#taxWrite_iframe").is(":visible")){
+            // left 폴더 메뉴 접기
+            if($("body").attr("class") == "lnb_bg"){
+                $('#taxWrite_iframe').contents().find("body").attr(     "class", "lnb_bg fold" );
+                $('#taxWrite_iframe').contents().find("#lnb_a").attr(   "class", "lnb_fold"    );
+                $('#taxWrite_iframe').contents().find("#lnb_div").attr( "class", "lnb_box fold");
+                $('#taxWrite_iframe').contents().find(".content_wrap").parent("div").attr("class", "content fold");
+            }
+            // left 폴더 메뉴 펼치기
+            else{
+                $('#taxWrite_iframe').contents().find("body").attr(     "class", "lnb_bg"    );
+                $('#taxWrite_iframe').contents().find("#lnb_a").attr(   "class", "lnb_unfold");
+                $('#taxWrite_iframe').contents().find("#lnb_div").attr( "class", "lnb_box"   );
+                $('#taxWrite_iframe').contents().find(".content_wrap").parent("div").attr("class", "content");
+            }
+        }
+        // left 폴더 메뉴 접기
+        if($("body").attr("class") == "lnb_bg"){
+            $("body").attr(     "class", "lnb_bg fold" );
+            $("#lnb_a").attr(   "class", "lnb_fold"    );
+            $("#lnb_div").attr( "class", "lnb_box fold");
+            $(".content_wrap").parent("div").attr("class", "content fold");
+        }
+        // left 폴더 메뉴 펼치기
+        else{
+            $("body").attr(     "class", "lnb_bg"    );
+            $("#lnb_a").attr(   "class", "lnb_unfold");
+            $("#lnb_div").attr( "class", "lnb_box"   );
+            $(".content_wrap").parent("div").attr("class", "content");
+        }
+    };
+    /********************************************************************
+     * 특정 폼에 임시 값을 만들자
+     * - param1: 폼ID
+     * - param2: 객체ID
+     * - param3: 객체값
+     *********************************************************************/
+    tms.ui.createHiddenFormObj = function(formId, objId, objValue) {
+        $("<textarea class='"+formId+"GeneratedObj' id='"+objId+"' name='"+objId+"' style='display: none;'>"+objValue+"</textarea>").appendTo($("#" + formId));
+    };
+
+    /********************************************************************
+     * 특정 폼 삭제
+     * - param1: 폼ID
+     * - param2: 객체ID
+     * - param3: 객체값
+     *********************************************************************/
+    tms.ui.removeFormObj = function(formId) {
+        $("form#"+formId).remove();
+    };
+
+    /********************************************************************
+     * 특정 폼 동적 생성
+     * - param1: 폼ID
+     * - param2: 객체ID
+     * - param3: 객체값
+     *********************************************************************/
+    tms.ui.createFormObj = function(formId, formMethod, jsonValue, target) {
+
+        var targetStr = "";
+
+        if(typeof(target) != "undefined") {
+            targetStr = " target='"+target+"' ";
+        }
+
+        $("body").append("<form id='"+formId+"' method='"+formMethod+"' "+targetStr+"></form>");
+
+        if(typeof(jsonValue) !== "undefined") {
+            $.each(jsonValue, function(i, v) {
+                tms.ui.createHiddenFormObj(formId, i, v);
+            });
+        }
+    };
+
+    /* 윈도우 팝업 */
+    tms.ui.winPop = function(formId, options){
+        var	sizeW = parseInt(options.sizeW, 10);
+        var	sizeH = parseInt(options.sizeH, 10);
+        var nLeft = screen.width/2 - sizeW/2 ;
+        var nTop  = screen.height/2- sizeH/2 ;
+        var option= ",toolbar=no,menubar=no,location=no,status=no";
+        if(options.resize==undefined || options.resize==null){
+            option += ",resizable=yes";
+        }else {
+            option += ",resizable="+options.resize;
+        }
+        if(options.scrollbar==undefined || options.scrollbar==null){
+            option += ",scrollbar=yes";
+            option += ",scrollbars=yes";
+        }else {
+            option += ",scrollbar="+options.scrollbar;
+            option += ",scrollbars="+options.scrollbar;
+        }
+        var frm = document.getElementById(formId);
+        var winObj;
+        if(!!frm){
+            winObj = window.open('', options.target, "left=" + nLeft + ",top=" +  nTop + ",width=" + sizeW + ",height=" + sizeH  + option );
+        }else{
+            winObj = window.open(options.action, options.target, "left=" + nLeft + ",top=" +  nTop + ",width=" + sizeW + ",height=" + sizeH  + option );
+        }
+
+
+        try{
+            winObj.blur(); //크롭에서 focus()만 호출할경우 작동하지 않아서 blur()를 먼저 호출한후 focus()호출하도록 수정함.
+            winObj.focus();//팝업이 이미 열려있는경우 앞으로 나오도록 한다.
+        }catch(e){
+        }
+
+        if(!!frm){
+            frm.method = "post";
+            frm.target = options.target;
+
+            if(!!options.action)	frm.action = options.action;
+
+            frm.submit();
+        }
+
+    };
+    /* 영수증 인쇄 */
+    tms.ui.setDrawPrint2 = function(_form) {
+        $("body").append("<form id='drawPrint' method='post'>"+_form.html()+"</form>");
+
+        tms.ui.winPop(_form.attr("id"),{"sizeW":"800","sizeH":"800","action":"/print_P002_02.act","target":"printType1","resize":"no"});
+
+        $("body").find("#drawPrint").remove();
+    };
+
+    /* 승인 비용 인쇄*/
+    tms.ui.setDrawPrint3 = function(_form) {
+        $("body").append("<form id='drawPrint' method='post'>"+_form.html()+"</form>");
+
+        tms.ui.winPop(_form.attr("id"),{"sizeW":"800","sizeH":"800","action":"/print_P003_01.act","target":"printType1","resize":"no"});
+
+        $("body").find("#drawPrint").remove();
+    };
+
+    /* 조회 테이블 스크롤 컨트롤 상단 하단 DIV 같이 움직이기 */
+    tms.ui.scroll = function(input){
+        $(".list_scroll").unbind("scroll").scroll(function(){
+            $(".list_scroll_top").scrollLeft($(this).scrollLeft());
+        });
+        // 스크롤 TOP 처리 X
+        if(input != '' && input != undefined) {
+            if (input.SCROLL_TOP != undefined) {
+                if (!input.SCROLL_TOP) {
+                    return;
+                }
+            }
+        }
+
+        $(".list_scroll").scrollTop(1);
+        if($(".list_scroll").scrollTop() == 1){
+            $(".list_scroll").scrollTop(0);
+        }
+    };
+
+    /* 조회 테이블 가로&세로 스크롤에 따른 style 적용 */
+    tms.ui.scrollStyleChange = function () {
+        if($(".list_scroll").hasHorizontalScrollBar() && $(".list_scroll").hasScrollBar()){  // 가로 & 세로 스크릴 동시 생겼을때
+            $(".list_scroll").attr("style", "height:509px;min-width:100%;overflow-y:auto;overflow-x:auto;");
+            $(".list_scroll_top").addClass("pdr");
+            $(".list_scroll_top").find("colgroup").append("<col style=\"width:17px;\" nm=\"decoCol\">");
+            $(".list_scroll_top").find("tr").append("<th scope=\"col\" nm=\"decoTh\"><div></div></th>");
+        }else if ($(".list_scroll").hasScrollBar()){  // 세로 스크롤만 생겼을때
+            $(".list_scroll_top").addClass("pdr");
+            $(".list_scroll_top").find("col[nm='decoCol']").remove();
+            $(".list_scroll_top").find("th[nm='decoTh']").remove();
+        }else if(!$(".list_scroll").hasHorizontalScrollBar() && !$(".list_scroll").hasScrollBar()){ // 둘다 안생겼을때
+            $(".list_scroll").attr("style", "height:509px;min-width:100%;overflow-y:auto;overflow-x:auto;");
+            $(".list_scroll_top").removeClass("pdr");
+            $(".list_scroll_top").find("col[nm='decoCol']").remove();
+            $(".list_scroll_top").find("th[nm='decoTh']").remove();
+        }
+    };
+    
+    /* 세금계산서 팝업 */
+    tms.ui.TaxPopUpType1 = function(jsonValue){
+        common.app.jexNewWin("/sale_p001_01.act","Tax",960, 680, jsonValue);
+    };
+
+    /* 계산서 팝업 */
+    tms.ui.TaxPopUpType2 = function(jsonValue){
+        common.app.jexNewWin("/sale_p001_02.act","Tax",960, 680, jsonValue);
+    };
+
+    /* 위수탁 계산서 팝업 */
+    tms.ui.TaxPopUpType3 = function(jsonValue){
+        common.app.jexNewWin("/sale_p001_03.act","Tax",960, 630, jsonValue);
+    };
+
+    /* 종이세금계산서 팝업 */
+    tms.ui.TaxPopUpType4 = function(jsonValue){
+        common.app.jexNewWin2("/sale_p001_04.act","Tax",900, 660, jsonValue);
+    };
+    /* 매출 종이세금계산서 팝업 */
+    tms.ui.TaxPopUpType5 = function(jsonValue){
+        common.app.jexNewWin2("/sale_p001_05.act","Tax",900, 660, jsonValue);
+    };
+    /* 매출 종이세금계산서 팝업 */
+    tms.ui.TaxPopUpType5_1 = function(jsonValue){
+        common.app.jexNewWin2("/sale_p001_05.act?FLAG=TCMC","Tax",900, 653, jsonValue);
+    };
+    /* 매출 카드매출 팝업 */
+    tms.ui.CardSalePopUp = function(jsonValue){
+        common.app.jexNewWin("/sale_p002_01.act","SALE_CARD",350, 480, jsonValue);
+    };
+
+    /* 매입 카드매입 팝업 */
+    tms.ui.CardPrchPopUp = function(jsonValue){
+        common.app.jexNewWin("/prch_p001_01.act","PRCH_CARD",350, 480, jsonValue);
+    };
+
+    /* 매입 종이세금계산서 팝업 */
+    tms.ui.PaperTaxPopUp = function(jsonValue){
+        common.app.jexNewWin2("/prch_p001_02.act","PAPER_TAX",900, 660, jsonValue);
+    };
+
+    /* 매출 종이세금계산서 팝업 */
+    tms.ui.PaperTaxPopUp2 = function(jsonValue){
+        common.app.jexNewWin2("/sale_p004_01.act","PAPER_TAX",900, 660, jsonValue);
+    };
+
+    /* 매출 현금영수증 팝업 */
+    tms.ui.CashSalePopUp = function(jsonValue){
+        // common.app.jexNewWin("/sale_p003_01.act","SALE_CASH",355, 430, jsonValue);
+        common.app.jexNewWin("/commCash_p001_01.act","SALE_CASH",470, 401, jsonValue);
+    };
+
+    /* 매입 현금영수증 팝업 */
+    tms.ui.CashPrchPopUp = function(jsonValue){
+        // common.app.jexNewWin("/prch_p003_01.act","PRCH_CASH",355, 500, jsonValue);
+        common.app.jexNewWin("/commCash_p001_01.act","PRCH_CASH",470, 401, jsonValue);
+    };
+    /* 공통 현금영수증 팝업 */
+    tms.ui.CashCommPopUp = function(jsonValue){
+        common.app.jexNewWin("/commCash_p001_01.act","COMM_CASH",470, 401, jsonValue);
+    };
+
+    /* 지출결의서 (세금계산서 type) 팝업 */
+    tms.ui.ResolPopUpType1 = function(jsonValue){
+        common.app.jexNewWin("/resl_p001_01.act","Resl",950, 680, jsonValue);
+    };
+
+    /* 지출결의서 (카드, 현금영수증 type) 팝업 */
+    tms.ui.ResolPopUpType2 = function(jsonValue){
+        common.app.jexNewWin("/resl_p001_02.act","Resl",950, 680, jsonValue);
+    };
+
+    /* 급여결의서 팝업 */
+    tms.ui.ResolPopUpType3 = function(jsonValue){
+        common.app.jexNewWin("/saly_p001_02.act","Saly",840, 680, jsonValue);
+    };
+
+    /* 지출결의서 (기업신용카드 기타영수증) 팝업 */
+    tms.ui.ResolPopUpType4 = function(jsonValue){
+    	common.app.jexNewWin2("/eusr_0001_03.act","Eusr",837, 663, jsonValue);
+    };
+    /* 지출결의서 (기업신용카드 법인카드) 팝업 */
+    tms.ui.ResolPopUpType5 = function(jsonValue){
+        common.app.jexNewWin("/eusr_0001_07.act","Eusr",837, 663, jsonValue);
+    };
+    /* 지출결의서 (4대보험) 팝업 */
+    tms.ui.ResolPopUpType6 = function(jsonValue){
+        common.app.jexNewWin("/saly_m005_09.act","Eusr",837, 663, jsonValue);
+    };
+    /* 지출결의서 (사업기타소득A) 팝업 */
+    tms.ui.ResolPopUpType7 = function(jsonValue){
+        common.app.jexNewWin("/saly_p007_01.act","Eusr",837, 663, jsonValue);
+    };
+    /* 지출결의서 (사업기타소득B) 팝업 */
+    tms.ui.ResolPopUpType8 = function(jsonValue){
+        common.app.jexNewWin("/saly_p007_02.act","Eusr",837, 663, jsonValue);
+    };
+    /* 지출결의서 (기업신용카드 청구) 팝업 */
+    tms.ui.ResolPopUpType9 = function(jsonValue){
+        common.app.jexNewWin("/eusr_0004_04.act","Eusr",837, 663, jsonValue);
+    };
+
+    /* 지출결의서 비영리 팝업 */
+    tms.ui.ResolPopUpType10 = function(jsonValue){
+        common.app.jexNewWin("/reslNpor_0001_01.act", "Eusr", 837, 663, jsonValue);
+    };
+
+    /* 기업신용카드 영수증 팝업 */
+    tms.ui.CardEusrPopUp = function(jsonValue){
+        common.app.jexNewWin("/eusr_0001_04.act","Eusr",700, 700, jsonValue);
+    };
+    /* 기타 영수증 팝업 */
+    tms.ui.EtcEusrPopUp = function(jsonValue){
+        common.app.jexNewWin2("/eusr_0005_04.act","Eusr2",700, 700, jsonValue);
+    };
+    /* 매입 현금영수증 영수증 팝업 20181106 */
+    tms.ui.CashPrchPopUp2 = function(jsonValue){
+        common.app.jexNewWin("/prch_l003_03.act","Prch",700, 700, jsonValue);
+    };
+
+    /* Ajax 거래시 로딩바 올리기 */
+    tms.ui.setNowLoding = function( input ){
+        try{
+         var lodingBarYn = common.app.null2def(input["_LODING_BAR_YN_"],"Y");
+         if(lodingBarYn == "Y"){
+         var loding = jexjs.plugin.get("JEX_LODING");
+         loding.start();
+         }
+         }catch(e){}
+    };
+    /* Ajax 거래시 로딩바 삭제 */
+    tms.ui.removeLoding = function ( input ){
+        var loding = jexjs.plugin.get("JEX_LODING");
+        if(loding)
+            loding.stop();
+    };
+    /* 결재선 선택 팝업    - SERP 지출결의서(112) */
+    tms.ui.apprlinePop = function(jsonValue){
+        if(isSvcWeb === 'Y') {
+            common.app.jexNewWin2(jsonValue.APPR_LINE_URL, "apprlinePop", 460, 630, jsonValue);
+        }else {
+            common.app.jexNewWin2(jsonValue.APPR_LINE_URL, "apprlinePop", 455, 620, jsonValue);
+        }
+    };
+    /* 결재선 변경 팝업 */
+    tms.ui.apprlineChangePop = function(jsonValue){
+        common.app.jexNewWin(jsonValue.APPR_LINE_CHG_URL,"apprlineChangePop",950, 600, jsonValue);
+    };
+    /* 파일 선택 팝업    - SERP 지출결의서(112) */
+    tms.ui.apprFilePop = function(jsonValue){
+        common.app.jexNewWin2(jsonValue.APPR_FILE_URL,"apprFilePop",455, 465, jsonValue);
+    };
+	/* 원안문서 첨부 */
+    tms.ui.myPatch = function(jsonValue){
+        common.app.jexNewWin2(jsonValue.APPR_FILE_URL,"MYAPATCH",1043, 617, jsonValue);
+    };
+    /* 전자결재 조회 팝업 API 호출 */
+    tms.ui.detailResol = function(apprSeqNo){
+        var jsonValue = {
+            PTL_ID      : $("#PTL_ID").val()
+            , USE_INTT_ID : $("#USE_INTT_ID").val()
+            , CHNL_ID     : "CHNL_1"
+            , USER_ID     : $("#USER_ID").val()
+            , PROC_GB     : "R"
+            , APPR_SEQ_NO : apprSeqNo
+            , CNTS_CRTC_KEY: $("#CNTS_CRTC_KEY").val()
+            , APPR_DTL_URL : $("#APPR_DTL_URL").val()
+        };
+        common.app.jexNewWin(jsonValue.APPR_DTL_URL,"selfAppr",920, 680, jsonValue);
+    };
+
+
+    /* 그룹웨어 전자결재 조회 팝업 API 호출 */
+    tms.ui.detailGwResol = function(apprSeqNo){
+        var jsonValue = {
+            PTL_ID      : $("#PTL_ID").val()
+            , USE_INTT_ID : $("#USE_INTT_ID").val()
+            , CHNL_ID     : "CHNL_1"
+            , USER_ID     : $("#USER_ID").val()
+            , PROC_GB     : "R"
+            , APPR_SEQ_NO : apprSeqNo
+            , CNTS_CRTC_KEY: $("#GW_CNTS_CRTC_KEY").val()
+            , APPR_DTL_URL : $("#GW_APPR_DTL_URL").val()
+            , DOC_DIV_CD : "1"   // 지출결의서 "1"
+        };
+        common.app.jexNewWin(jsonValue.APPR_DTL_URL,"APPR",1337, 900, jsonValue);
+    };
+    /* 무증빙 팝업 (현금출납장 사용)*/
+    tms.ui.EtcSalePopUp = function(jsonValue){
+        common.app.jexNewWin("/sale_p005_01.act","SALE_ETC",380, 375, jsonValue);
+    };
+    /* 국세 팝업 (현금출납장 사용)*/
+    tms.ui.NationalTaxPrchPopUp = function(jsonValue){
+        common.app.jexNewWin("/eusr_0005_12.act","PRCH_ETC",950, 660, jsonValue);
+    };
+    /* 간이영수증 팝업 (현금출납장 사용)*/
+    tms.ui.EtcBillPrchPopUp = function(jsonValue){
+        common.app.jexNewWin("/prch_p004_01.act","PRCH_ETC", 350, 432, jsonValue);
+    };
+    /* 매입 종이세금계산서 팝업 */
+    tms.ui.TaxPopUpType4_view = function(jsonValue){
+        common.app.jexNewWin2("/sale_p001_04.act?FLAG=RPTR","Tax",900, 660, jsonValue);
+    };
+    /* 매출 종이세금계산서 팝업 */
+    tms.ui.TaxPopUpType5_view = function(jsonValue){
+        common.app.jexNewWin2("/sale_p001_05.act?FLAG=RPTR","Tax",900, 660, jsonValue);
+    };
+    
+}
+$(document).ready(function(){
+    $('<div id="com_grid" style="display: none;"></div>').appendTo($('body'));
+
+    try{
+        /*로딩바*/
+        jexjs.addAjaxBeforeExecute(tms.ui.setNowLoding);
+
+
+    }catch(e){}
+});

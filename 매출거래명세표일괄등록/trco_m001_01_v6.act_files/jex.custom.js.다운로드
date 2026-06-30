@@ -1,0 +1,703 @@
+/**
+ * @author Gil
+ */
+/**
+ * 확장자를 변경하려면 아래와 같이한다. Default : jct
+ */
+//jex.setAjaxExt("test");
+var pageId = jex.getUrl();
+
+
+/**
+ * 페이지 로드시 공통처리
+ */
+$(function() {
+//	jex.addAjaxBefore	(function(xhr,setting) 		{ jex.plugin.get("JEX_LOADING").start(); });
+//	jex.addAjaxComplete	(function(xhr,textstatus) 	{ jex.plugin.get("JEX_LOADING").stop(); 	});
+//	resizeIframe(); // iFrame사이즈를 동적으로 맞추어준다.
+//	initLoginLayer();//세션로그인관련 초기화
+	jex.setAjaxErrFn	(function(dat) {
+		//console.log(dat);
+		//세션종료일경우
+		if(dat['COMMON_HEAD']['CODE']=="SESSION_DISCONNECTED")
+		{
+//			top.openLoginLayer();
+//			top.location.replace("/demo/web/comm/sessionError.jsp");
+		}
+		else
+		{
+			jex.printError(dat['COMMON_HEAD']['CODE'],dat['COMMON_HEAD']['MESSAGE']);
+		}
+	});
+	
+});
+
+
+/**
+ * 가장 상위의 Document를 가져온다.
+ * @returns
+ */
+function getRootDom(p,bp) {
+	return jex.getRootDom();
+}
+
+/**
+ * iFrame사이즈 조절
+ */
+function resizeIframe() {
+	parent.$("iframe").each(function(iel, el) {
+		if(el.contentWindow === window) {
+		  var doch = jex.getDocHeight();
+		  var ifrh = $(this).height();
+		  if (doch>ifrh) $(this).height(doch);
+		  if (parent.document !== document) parent.resizeIframe();
+		}
+	});	
+}
+
+/**
+ * 사용자 Exception 정의
+ */
+var JexCusException = Exception.extend({
+	init:function(code, msg) {
+		this._super(code, msg);
+	},printStackTrace:function() {
+		this._super();
+	},getMessage:function() {
+		this._super();
+	}
+});
+
+/**
+ * AJAX거래시 Before설정 -- 인코딩을 utf-8로 전송
+ */
+jex.addAjaxBefore(function(xhr){xhr.setRequestHeader("charset", "utf-8");}); 
+
+/**
+ * Grid Default Option 재정의
+ * function으로 return 하지 않는 경우 1개의 Object가 전역으로 사용되어
+ * Grid의 option을 변경할 경우 모든 grid가 영향을 받을 수 있다.
+ */
+jex.set("jexGridOpt", function() {  
+		return {
+				font:"12px Arial,Helvetica,sans-serif",			
+				imageUrl:"/demo/img/grid/",							//Grid Image 파일 경로
+				ColDefManager:{
+					colDef:{
+						sorter:"text",
+						resizable:true
+					}
+				},
+				ColHeader:{
+					font:"12px Arial,Helvetica,sans-serif",		//Header의 Font 
+					reorderEnabled:true							//Header 순서 변경
+				},
+				CheckManager:{
+				},
+				ViewportManager:{
+					rowsPerPage:20 								//한번에 보여 질 Row 수
+					,evenOddRows:true
+					,oddRowsBackground:"#F3F3F3" 
+					
+				},			
+				Footer:{
+					fontSize:"12px"
+				},												//Footter
+				SelectionManager:{},
+				MenuBar:{},										//상단 메뉴바 생성
+				SearchManager:{},								//검색 기능 추가
+				DataManager:{}
+		};
+});
+
+
+/**
+ * Form Check를 위한 정의 -- Start
+ */
+var checker = jex.plugin.get("FORM_CHECKER");
+
+/**
+ * Check할 것들을 Add
+ * Check시 에러면 여기서 CSS바꾸거나 하는것도 할수 있다z
+ */
+checker.addCheckList("NOTNULL",function(dat) {
+	return !jex.isNull(dat);
+});
+
+/**
+ * Check할 것들을 Add
+ * Check시 에러면 여기서 CSS바꾸거나 하는것도 할수 있다z
+ */
+checker.addCheckList("NOTNULL_S",function(dat) {
+	return !jex.isNull(dat);
+});
+
+checker.addCheckList("UPPERCASE",function(dat) {
+	return /^[A-Z][A-Z_0-9]*$/.test(dat);
+});
+
+checker.addCheckList("LOWERCASE",function(dat) {
+	return /^[a-z][a-z_0-9]*$/.test(dat);
+});
+
+checker.addCheckList("NUMBER",function(dat) {
+	return /^\d*$/.test(dat);
+});
+
+checker.addMsg("NOTNULL",	"%MSG%이(가) 입력되지 않았습니다.");
+checker.addMsg("NUMBER",	"%MSG%에는 숫자만 입력이 가능합니다.");
+checker.addMsg("NOTNULL_S",	"%MSG%를 선택하여 주십시오.");
+
+jex.plugin.add("FORM_CHECKER", checker);
+
+jex.set("checkValid", function(checkNm, dupChk) {  
+	var checker = jex.plugin.get("FORM_CHECKER");
+	if (checkNm !== "" && !checker.check(checkNm)) {
+		return false;
+	}
+	if(dupChk === false) {
+		jex.printInfo("WM0045");
+		return false;
+	}
+	
+	return true;
+});
+
+/**
+ * Form Check를 위한 정의 -- End
+ */
+
+/**
+ * IFRAME - DIV를 위한 Contents HTML등록
+ */
+jex.set("ifrcontents", function(){
+	var bg1 ="";
+	var bg2 ="";
+	var closeBtn;
+//	if( jex.null2Str(jex.getRootDom().jex.get("PRJ_TP"), "studio")=="admin" )
+//	{
+//		bg1 = "style='background:url(\"/demo/img/00/menu/popup_1.gif\") no-repeat scroll left top transparent !important'";
+//		bg2 = "style='background:url(\"/demo/img/00/menu/popup_2.gif\") repeat-x scroll left top transparent !important'";
+//		closeBtn = "/demo/img/00/menu/popup_close.gif";
+//	}
+//	else
+//	{
+		closeBtn = "/demo/img/00/greentype/popup_close.gif";
+//	}
+	
+	return	"<div id='p-wrap-div' class='pop_wrap_div'>"
+			+	"<div id='p-title' class='pop_top' "+bg2+">"
+			+		"<h1 id='title' "+bg1+"></h1>"
+			+ 		"<span><a id='popup' title='새창(팝업)으로열기' style='cursor:pointer' class='.ui-cancelDraggable'><img src='/img/00/menu/icon_pop.gif' alt='popup' style='margin:0px 2px 8px 0px;'/></a>"
+			+				"<a id='close' style='cursor:pointer' title='닫기' class='.ui-cancelDraggable'><img src='"+closeBtn+"' alt='close' /></a></span>"
+			+	"</div>"
+			+	"<div id='pcpcont' class='pop_cont' style='background-color:#ffffff'><iframe style='width:100%;height:100%;border:0px;'></iframe></div>"
+			+"</div>";
+});
+
+
+/**
+ * 메타검색 팝업을 연다.
+ * 
+ * @param gridId: 메타가 셋팅될 그리드. 필수
+ * @param comId : 컴포넌트 아이디
+ * @param options : {ifrId : 메타검색창ID, default=ifrMetaSearch
+ * 					 title : default=META 검색
+ * 					 pageX : default=200
+ * 					 pageY : default=100}
+ */
+jex.set("openMetaSearch", function(gridId, comId, options){
+	if(!gridId)
+	{
+		jex.printInfo("WM0014", "메타정보가 셋팅될 grid 변수명");
+		return;
+	}
+	
+	var settings = { ifrId: "ifrMetaSearch", title: "META 검색", pageX:200, pageY:100 };
+	$.extend(settings, options);
+
+	$("#"+settings.ifrId).jexDiv('make', {
+		width			:680,
+		height			:530,
+		ifrcontents		:jex.get("ifrcontents"),
+		title			:settings.title,
+		reloadable		:true,
+		url				:"/jex/studio/common/common_0001_01.html?grid="+gridId+"&comId="+comId+"&divname="+settings.ifrId
+	});
+	$("#"+settings.ifrId).jexDiv('changeIfrSrc',{src:"/jex/studio/common/common_0001_01.html?grid="+gridId+"&comId="+comId+"&divname="+settings.ifrId});
+	$("#"+settings.ifrId).jexDiv('show',{pageX:settings.pageX,pageY:settings.pageY});
+});
+
+
+
+/**
+ * 선택한 대상이 있는지 확인
+ */
+function isChecked(checkedElement) {
+	if(checkedElement==undefined || checkedElement.length == 0 ){
+		jex.printInfo("WM0022");
+		return true;
+	}return false;
+}
+
+/**
+ * 필수 입력값 확인
+ */
+function isRequiredValueNull(jsonArray) {
+
+	var retValue=true;
+	$.each(jsonArray, function(i,v){
+		if(!$("#"+v.elementId).val()){
+			jex.printError("WE0014");
+			retValue = true;
+			return false; //each function End
+		}else retValue = false;
+	});
+	return retValue;
+}
+
+/**
+ * SVN에 있는 파일 내용을 읽어온다.
+ * @param path
+ * @param file
+ */
+function getSvnFileStr(path,file) {
+	jex.printDebug("::SVN 파일을 읽어옵니다.::" + path + file);
+	var jexAjax = jex.createAjaxUtil("comm_inf_r002");			// AJAX전송모듈 생성 2011
+	var rslt;
+	jexAjax.set("FULL_DIR_NM",	path);
+	jexAjax.set("FILE_NM",		file);
+	jexAjax.setAsync(false);
+	jexAjax.execute(function(dat) { rslt=dat['CNTS_CTT']; });
+	return rslt;
+}
+
+function getWdstAuth() {
+	return {BT:true, PT:true};
+}
+
+/**
+ * 정렬방식 패딩 고정
+ */
+function updateDATTP(datarow, change, gridName) {
+	if( "SRT_NM" in change || "PAD_VLU" in change ) {
+		if( datarow.DAT_TP === "X" || datarow.DAT_TP === "9" ) {
+			alert("데이터 타입이 기타가 아닌 경우에는 수정이 불가능합니다.");
+			for (var i in change) {
+				delete change[i];
+			}
+			window[gridName].editMgr.cancel();
+			return false;
+		}
+	}
+	
+	if( "DAT_TP" in change ) {
+		if( change.DAT_TP === "X" ) {
+			change.SRT_NM = "LEFT";
+			change.PAD_VLU = " ";
+		}
+		else if( change.DAT_TP === "9" ) {
+			change.SRT_NM = "RIGHT";
+			change.PAD_VLU = "0";
+		}
+		else if( change.DAT_TP === "9X" ) {
+			change.SRT_NM = "RIGHT";
+			change.PAD_VLU = " ";
+		}
+		else if( change.DAT_TP === "X9" ) {
+			change.SRT_NM = "LEFT";
+			change.PAD_VLU = "0";
+		}
+	}
+	return true;
+}
+
+/**
+ * 세션에서 js로 받아온 로그인한 유저 데이터를 받아온다.
+ */
+function getLoginUsrInfo(p) {
+	if (jex.isNull(p)) p = parent;
+	var usrInfo = p.jex.get("SESSION_USER_DATA");
+	if (jex.isNull(usrInfo)) {
+		jex.printInfo("WM0010","사용자 정보를 가져 올 수 없습니다. 다시 로그인 해주시기 바랍니다.");
+		return;
+	}
+	return usrInfo;
+}
+
+
+/**
+ * 영향도 보기
+ * @parm comTp=타입
+ * @parm comId=아이디
+ * @author yskim
+ */
+function viewImpact(comTp, comId) {
+	
+	var comInfo ={COM_TP:comTp, COM_ID :comId};
+	//alert(jex.toStr(comInfo));
+	jex.set("common_0011_01_impact", jex.toStr(comInfo));
+	//alert(jex.get("common_0011_01_impact"));
+	
+	$("#common_0011_01_impact").jexDiv('make',{
+		width		:800,	
+		height		:760,
+		reloadable	:true,
+		ifrcontents	:jex.get("ifrcontents"),
+		title		:"영향도 보기",
+		url			:"/jex/studio/common/common_0011_01.html"
+	});
+	$("#common_0011_01_impact").jexDiv('hide');
+	$("#common_0011_01_impact").jexDiv('show');
+};
+
+/**
+ * Biz 영향도 보기
+ * @parm comTp=타입
+ * @parm comId=아이디
+ * @author yskim
+ */
+function viewImpactBiz(comTp, comId) {
+	
+	var comInfo ={COM_TP:comTp, COM_ID :comId};
+	//alert(jex.toStr(comInfo));
+	
+	jex.set("common_0011_01_impact", jex.toStr(comInfo));
+	//alert(jex.get("common_0011_01_impact"));
+	
+	$("#common_0011_01_impact").jexDiv('make',{
+		width		:800,	
+		height		:820,
+		reloadable	:true,
+		ifrcontents	:jex.get("ifrcontents"),
+		title		:"영향도 보기(BIZ)",
+		url			:"/jex/studio/common/common_0011_01.html"
+	});
+	$("#common_0011_01_impact").jexDiv('hide');
+	$("#common_0011_01_impact").jexDiv('show');
+};
+
+/**
+ * 컴포넌트 영향도 보기
+ * @parm comTp=타입
+ * @parm comId=아이디
+ * @author yskim
+ */
+function viewImpactCom(comTp, comId) {
+	
+	var comInfo ={COM_TP:comTp, COM_ID :comId};
+	//alert(jex.toStr(comInfo));
+	jex.set("common_0011_02_impact", jex.toStr(comInfo));
+	//alert(jex.get("common_0011_01_impact"));
+	
+	$("#common_0011_02_impact").jexDiv('make',{
+		width		:800,	
+		height		:820,
+		reloadable	:true,
+		ifrcontents	:jex.get("ifrcontents"),
+		title		:"영향도 보기(컴포넌트)",
+		url			:"/jex/studio/common/common_0011_02.html"
+	});
+	$("#common_0011_02_impact").jexDiv('hide');
+	$("#common_0011_02_impact").jexDiv('show');
+};
+/**
+ * 변경이력보기
+ * @parm itemInfo
+ * @author yskim
+ */
+function viewSvnHistory(itemInfo) {
+
+	//var fileInfo ={FILE_NM:checkedWdstList[0].WDST_FILE_NM, FILE_PATH:checkedWdstList[0].WDST_FILE_PATH};
+	//conlose.log(checkedWdstList));
+	jex.set("common_0012_01_svn_history", jex.toStr(itemInfo));
+	
+	$("#ifr_common_0012_01").jexDiv('make',{
+		width		:800,	
+		height		:450,
+		reloadable	:true,
+		ifrcontents	:jex.get("ifrcontents"),
+		title		:"변경 이력",
+		reloadable	:true,
+		url			:"/jex/studio/common/common_0012_01.html"	
+	});
+	$("#ifr_common_0012_01").jexDiv('hide');
+	$("#ifr_common_0012_01").jexDiv('show');
+}
+
+/**
+ * 배포 목록 추가
+ * @param gridObj
+
+ * @return
+ */
+function addWdstListFromDb(gridObj) {
+
+	var checkedWdstList;		//그리드에서 체크된 
+	var filteredWdstList = [];	//그리드에서 체크된 항목중 필요한 데이터만 추출
+//	var wdstFileInfoList = [];  //실제 파일 경로
+	var addedWdstListStr;		//세션에 추가된 배포 목록(String 형태)
+	var addedWdstListObj;		//세션에 추가된 배포 목록(Object 형태) 배포목록 비교용
+	
+	//체크박스 선택된 리스트 꺼내기 
+	checkedWdstList = gridObj.checked();
+	//체크된 항목이 null 인지 체크
+	if(isChecked(checkedWdstList)) return false;
+	//alert("[TEST] 0::" + JSON.stringify(checkedWdstList));
+	
+	if(checkedWdstList){
+		$.each(checkedWdstList, function(i,v)
+		{
+			if("CODE" == v.COM_TP)
+			{
+				filteredWdstList.push({COM_ID:"", COM_TP:v.COM_TP, PKG_NM:"", LCLAS_CD:v.LCLAS_CD, SCLAS_CD:v.SCLAS_CD });
+			}
+			else
+			{
+				filteredWdstList.push({COM_ID:v.COM_ID, COM_NM:v.COM_NM, COM_TP:v.COM_TP, PKG_NM:v.PKG_NM, LCLAS_CD:"", SCLAS_CD:"" });
+			}
+		});
+	}
+	
+	if(0!=filteredWdstList.length)
+	{
+		var jexAjax = jex.createAjaxUtil("comm_get_svn_path");
+	    jexAjax.set("REC", filteredWdstList);
+	    jexAjax.execute(function(dat) {
+	    	//alert(JSON.stringify(dat.REC1)); // AJAX실행 -- 결과를 grid에 담는다.
+	    	if(0==dat.REC1.length)
+	    	{
+	    		jex.printInfo("WM0089");
+	    	}else {
+	    		//alert("[TEST] 10::" + JSON.stringify(dat.REC1));
+	    		//세션에서 배포 목록 가져오기
+	    		addedWdstListStr = jex.getOpener().jex.get("addedWdstListStr"); 
+	    		//null 아닌 경우 Object로   변경
+	    		if(addedWdstListStr){
+	    			addedWdstListObj = jex.parse(addedWdstListStr);
+	    		}
+	    		//alert("[TEST] 1::" + JSON.stringify(addedWdstListObj));
+	    		
+	    		//배포 목록에 파일이 이미 추가된 경우 종료 메시지 보이고 종료.
+	    		if(addedWdstListObj){
+	    			if(isWdstFileExist(gridObj, dat.REC1, addedWdstListObj)) return false;
+	    		}
+	    		//세션의 배포 목록이 null이거나 중복된 항목이 없는경우
+	    		//alert("[TEST] 2::" + JSON.stringify(addedWdstListObj));
+	    		//배포목록 리스트에 추가
+	    		if(!jex.confirm("WM0047")) return false;
+	    		
+	    		if(addedWdstListObj){
+	    			$.each(dat.REC1, function(i,v){
+	    				addedWdstListObj.push(v);
+	    			});
+	    		}else	addedWdstListObj = dat.REC1;
+	    		//배포 목록 리스트를 세션에 추가
+	    		//alert(JSON.stringify(addedWdstListObj));
+	    		jex.getOpener().jex.set("addedWdstListStr",jex.toStr(addedWdstListObj));
+	    		
+	    		jex.printInfo("WM0048");
+	    		gridObj.checkMgr.uncheckAll();
+	    		//alert("[TEST] 3::" + JSON.stringify(jex.getOpener().jex.get("addedWdstListStr")));
+	    	}
+	    });
+	}
+
+    
+}
+
+/**
+ * 배포 목록에 이미 추가 되었는지 확인
+ * @param gridObj
+ * @param checkedWdstList :그리드에 체크된 배포 목록
+ * @param addedWdstList   :세션에 저장된 배포 목록
+ **/
+function isWdstFileExist(gridObj, checkedWdstList, addedWdstList){
+	var isExist=false;
+	$.each(checkedWdstList,function(i,v){
+		$.each(addedWdstList, function(j,w){
+			if(v.WDST_FILE_NM == w.WDST_FILE_NM &&v.WDST_FILE_PATH == w.WDST_FILE_PATH){
+				jex.printError("WM0049");
+				//중복 항목 체크 해제
+				gridObj.checkMgr.uncheck(v);
+				isExist=true;
+				return false;
+			}
+		});//end of each
+		if(isExist==true){
+			return false;
+		}
+	});//end of each
+	return isExist;
+}
+
+/**
+ * 그리드의 체크된 데이터를 삭제한다.
+ * 
+ * @param targetGrid: 대상 그리드
+ */
+jex.set("removeCheckList", function(targetGrid)
+{
+	var checkList = targetGrid.checkMgr.getCheckList();
+	if(checkList.length==0)
+	{
+		jex.printInfo("WM0012");
+		return false;
+	}
+	targetGrid.dataMgr.removeList( checkList );
+});
+
+
+function initLoginLayer()
+{
+	if(top==window)
+	{
+		window.openLoginLayer = function()
+		{
+    		$("#_ifrLogin_", top).jexDiv('make',{
+				 width			:300
+				,height			:275
+				,draggalbe		:false
+				,ifrcontents	:jex.get("ifrcontents")
+				,title			:"세션이 종료되었습니다."
+				,url			:"/jex/studio/main/main_0001_02.html"
+				,show			:false
+			});
+			
+			$("#_ifrLogin_ #close").hide();
+			$("#_ifrLogin_ #popup").remove();
+			
+			var x = (!!top.innerWidth?top.innerWidth:document.body.clientWidth)/2-$("#_ifrLogin_").width()/2;
+			var y = (!!top.innerHeight?top.innerHeight/2:document.body.clientHeight/3)-$("#_ifrLogin_").height()/2;
+			
+			$("#_ifrLogin_").jexDiv('show',{pageX:x,pageY:y});
+		};
+		window.closeLoginLayer = function()
+		{
+			$("#_ifrLogin_").jexDiv('hide');
+		};
+	}
+}
+
+/**
+ * 파일 내용 보기 버튼 이벤트
+ */
+
+function viewFileContent(filePath, fileName, fileRev){
+
+	var jexAjax = jex.createAjaxUtil("wdst_mgnt_0002_01_r001");
+	jexAjax.set("FILE_PATH",filePath);
+	jexAjax.set("FILE_NM",fileName);
+	jexAjax.set("WDST_VER",fileRev);
+	jexAjax.execute(function(dat) {
+		//alert("[DEBUG]"+JSON.stringify(dat.FILE_CTT));
+		var fileInfo ={FILE_PATH:filePath, FILE_NAME:fileName, FILE_REV:fileRev, FILE_CTT:dat.FILE_CTT};
+		
+		jex.set("wdst_0002_02_fileCtt", jex.toStr(fileInfo));
+	});
+	
+	var sizeW 	= 850;
+	var sizeH 	= 700;
+	var nLeft 	= screen.width/2 - sizeW/2;
+	var nTop	= screen.height/2 - sizeH/2;
+	var option 	= ",toolbar=no,menubar=no,location=no,scrollbars=yes,status=no";
+	var winObj 	= window.open("/jex/studio/wdstmgnt/wdst_mgnt_0002_02.html", "newWindow", "left=" + nLeft + ",top=" +  nTop + ",width=" + sizeW + ",height=" + sizeH  + option ); 
+	winObj.blur();
+	winObj.focus();
+}
+
+/**
+ * 해당그리드의 선택된 행을 1칸 위로 이동한다.
+ * @param gridName : 그리드의 전역변수명
+ */
+function jgridRowUp(gridName)
+{
+	var g = window[gridName];
+	
+	if( !g ) return false;
+	
+	var cell = g.selMgr.getCell();
+	
+	if( cell === undefined)
+	{
+		jex.printInfo("WM0065");
+		return;
+	}
+	var idx = cell.getRowIdx();
+	if( idx === 0)
+	{
+		return;
+	}
+	
+	var tmp = g.dataMgr.all[idx];
+	var colIdx = cell.getColIdx();
+	
+	g.dataMgr.all.removeAt(idx);
+	g.dataMgr.all.addAt(idx-1, tmp);
+	g.dataMgr.refresh();
+	g.selMgr.selectCell( JGM.create("Cell",{grid:g,row:idx-1,col:colIdx}) );
+}
+
+/**
+ * 해당그리드의 선택된 행을 1칸 아래로 이동한다.
+ * @param gridName : 그리드의 전역변수명
+ */
+function jgridRowDown(gridName)
+{
+	var g = window[gridName];
+	
+	if( !g ) return false;
+	
+	var cell = g.selMgr.getCell();
+	
+	if( cell === undefined)
+	{
+		jex.printInfo("WM0065");
+		return;
+	}
+	
+	var idx = cell.getRowIdx();
+	if( cell.getRowIdx() === g.dataMgr.all.length-1)
+	{
+		return;
+	}
+	
+	var tmp = g.dataMgr.all[idx];
+	var colIdx = cell.getColIdx();
+	
+	g.dataMgr.all.removeAt(idx);
+	g.dataMgr.all.addAt(idx+1, tmp);
+	g.dataMgr.refresh();
+	g.selMgr.selectCell( JGM.create("Cell",{grid:window[gridName],row:idx+1,col:colIdx}) );
+}
+
+/**
+ * 팝업 열기 
+ * @param formId : submit될 폼의 아이디. 없으면 빈 팝업만 열림 
+ * @param options : { sizeW : "팝업가로사이즈"
+ * 					 ,sizeH : "팝업세로사이즈"
+ *					 ,action : "팝업에서 열릴 웹서비스id" //입력되지 않으면 현재 폼에 적용되어있는 action으로 열림
+ * 					}
+ */
+function open_popup(formId, options)
+{
+	var	sizeW = parseInt(options.sizeW, 10);	
+	var	sizeH = parseInt(options.sizeH, 10);
+	var nLeft = screen.width/2 - sizeW/2 ;
+	var nTop  = screen.height/2- sizeH/2 ;
+	var option= ",toolbar=no,menubar=no,location=no,scrollbars=yes,status=no";
+	var winObj= window.open('', options.target, "left=" + nLeft + ",top=" +  nTop + ",width=" + sizeW + ",height=" + sizeH  + option );
+	winObj.blur();//크롭에서 focus()만 호출할경우 작동하지 않아서 blur()를 먼저 호출한후 focus()호출하도록 수정함.
+	winObj.focus();//팝업이 이미 열려있는경우 앞으로 나오도록 한다.
+	
+	var frm = document.getElementById(formId);
+	if(!!frm)
+	{
+		frm.method = "post";
+		frm.target = options.target;
+		
+		if(!!options.action)	frm.action = options.action;
+		
+		frm.submit();
+	}
+}

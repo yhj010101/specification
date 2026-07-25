@@ -1,0 +1,15 @@
+Interface: Scanmatik - SM2 USB
+DLL: 1.0.0.15 (built 12.02.19)
+Firmware: FW:0808 HW:02 SN:A55259
+Protocol: VAG: DL501/G2 (0B5)
+Identification
+Part Number:	0B5927256F
+SW Version:	0002
+Hardware:	0B5 32 FSIRdW
+Serial number:	0000000845
+ASAM:	EV_TCMDL501021
+VIN:	
+Coding:	000011
+Reprog count:	0
+ECU:	DL501G2
+Completed

@@ -1,0 +1,13 @@
+DLL: 1.0.0.15 (built 12.02.19)
+Firmware: FW:0808 HW:02 SN:A55259
+Protocol: VAG: DL501/G2 (0B5)
+Identification
+Part Number:	4G2927156N
+SW Version:	0005
+Hardware:	0B5 30 TDIRdW
+ASAM:	EV_TCMDL501021
+VIN:	WAUZZZ4G1EN019186
+Coding:	000011
+Reprog count:	1
+ECU:	DL501G2
+Completed
